@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 import asyncio
 import youtube_dl
+import json
+from ressource import dict
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
 
@@ -43,34 +45,17 @@ async def on_member_join(member):
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    channelLog = bot.get_channel(442710531271426058)
     channel = 752057616041246740
     if reaction.message.channel.id != channel:
+        print(f"Pas le bon channel!")
         return
     else:
-        if reaction.emoji.name == 'sot':
-            role = discord.utils.get(user.guild.roles, id=529584341055963137)
-            await user.add_roles(role)
-        if reaction.emoji.name == 'Monsterhunter':
-            role = discord.utils.get(user.guild.roles, id=723262020203446373)
-            await user.add_roles(role)
-        if reaction.emoji.name =='ksp':
-            role = discord.utils.get(user.guild.roles, id=727152365505085532)
-            await user.add_roles(role)
-        if reaction.emoji.name == 'satisfactory':
-            role = discord.utils.get(user.guild.roles, id=726916741577572394)
-            await user.add_roles(role)
-        if reaction.emoji.name == 'empyrion':
-            role = discord.utils.get(user.guild.roles, id=743765801009545236)
-            await user.add_roles(role)
-        if reaction.emoji.name == 'fs20':
-            role = discord.utils.get(user.guild.roles, id=751843044768350328)
-            await user.add_roles(role)
-        if reaction.emoji.name == 'warframe':
-            role = discord.utils.get(user.guild.roles, id=752060513143488542)
-            await user.add_roles(role)
-        if reaction.emoji.name =='division2':
-            role = discord.utils.get(user.guild.roles, id=682178457261965374)
-            await user.add_roles(role)
+        for emojiName in dict:
+            if reaction.emoji.name == str(emojiName):
+                role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
+                await user.add_roles(role)
+                await channelLog.send(f"{user.mention} vient d'avoir le grade: {emojiName}")
 
 
 @bot.event
@@ -80,44 +65,31 @@ async def on_reaction_remove(reaction, user):
         print(f"Pas le bon channel!")
         return
     else:
-        if reaction.emoji.name == 'sot':
-            role = discord.utils.get(user.guild.roles, id=529584341055963137)
-            await user.remove_roles(role)
-        if reaction.emoji.name == 'Monsterhunter':
-            role = discord.utils.get(user.guild.roles, id=723262020203446373)
-            await user.remove_roles(role)
-        if reaction.emoji.name =='ksp':
-            role = discord.utils.get(user.guild.roles, id=727152365505085532)
-            await user.remove_roles(role)
-        if reaction.emoji.name == 'satisfactory':
-            role = discord.utils.get(user.guild.roles, id=726916741577572394)
-            await user.remove_roles(role)
-        if reaction.emoji.name == 'empyrion':
-            role = discord.utils.get(user.guild.roles, id=743765801009545236)
-            await user.remove_roles(role)
-        if reaction.emoji.name == 'fs20':
-            role = discord.utils.get(user.guild.roles, id=751843044768350328)
-            await user.remove_roles(role)
-        if reaction.emoji.name == 'warframe':
-            role = discord.utils.get(user.guild.roles, id=752060513143488542)
-            await user.remove_roles(role)
-        if reaction.emoji.name =='division2':
-            role = discord.utils.get(user.guild.roles, id=682178457261965374)
-            await user.remove_roles(role)
+        print(f"Ok1")
+        for emojiName in dict:
+            if reaction.emoji.name == str(emojiName):
+                print(f"Ok2")
+                role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
+                await user.remove_roles(role)
 
 
 class Modo(commands.Cog):
     """Outils de modération."""
 
-    @commands.command()
-    async def test(self, ctx, arg):
-        await ctx.send(arg)
-
     @commands.command(name="clear", help="Supprime le nombre de message voulu dans le channel.")
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def clear(self, ctx, amount=2):
+        print("This is ok.")
         await ctx.channel.purge(limit=amount+1)
 
+    @commands.command(name="add", help="Add role with reaction")
+    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
+    async def add(self, ctx, role=2, emote=3):
+        print(f"role={role}, emote={emote}")
+        response = {f"{role}": f"{emote}"}
+        json.dumps(response)
+        await ctx.send(f"role = {role}, emote = {emote}")
+        
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
