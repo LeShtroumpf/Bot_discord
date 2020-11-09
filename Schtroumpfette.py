@@ -1,13 +1,13 @@
 import discord
+from discord import Reaction
 from discord.ext import commands
 import asyncio
 import youtube_dl
-import json
 from ressource import dict
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
 
-description = '''Bot discord python by Le Shtroumpf#6750'''
+description = '''Bot discord by Le Shtroumpf#6750'''
 bot = commands.Bot(command_prefix='$', description=description)
 GUILD = "Les Champions du dimanche"
 
@@ -56,21 +56,28 @@ async def on_reaction_add(reaction, user):
                 role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
                 await user.add_roles(role)
                 await channelLog.send(f"{user.mention} vient d'avoir le grade: {emojiName}")
+            else:
+                return
 
 
 @bot.event
 async def on_reaction_remove(reaction, user):
     channel = 752057616041246740
-    if reaction.message.channel.id != channel:
+    channelLog = bot.get_channel(442710531271426058)
+    print(f"Detection ok!")
+    if reaction.remove.message.channel.id != channel:
         print(f"Pas le bon channel!")
         return
     else:
         print(f"Ok1")
         for emojiName in dict:
-            if reaction.emoji.name == str(emojiName):
-                print(f"Ok2")
+            if Reaction.remove.emoji.name == str(emojiName):
+                print(f"{emojiName}")
                 role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
                 await user.remove_roles(role)
+                await channelLog.send(f"{user.mention} vient de perdre son grade: {role}")
+            else:
+                return
 
 
 class Modo(commands.Cog):
@@ -82,13 +89,6 @@ class Modo(commands.Cog):
         print("This is ok.")
         await ctx.channel.purge(limit=amount+1)
 
-    @commands.command(name="add", help="Add role with reaction")
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
-    async def add(self, ctx, role=2, emote=3):
-        print(f"role={role}, emote={emote}")
-        response = {f"{role}": f"{emote}"}
-        json.dumps(response)
-        await ctx.send(f"role = {role}, emote = {emote}")
         
 
 # Suppress noise about console usage from errors
