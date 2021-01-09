@@ -1,1 +1,1 @@
-worker: python Schtroumpfette.py
+worker: python3 Schtroumpfette.py
