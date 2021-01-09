@@ -1,14 +1,26 @@
 import discord
-from discord import Reaction
+from discord import VoiceChannel
+from discord.utils import get
 from discord.ext import commands
 import asyncio
 import youtube_dl
-from ressource import dict
+from ressource import dict_role, dict_map, dict_defi
+# from game_cmd import game
+
+
+# game = game()
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
 
+# try add this
+intents = discord.Intents.all()
+
+# if the above don't work, try with this
+# intents = discord.Intents()
+# intents.members = True
+
 description = '''Bot discord by Le Shtroumpf#6750'''
-bot = commands.Bot(command_prefix='$', description=description)
+bot = commands.Bot(command_prefix='$', description=description, intents=intents)
 GUILD = "Les Champions du dimanche"
 
 
@@ -20,11 +32,8 @@ async def on_ready():
             break
     print(f'{bot.user} has connected to the following guild:\n'
           f'{guild.name}(id: {guild.id})')
-    activity = discord.Game(name="La vie ressemble à une longue course "
-                                 "d'obstacles, mais le principale obstacle, c'est soi-même.")
+    activity = discord.Game(name="Subir les avances d'Onoz.")
     await bot.change_presence(status=discord.Status.idle, activity=activity)
-    await channel.purge(limit=1)
-    await channel.send(f"Réagis pour avoir ton rôle.")
 
 
 @bot.event
@@ -44,52 +53,72 @@ async def on_member_join(member):
 
 
 @bot.event
-async def on_reaction_add(reaction, user):
+async def on_raw_reaction_add(payload):
+
     channelLog = bot.get_channel(442710531271426058)
-    channel = 752057616041246740
-    if reaction.message.channel.id != channel:
-        print(f"Pas le bon channel!")
-        return
+    member = bot.get_guild(payload.guild_id).get_member(payload.user_id)
+    if payload.message_id != 757583327783026699:
+        pass
     else:
-        for emojiName in dict:
-            if reaction.emoji.name == str(emojiName):
-                role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
-                await user.add_roles(role)
-                await channelLog.send(f"{user.mention} vient d'avoir le grade: {emojiName}")
-            else:
-                return
+        for key in dict_role.keys():
+            if payload.emoji.name == key:
+                emoji_id = dict_role[key]
+                role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
+                await member.add_roles(role)
+                await channelLog.send(f"{member.mention} vient d'avoir le grade: {key}")
 
 
 @bot.event
-async def on_reaction_remove(reaction, user):
-    channel = 752057616041246740
+async def on_raw_reaction_remove(payload):
     channelLog = bot.get_channel(442710531271426058)
-    print(f"Detection ok!")
-    if reaction.remove.message.channel.id != channel:
-        print(f"Pas le bon channel!")
-        return
+    member = bot.get_guild(payload.guild_id).get_member(payload.user_id)
+    if payload.message_id != 757583327783026699:
+        pass
     else:
-        print(f"Ok1")
-        for emojiName in dict:
-            if Reaction.remove.emoji.name == str(emojiName):
-                print(f"{emojiName}")
-                role = discord.utils.get(user.guild.roles, id=int(dict[emojiName]))
-                await user.remove_roles(role)
-                await channelLog.send(f"{user.mention} vient de perdre son grade: {role}")
-            else:
-                return
+        for key in dict_role.keys():
+            if payload.emoji.name == key:
+                emoji_id = dict_role[key]
+                role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
+                await member.remove_roles(role)
+                await channelLog.send(f"{member.mention} vient de perdre le grade: {key}")
 
 
 class Modo(commands.Cog):
     """Outils de modération."""
 
-    @commands.command(name="clear", help="Supprime le nombre de message voulu dans le channel.")
+    @commands.command(name="Clear", help="Supprime le nombre de message voulu dans le channel.")
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def clear(self, ctx, amount=2):
-        print("This is ok.")
         await ctx.channel.purge(limit=amount+1)
 
-        
+
+class Everyone(commands.Cog):
+    """Commande utilisateur."""
+    @commands.command(name='Stop', help="Command spécial pour notre casse pied préféré!")
+    async def stop(self, ctx, member):
+        await ctx.channel.send(f" Non {member.mention}, jamais. J'aime trop t'enmerder!")
+
+    """@commands.command(name='Geo', help="Vous donnes un défi aléatoire.")
+    async def challenge(self, ctx):
+        channel = 780779953288773702
+        if ctx.channel.id != channel:
+            print("mauvais channel")
+            pass
+        else:
+            print(f"Bon channel", f"game = {game[0]}", f"map = {dict_map[game[0]]}")
+            if game[0] == 3:
+                print(f"Voici la carte sélectionné: {dict_map[game[0]]}.\n",
+                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.\n",
+                                       f"Et enfin voici le département sélectionné: {game[2]}")
+                await ctx.channel.send(f"Voici la carte sélectionné: {dict_map[game[0]]}.\n",
+                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.\n",
+                                       f"Et enfin voici le département sélectionné: {game[2]}")
+            else:
+                print(f"Voici la carte sélectionné: {dict_map[0]}.\n",
+                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.")
+                await ctx.context.send(f"Voici la carte sélectionné: {dict_map[0]}.\n",
+                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.")"""
+
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -103,7 +132,7 @@ ytdl_format_options = {
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
-    'quiet': True,
+    'quiet': False,
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '78.229.135.231' # bind to ipv4 since ipv6 addresses cause issues sometimes
@@ -118,7 +147,7 @@ ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
 
-    def __init__(self, source, *, data, volume=50):
+    def __init__(self, source, *, data, volume=200):
         super().__init__(source, volume)
 
         self.data = data
@@ -211,6 +240,7 @@ class Music(commands.Cog):
             ctx.voice_client.stop()
 
 
-bot.add_cog(Music(bot))
+bot.add_cog(Everyone())
 bot.add_cog(Modo())
+bot.add_cog(Music(bot))
 bot.run(TOKEN)
