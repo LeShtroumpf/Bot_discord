@@ -1,14 +1,11 @@
 import discord
-from discord import VoiceChannel
 from discord.utils import get
 from discord.ext import commands
 import asyncio
 import youtube_dl
 from ressource import dict_role, dict_map, dict_defi
-# from game_cmd import game
+import random as rd
 
-
-# game = game()
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
 
@@ -49,7 +46,7 @@ async def on_member_join(member):
                       f" Nous sommes une communauté de joueurs sur divers jeux mais sur une seule platforme: PC.\n"
                       f"Tu peux aller dans la section 'rôles' pour choisir le jeu sur lequel tu es et si jamais "
                       f"tu souhaites ajouter un jeu, n'hésites pas à demander.")
-    await channel.send(f'{member.mention} vient de rejoindre le serveur.')
+    await channel.send(f"{member.mention} vient de rejoindre le serveur.")
 
 
 @bot.event
@@ -98,26 +95,25 @@ class Everyone(commands.Cog):
     async def stop(self, ctx, member):
         await ctx.channel.send(f" Non {member.mention}, jamais. J'aime trop t'enmerder!")
 
-    """@commands.command(name='Geo', help="Vous donnes un défi aléatoire.")
+    @commands.command(name='Geo', help="Vous donnes un défi aléatoire.")
     async def challenge(self, ctx):
+
         channel = 780779953288773702
         if ctx.channel.id != channel:
-            print("mauvais channel")
-            pass
+            await ctx.channel.send(f"Mauvais channel. Retente la commande dans #papotte")
         else:
-            print(f"Bon channel", f"game = {game[0]}", f"map = {dict_map[game[0]]}")
-            if game[0] == 3:
-                print(f"Voici la carte sélectionné: {dict_map[game[0]]}.\n",
-                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.\n",
-                                       f"Et enfin voici le département sélectionné: {game[2]}")
-                await ctx.channel.send(f"Voici la carte sélectionné: {dict_map[game[0]]}.\n",
-                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.\n",
-                                       f"Et enfin voici le département sélectionné: {game[2]}")
+
+            game_list = []
+            map = dict_map[rd.randint(1, len(dict_map) - 1)]
+            challenge = dict_defi[rd.randint(1, len(dict_defi) - 1)]
+            if map == 3:
+                department = rd.randint(1, 95)
+                await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
+                                       f"Voici le challenge sélectionné: {challenge}.\n"
+                                       f"Et enfin voici le département sélectionné: {department}")
             else:
-                print(f"Voici la carte sélectionné: {dict_map[0]}.\n",
-                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.")
-                await ctx.context.send(f"Voici la carte sélectionné: {dict_map[0]}.\n",
-                                       f"Voici le challenge sélectionné: {dict_defi[game[1]]}.")"""
+                await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
+                                       f"Voici le challenge sélectionné: {challenge}.")
 
 
 # Suppress noise about console usage from errors
