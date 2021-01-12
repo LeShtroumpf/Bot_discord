@@ -20,10 +20,13 @@ dict_map = {1: "France",
             2: "Belgique",
             3: "France par département",
             4: "Europe",
-            5: "Monde"
+            5: "Monde",
+            6: "Battle Royal"
             }
 
 dict_defi = {1: "speed run",
              2: "chasse au point",
              3: "Sans retour"
              }
+
+

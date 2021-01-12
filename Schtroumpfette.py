@@ -5,6 +5,7 @@ import asyncio
 import youtube_dl
 from ressource import dict_role, dict_map, dict_defi
 import random as rd
+from embed import Role
 
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
@@ -51,7 +52,6 @@ async def on_member_join(member):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-
     channelLog = bot.get_channel(442710531271426058)
     member = bot.get_guild(payload.guild_id).get_member(payload.user_id)
     if payload.message_id != 757583327783026699:
@@ -62,7 +62,7 @@ async def on_raw_reaction_add(payload):
                 emoji_id = dict_role[key]
                 role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
                 await member.add_roles(role)
-                await channelLog.send(f"{member.mention} vient d'avoir le grade: {key}")
+                await Role.add_role(member, role, channelLog)
 
 
 @bot.event
@@ -77,7 +77,7 @@ async def on_raw_reaction_remove(payload):
                 emoji_id = dict_role[key]
                 role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
                 await member.remove_roles(role)
-                await channelLog.send(f"{member.mention} vient de perdre le grade: {key}")
+                await Role.remove_role(member, role, channelLog)
 
 
 class Modo(commands.Cog):
@@ -102,8 +102,6 @@ class Everyone(commands.Cog):
         if ctx.channel.id != channel:
             await ctx.channel.send(f"Mauvais channel. Retente la commande dans #papotte")
         else:
-
-            game_list = []
             map = dict_map[rd.randint(1, len(dict_map) - 1)]
             challenge = dict_defi[rd.randint(1, len(dict_defi) - 1)]
             if map == 3:
@@ -111,6 +109,8 @@ class Everyone(commands.Cog):
                 await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
                                        f"Voici le challenge sélectionné: {challenge}.\n"
                                        f"Et enfin voici le département sélectionné: {department}")
+            if map == 6:
+                await ctx.channel.send(f"Vous allez faire une {map}.")
             else:
                 await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
                                        f"Voici le challenge sélectionné: {challenge}.")
