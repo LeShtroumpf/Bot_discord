@@ -6,6 +6,7 @@ import youtube_dl
 from ressource import dict_role, dict_map, dict_defi
 import random as rd
 from embed import Role
+from game_cmd import GeoGuessr
 
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
@@ -20,11 +21,10 @@ intents = discord.Intents.all()
 description = '''Bot discord by Le Shtroumpf#6750'''
 bot = commands.Bot(command_prefix='$', description=description, intents=intents)
 GUILD = "Les Champions du dimanche"
-
+GeoGuessr = GeoGuessr()
 
 @bot.event
 async def on_ready():
-    channel = bot.get_channel(752057616041246740)
     for guild in bot.guilds:
         if guild.name == GUILD:
             break
@@ -95,25 +95,15 @@ class Everyone(commands.Cog):
     async def stop(self, ctx, member):
         await ctx.channel.send(f" Non {member.mention}, jamais. J'aime trop t'enmerder!")
 
-    @commands.command(name='Geo', help="Vous donnes un défi aléatoire.")
+    @commands.command(name='Geo', help="Vous donne un défi aléatoire.")
     async def challenge(self, ctx):
 
-        channel = 780779953288773702
-        if ctx.channel.id != channel:
-            await ctx.channel.send(f"Mauvais channel. Retente la commande dans #papotte")
+        channel = bot.get_channel(780779953288773702)
+        if ctx.channel.id == 780779953288773702:
+            await GeoGuessr.challenge(channel)
         else:
-            map = dict_map[rd.randint(1, len(dict_map) - 1)]
-            challenge = dict_defi[rd.randint(1, len(dict_defi) - 1)]
-            if map == 3:
-                department = rd.randint(1, 95)
-                await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
-                                       f"Voici le challenge sélectionné: {challenge}.\n"
-                                       f"Et enfin voici le département sélectionné: {department}")
-            if map == 6:
-                await ctx.channel.send(f"Vous allez faire une {map}.")
-            else:
-                await ctx.channel.send(f"Voici la carte sélectionné: {map}.\n"
-                                       f"Voici le challenge sélectionné: {challenge}.")
+            print(ctx.channel.id)
+            await ctx.channel.send(f"Mauvais channel. Retente la commande dans {channel.mention}")
 
 
 # Suppress noise about console usage from errors

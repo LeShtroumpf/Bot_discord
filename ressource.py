@@ -16,6 +16,14 @@ dict_role = {
 
 dict_chan = {"750998493908303872": "dev"}
 
+dict_url = {1: "https://www.geoguessr.com/maps/5eb5ea048734a02c543f2ae1",
+            2: "https://www.geoguessr.com/maps/59ccca2c572f0e4c689c5a28",
+            3: "France par département",
+            4: "https://www.geoguessr.com/maps/5e14c87e328e461f949ae510",
+            5: "https://www.geoguessr.com/maps/59a1514f17631e74145b6f47",
+            6: "https://www.geoguessr.com/battle-royale"
+            }
+
 dict_map = {1: "France",
             2: "Belgique",
             3: "France par département",
