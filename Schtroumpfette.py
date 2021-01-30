@@ -3,10 +3,9 @@ from discord.utils import get
 from discord.ext import commands
 import asyncio
 import youtube_dl
-from ressource import dict_role, dict_map, dict_defi
-import random as rd
-from embed import Role
-from game_cmd import GeoGuessr
+from ressource.ressource import dict_role
+from ressource.embed import Role
+from commande.game_cmd import GeoGuessr
 
 
 TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
@@ -91,7 +90,7 @@ class Modo(commands.Cog):
 
 class Everyone(commands.Cog):
     """Commande utilisateur."""
-    @commands.command(name='Stop', help="Command spécial pour notre casse pied préféré!")
+    @commands.command(name='Stop', help="Commande spécial pour notre casse pied préféré!")
     async def stop(self, ctx, member):
         await ctx.channel.send(f" Non {member.mention}, jamais. J'aime trop t'enmerder!")
 
