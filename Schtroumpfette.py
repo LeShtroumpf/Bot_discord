@@ -6,9 +6,10 @@ import youtube_dl
 from ressource.ressource import dict_role
 from ressource.embed import Role
 from commande.game_cmd import GeoGuessr
+import os
 
 
-TOKEN = 'NzUxMzM1MDI4ODM4ODkxNjAw.X1HlRg.qRR7nanlnUvxyihmhbneTN8X8Ok'
+TOKEN = os.environ['TOKEN']
 
 # try add this
 intents = discord.Intents.all()
