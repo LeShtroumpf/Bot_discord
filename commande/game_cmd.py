@@ -1,5 +1,5 @@
 import random as rd
-from ressource.ressource import dict_map, dict_url, dict_defi
+from ressource.settings import dict_map, dict_url, dict_defi
 from ressource.embed import GeoGuessrChallenge
 
 class GeoGuessr:

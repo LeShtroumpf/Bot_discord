@@ -1,12 +1,13 @@
-import discord
-from discord.utils import get
-from discord.ext import commands
-import asyncio
-import youtube_dl
-from ressource.ressource import dict_role
-from ressource.embed import Role
-from commande.game_cmd import GeoGuessr
 import os
+
+from commande.game_cmd import GeoGuessr
+from discord.ext import commands
+from discord.utils import get
+from ressource.embed import Role
+from ressource.settings import dict_role
+import asyncio
+import discord
+import youtube_dl
 
 
 TOKEN = os.environ['TOKEN']
@@ -19,9 +20,14 @@ intents = discord.Intents.all()
 # intents.members = True
 
 description = '''Bot discord by Le Shtroumpf#6750'''
-bot = commands.Bot(command_prefix='$', description=description, intents=intents)
+bot = commands.Bot(
+    command_prefix='$',
+    description=description,
+    intents=intents
+)
 GUILD = "Les Champions du dimanche"
 GeoGuessr = GeoGuessr()
+
 
 @bot.event
 async def on_ready():
@@ -37,30 +43,37 @@ async def on_ready():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CheckFailure):
-        await ctx.send(f"Tu n'as pas le droit d'utiliser cette commande petit chenapan! :wink:")
+        await ctx.send("Tu n'as pas le droit d'utiliser "
+                       "cette commande petit chenapan! :wink:")
 
 
 @bot.event
 async def on_member_join(member):
     channel = bot.get_channel(442710531271426058)
-    await member.send(f"Bonjour {member.mention} et bienvenue sur le discord: __**{GUILD}**__.\n"
-                      f" Nous sommes une communauté de joueurs sur divers jeux mais sur une seule platforme: PC.\n"
-                      f"Tu peux aller dans la section 'rôles' pour choisir le jeu sur lequel tu es et si jamais "
-                      f"tu souhaites ajouter un jeu, n'hésites pas à demander.")
+    await member.send(
+        f"Bonjour {member.mention} et bienvenue sur "
+        f"le discord: __**{GUILD}**__.\n"
+        f" Nous sommes une communauté de joueurs sur "
+        f"divers jeux mais sur une seule platforme: PC.\n"
+        f"Tu peux aller dans la section 'rôles' pour choisir"
+        f" le jeu sur lequel tu es et si jamais "
+        f"tu souhaites ajouter un jeu, n'hésites pas à demander.")
     await channel.send(f"{member.mention} vient de rejoindre le serveur.")
 
 
 @bot.event
 async def on_raw_reaction_add(payload):
     channelLog = bot.get_channel(442710531271426058)
-    member = bot.get_guild(payload.guild_id).get_member(payload.user_id)
+    member = bot.get_guild(payload.guild_id).\
+        get_member(payload.user_id)
     if payload.message_id != 757583327783026699:
         pass
     else:
         for key in dict_role.keys():
             if payload.emoji.name == key:
                 emoji_id = dict_role[key]
-                role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
+                role = get(bot.get_guild(payload.guild_id).
+                           roles, id=int(emoji_id))
                 await member.add_roles(role)
                 await Role.add_role(member, role, channelLog)
 
@@ -68,14 +81,16 @@ async def on_raw_reaction_add(payload):
 @bot.event
 async def on_raw_reaction_remove(payload):
     channelLog = bot.get_channel(442710531271426058)
-    member = bot.get_guild(payload.guild_id).get_member(payload.user_id)
+    member = bot.get_guild(payload.guild_id).\
+        get_member(payload.user_id)
     if payload.message_id != 757583327783026699:
         pass
     else:
         for key in dict_role.keys():
             if payload.emoji.name == key:
                 emoji_id = dict_role[key]
-                role = get(bot.get_guild(payload.guild_id).roles, id=int(emoji_id))
+                role = get(bot.get_guild(payload.guild_id).
+                           roles, id=int(emoji_id))
                 await member.remove_roles(role)
                 await Role.remove_role(member, role, channelLog)
 
@@ -83,7 +98,8 @@ async def on_raw_reaction_remove(payload):
 class Modo(commands.Cog):
     """Outils de modération."""
 
-    @commands.command(name="Clear", help="Supprime le nombre de message voulu dans le channel.")
+    @commands.command(name="Clear", help="Supprime le nombre "
+                                         "de message voulu dans le channel.")
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def clear(self, ctx, amount=2):
         await ctx.channel.purge(limit=amount+1)
@@ -91,11 +107,14 @@ class Modo(commands.Cog):
 
 class Everyone(commands.Cog):
     """Commande utilisateur."""
-    @commands.command(name='Stop', help="Commande spécial pour notre casse pied préféré!")
+    @commands.command(name='Stop', help="Commande spécial "
+                                        "pour notre casse pied préféré!")
     async def stop(self, ctx, member):
-        await ctx.channel.send(f" Non {member.mention}, jamais. J'aime trop t'enmerder!")
+        await ctx.channel.send(f" Non {member.mention}, "
+                               f"jamais. J'aime trop t'enmerder!")
 
-    @commands.command(name='Geo', help="Vous donne un défi aléatoire.")
+    @commands.command(name='Geo', help="Vous "
+                                       "donne un défi aléatoire.")
     async def challenge(self, ctx):
 
         channel = bot.get_channel(780779953288773702)
@@ -103,7 +122,8 @@ class Everyone(commands.Cog):
             await GeoGuessr.challenge(channel)
         else:
             print(ctx.channel.id)
-            await ctx.channel.send(f"Mauvais channel. Retente la commande dans {channel.mention}")
+            await ctx.channel.send(f"Mauvais channel. Retente "
+                                   f"la commande dans {channel.mention}")
 
 
 # Suppress noise about console usage from errors
