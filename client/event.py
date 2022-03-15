@@ -2,7 +2,7 @@
 from discord.ext import commands
 from discord.utils import get
 from ressource.embed import Role
-from ressource.settings import dict_role
+from settings import dict_role
 import discord
 
 
