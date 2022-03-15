@@ -1,10 +1,12 @@
 import random as rd
 from ressource.settings import dict_map, dict_url, dict_defi
 from ressource.embed import GeoGuessrChallenge
+from discord.ext import commands
 
-class GeoGuessr:
-    def __init__(self):
-        pass
+
+class GeoGuessr(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
     async def challenge(self, channel):
         rand_num = rd.randint(1, len(dict_map))
@@ -20,3 +22,10 @@ class GeoGuessr:
 
         elif rand_num != 3 or rand_num != 6:
             await GeoGuessrChallenge.challenge3(channel, map, url, challenge_geo)
+
+
+def setup(bot):
+    bot.add_cog(GeoGuessr(bot))
+
+
+
