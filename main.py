@@ -12,7 +12,7 @@ bot = EventListener(
     description=description,
     intents=intents,
 )
-cogs = ['commands.everyone', 'commands.modo']
+cogs = ['commands.everyone', 'commands.modo', 'commands.roleplay']
 
 if __name__ == "__main__":
     for cog in cogs:
