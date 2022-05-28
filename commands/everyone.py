@@ -9,18 +9,20 @@ class Everyone(commands.Cog):
         self.bot = bot
 
     """Commande utilisateur."""
-    @commands.command(name='Stop', help="Commande spécial "
-                                        "pour notre casse pied préféré!")
-    async def stop(self, ctx, member):
-        print("stop receive")
-        await ctx.channel.send(f" Non {member.mention}, "
-                               f"jamais. J'aime trop t'enmerder!")
+    @commands.command(
+        name='Stop',
+        help="Commande spécial pour notre casse pied préféré!",
+        )
+    async def stop(self, ctx):
+        await ctx.channel.send(
+            "Non {}, jamais. J'aime trop t'enmerder!".format(
+            ctx.message.author.mention
+        ))
 
     @commands.command(name='Geo', help="Vous "
                                        "donne un défi aléatoire.")
     async def challenge(self, ctx):
         channel = self.bot.get_channel(780779953288773702)
-        print(ctx.channel.id)
         if ctx.channel.id == 780779953288773702:
             await game_cmd.GeoGuessr.challenge(channel)
         else:
