@@ -19,8 +19,10 @@ class Everyone(commands.Cog):
             ctx.message.author.mention
         ))
 
-    @commands.command(name='Geo', help="Vous "
-                                       "donne un défi aléatoire.")
+    @commands.command(
+        name='Geo',
+        help="Vous donne un défi aléatoire.",
+        )
     async def challenge(self, ctx):
         channel = self.bot.get_channel(780779953288773702)
         if ctx.channel.id == 780779953288773702:
