@@ -70,3 +70,29 @@ class EventListener(commands.Bot):
                                roles, id=int(emoji_id))
                     await member.remove_roles(role)
                     await Role.remove_role(member, role, channelLog)
+
+    async def on_voice_state_update(self, member, before, after):
+        print(f"before: {before.channel}, after:{after.channel}")
+        channel_id = self.get_channel(750998493908303872)
+        guild = self.get_guild(276405667059859456)
+        dust_chan = []
+        print(f"first dust_chan: {dust_chan}")
+        if before.channel is None and after.channel is not None:
+            print('fuck you')
+            print(f"channel_id: {channel_id}")
+            if after.channel == channel_id:
+                await guild.create_voice_channel(
+                    name=f"{member.display_name}",
+                    category=after.channel.category,
+                )
+                print(member.display_name)
+                new_chan = discord.utils.get(guild.channels, name=member.display_name)
+                dust_chan = dust_chan.append(new_chan.id)
+#                new_chan = self.get_channel(member.display_name)
+                print(f"new_chan: {new_chan}")
+                print(f"dust_chan 2: {dust_chan}")
+                await member.move_to(new_chan)
+        if before.channel is not None and after.channel is None:
+            print(f"dust_chan 3: {dust_chan}")
+            if before.channel in dust_chan:
+                print('remove chan')

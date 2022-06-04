@@ -1,13 +1,13 @@
 import os
 
 import discord
-from client.event import EventListener
+import client
 
 command_prefix = "$"
 description = '''Bot discord by Le Shtroumpf#6750'''
 intents = discord.Intents.all()
 token = os.environ['TOKEN']
-bot = EventListener(
+bot = client.event.EventListener(
     command_prefix=command_prefix,
     description=description,
     intents=intents,

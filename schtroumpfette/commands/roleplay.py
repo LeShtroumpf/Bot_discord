@@ -1,5 +1,4 @@
 import discord
-from commands import game_cmd
 from discord.ext import commands
 
 

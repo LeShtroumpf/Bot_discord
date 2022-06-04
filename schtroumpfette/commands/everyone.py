@@ -6,6 +6,7 @@ class Everyone(commands.Cog):
     """Commands which are for all user."""
 
     def __init__(self, bot):
+        print('bot initialzed')
         self.bot = bot
 
     """Commande utilisateur."""
