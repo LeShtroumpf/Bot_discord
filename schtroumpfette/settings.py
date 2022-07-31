@@ -38,3 +38,6 @@ dict_defi = {1: "speed run",
              }
 
 
+#id: 9gfifwmo9ny0190x2ajvn3wwfjkmna
+#secret: gcskqpxklp289ri6pgb88sr0ti99nx
+#twitch token: kgwqmjj7a7tclqkygepraxlukh0cfp
