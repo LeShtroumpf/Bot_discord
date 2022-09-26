@@ -33,5 +33,5 @@ class Everyone(commands.Cog):
                                    f"la commande dans {channel.mention}")
 
 
-def setup(bot):
-    bot.add_cog(Everyone(bot))
+async def setup(bot):
+    await bot.add_cog(Everyone(bot))

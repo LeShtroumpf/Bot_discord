@@ -6,6 +6,7 @@ services:
     environment:
       - POSTGRES_USER=Le_Shtroumpf
       - POSTGRES_PASSWORD=1234azerty56789
+      - POSTGRES_DB=shtroumpfette
     ports:
       - '5432:5432'
     volumes:

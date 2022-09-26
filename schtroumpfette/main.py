@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 import discord
 import client
@@ -14,7 +15,16 @@ bot = client.event.EventListener(
 )
 cogs = ['commands.everyone', 'commands.modo', 'commands.roleplay']
 
-if __name__ == "__main__":
+
+async def main():
+    async with bot:
+        await load_extension()
+        await bot.start(token)
+
+
+async def load_extension():
     for cog in cogs:
-        bot.load_extension(cog)
-    bot.run(token)
+        await bot.load_extension(cog)
+
+if __name__ == "__main__":
+    asyncio.run(main())
