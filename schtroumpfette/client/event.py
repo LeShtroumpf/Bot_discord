@@ -17,6 +17,7 @@ class EventListener(commands.Bot):
         self.temp_voice = list()
 
     async def on_ready(self):
+        """First event. Set the activity"""
         for guild in self.guilds:
             if guild.name == self.GUILD:
                 break
@@ -31,6 +32,7 @@ class EventListener(commands.Bot):
                            "cette commande petit chenapan! :wink:")
 
     async def on_member_join(self, member):
+        """Send a private message to a new joiner."""
         channel = self.get_channel(442710531271426058)
         await member.send(
             f"Bonjour {member.mention} et bienvenue sur "
@@ -43,6 +45,7 @@ class EventListener(commands.Bot):
         await channel.send(f"{member.mention} vient de rejoindre le serveur.")
 
     async def on_raw_reaction_add(self, payload):
+        """Add role when a member react to a message."""
         channelLog = self.get_channel(442710531271426058)
         member = self.get_guild(payload.guild_id).\
             get_member(payload.user_id)
@@ -58,6 +61,7 @@ class EventListener(commands.Bot):
                     await Role.add_role(member, role, channelLog)
 
     async def on_raw_reaction_remove(self, payload):
+        """Remove role when a member remove his reaction."""
         channelLog = self.get_channel(442710531271426058)
         member = self.get_guild(payload.guild_id).\
             get_member(payload.user_id)
@@ -73,6 +77,7 @@ class EventListener(commands.Bot):
                     await Role.remove_role(member, role, channelLog)
 
     async def on_voice_state_update(self, member, before, after):
+        """Create a voice channel when member join specific voice channel"""
         if after.channel is not None and \
                 after.channel.id in voice_allow_list:
             channel_id = after.channel.id
