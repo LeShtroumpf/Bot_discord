@@ -1,16 +1,12 @@
 # Créer Schtroumpfette, le bot discord
 ***
 
-Tout d'abord cloner le repo
+Tout d'abord cloner le repo.
 
-Ensuite, il va vous falloir docker et docker-compose
+Ensuite, il va vous falloir docker et docker-compose.
 
-Une fois que tout est installer vous aller devoir créer l'image de la schtroumpfette et insérer votre TOKEN.
+Une fois que tout est installé, il faut insérer votre TOKEN dans le Dockerfile.
 
-Pour cela aller dans le fichier Dockerfile et insérer votre TOKEN à la ligne 7.
+Ensuite, il faut créer l'image de la schtroumpfette avec ```docker build -t schtroumpfette .```.
 
-Sauvegarder et quitter.
-
-Utiliser la commande: "docker build -t schtroumpfette ." pour créer votre image.
-
-Une fois cela fait, utiliser la commande "docker-compose up" pour lancer le tout.
+Une fois cela fait, vous pouvez lancer le bot avec ```./start.sh```.
