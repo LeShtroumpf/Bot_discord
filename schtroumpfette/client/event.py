@@ -2,7 +2,7 @@
 from discord.ext import commands
 from discord.utils import get
 from ressource.embed import Role
-from settings import dict_role
+from settings import dict_role, voice_allow_list
 import discord
 
 
@@ -14,6 +14,7 @@ class EventListener(commands.Bot):
             intents=intents,
         )
         self.GUILD = "Les Champions du dimanche"
+        self.temp_voice = list()
 
     async def on_ready(self):
         for guild in self.guilds:
@@ -72,27 +73,26 @@ class EventListener(commands.Bot):
                     await Role.remove_role(member, role, channelLog)
 
     async def on_voice_state_update(self, member, before, after):
-        print(f"before: {before.channel}, after:{after.channel}")
-        channel_id = self.get_channel(750998493908303872)
-        guild = self.get_guild(276405667059859456)
-        dust_chan = []
-        print(f"first dust_chan: {dust_chan}")
-        if before.channel is None and after.channel is not None:
-            print('fuck you')
-            print(f"channel_id: {channel_id}")
+        if after.channel is not None and \
+                after.channel.id in voice_allow_list:
+            channel_id = after.channel.id
+            channel_id = self.get_channel(channel_id)
+            guild = self.get_guild(channel_id.guild.id)
             if after.channel == channel_id:
                 await guild.create_voice_channel(
                     name=f"{member.display_name}",
                     category=after.channel.category,
                 )
-                print(member.display_name)
-                new_chan = discord.utils.get(guild.channels, name=member.display_name)
-                dust_chan = dust_chan.append(new_chan.id)
-#                new_chan = self.get_channel(member.display_name)
-                print(f"new_chan: {new_chan}")
-                print(f"dust_chan 2: {dust_chan}")
+                new_chan = discord.utils.get(
+                    guild.channels,
+                    name=member.display_name
+                )
+                self.temp_voice.append(new_chan.id)
                 await member.move_to(new_chan)
-        if before.channel is not None and after.channel is None:
-            print(f"dust_chan 3: {dust_chan}")
-            if before.channel in dust_chan:
-                print('remove chan')
+        if after.channel is not before.channel and \
+                before.channel.id in self.temp_voice:
+            voice_id = self.get_channel(before.channel.id)
+            members = voice_id.members
+            if not members:
+                self.temp_voice.remove(before.channel.id)
+                await before.channel.delete()
