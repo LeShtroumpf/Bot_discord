@@ -23,7 +23,12 @@ class GeoGuessr:
             await GeoGuessrChallenge.challenge2(channel, url)
 
         elif rand_num != 3 or rand_num != 6:
-            await GeoGuessrChallenge.challenge3(channel, map, url, challenge_geo)
+            await GeoGuessrChallenge.challenge3(
+                channel,
+                map,
+                url,
+                challenge_geo
+            )
 
 
 GeoGuessr = GeoGuessr()

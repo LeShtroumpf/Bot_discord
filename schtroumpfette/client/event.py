@@ -1,4 +1,3 @@
-
 from discord.ext import commands
 from discord.utils import get
 from ressource.embed import Role
@@ -24,7 +23,10 @@ class EventListener(commands.Bot):
         print(f'{self.user} has connected to the following guild:\n'
               f'{guild.name}(id: {guild.id})')
         activity = discord.Game(name="Subir les avances d'Onoz.")
-        await self.change_presence(status=discord.Status.idle, activity=activity)
+        await self.change_presence(
+            status=discord.Status.idle,
+            activity=activity
+        )
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):

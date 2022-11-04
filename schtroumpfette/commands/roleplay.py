@@ -14,7 +14,7 @@ class RolePlay(commands.Cog):
         name="Mail",
         help="Envoyer un mail a quelqu'un. Pensez à noter son #ID",
         )
-    async def mail(self, ctx, member, *, mail): 
+    async def mail(self, ctx, member, *, mail):
         origin = ctx.message.author
         member = member.split('#')
         user = discord.utils.get(

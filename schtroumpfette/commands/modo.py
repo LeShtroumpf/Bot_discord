@@ -14,6 +14,5 @@ class Modo(commands.Cog):
         await ctx.channel.purge(limit=amount+1)
 
 
-
 async def setup(bot):
     await bot.add_cog(Modo(bot))

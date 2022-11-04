@@ -17,8 +17,8 @@ class Everyone(commands.Cog):
     async def stop(self, ctx):
         await ctx.channel.send(
             "Non {}, jamais. J'aime trop t'enmerder!".format(
-            ctx.message.author.mention
-        ))
+                ctx.message.author.mention)
+        )
 
     @commands.command(
         name='Geo',
