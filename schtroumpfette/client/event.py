@@ -79,7 +79,8 @@ class EventListener(commands.Bot):
                     await Role.remove_role(member, role, channelLog)
 
     async def on_voice_state_update(self, member, before, after):
-        """Create a voice channel when member join specific voice channel"""
+        """Create a voice channel when member join
+        specific voice channel in voice_allow_list"""
         if after.channel is not None and \
                 after.channel.id in voice_allow_list:
             channel_id = after.channel.id
