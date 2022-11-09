@@ -83,5 +83,33 @@ class GeoGuessrChallenge:
         await channel.send(embed=embed_challenge3)
 
 
+class TwitchMessage:
+
+    async def online(self, data, stream_url, channel, profil_img):
+        data = data['data'][0]
+        user_login = data['user_login']
+        game_name = data['game_name']
+        title = data['title']
+        thumbnail_url = profil_img
+        embed_twitch = discord.Embed(
+            title=f'Hey! {user_login} est en live.',
+            url=stream_url,
+            color=0x9b59b6
+        )
+        embed_twitch.set_thumbnail(url=thumbnail_url)
+        embed_twitch.add_field(
+            name='Titre du live:',
+            value=title,
+            inline=False
+        )
+        embed_twitch.add_field(
+            name='Il joue à ',
+            value=game_name,
+            inline=True
+        )
+        await channel.send(embed=embed_twitch)
+
+
 Role = Role()
 GeoGuessrChallenge = GeoGuessrChallenge()
+TwitchMessage = TwitchMessage()

@@ -1,8 +1,12 @@
-from discord.ext import commands
+import asyncio
+
+from discord.ext import commands, tasks
 from discord.utils import get
-from ressource.embed import Role
-from settings import dict_role, voice_allow_list
+from ressource.embed import Role, TwitchMessage
+from settings import dict_role, voice_allow_list, dict_chan
 import discord
+
+from .twitch import twitch
 
 
 class EventListener(commands.Bot):
@@ -27,6 +31,7 @@ class EventListener(commands.Bot):
             status=discord.Status.idle,
             activity=activity
         )
+        await self.on_post_online_stream.start()
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):
@@ -104,3 +109,8 @@ class EventListener(commands.Bot):
             if not members:
                 self.temp_voice.remove(before.channel.id)
                 await before.channel.delete()
+
+    @tasks.loop(minutes=30)
+    async def on_post_online_stream(self):
+        channel = self.get_channel(1039915997827694622)
+        await twitch.is_online_streamer(channel)
