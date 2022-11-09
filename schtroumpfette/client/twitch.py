@@ -4,7 +4,7 @@ import string
 import time
 import requests as rq
 
-from schtroumpfette.ressource.embed import TwitchMessage
+from ressource.embed import TwitchMessage
 
 
 class Twitch:
