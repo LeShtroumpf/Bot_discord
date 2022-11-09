@@ -48,7 +48,3 @@ voice_allow_list = [
     797498645825847336, #Geoguessr
     750998493908303872 #Dev
 ]
-
-#id: 9gfifwmo9ny0190x2ajvn3wwfjkmna
-#secret: gcskqpxklp289ri6pgb88sr0ti99nx
-#twitch token: kgwqmjj7a7tclqkygepraxlukh0cfp
