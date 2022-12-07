@@ -5,7 +5,6 @@ class Nsfw:
         pass
 
     def get_gif(self):
-        print('here')
         url = 'https://nekobot.xyz/api/image'
         params = {'type': 'pgif'}
         response = rq.get(url=url, params=params)
