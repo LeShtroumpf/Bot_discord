@@ -44,6 +44,27 @@ class Everyone(commands.Cog):
         else:
             await ctx.channel.send('mauvais channel')
 
+    @commands.command(
+        name="private",
+        help="Envoyer un nsfw en privée à quelqu'un",
+    )
+    async def mail(self, ctx, member):
+        CARS_TO_REMOVE = '<>@'
+        for car in CARS_TO_REMOVE:
+            member = member.replace(car, '')
+        user = self.bot.get_user(int(member))
+        if user:
+            message = nsfw.Nsfw.get_gif()
+            await user.send(str(message))
+            channel = self.bot.get_channel(ctx.channel.id)
+            msg = await channel.fetch_message(ctx.message.id)
+            await msg.delete()
+        else:
+            await ctx.channel.send(
+                "Je n'ai pas trouvé l'utilisateur, "
+                "es-tu sûr de l'avoir mentionné?"
+            )
+
 
 async def setup(bot):
     await bot.add_cog(Everyone(bot))
