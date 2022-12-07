@@ -1,4 +1,4 @@
-from commands import game_cmd
+from commands import game_cmd, nsfw
 from discord.ext import commands
 
 
@@ -31,6 +31,18 @@ class Everyone(commands.Cog):
         else:
             await ctx.channel.send(f"Mauvais channel. Retente "
                                    f"la commande dans {channel.mention}")
+
+    @commands.command(
+        name='gp',
+        help='Poste un gif nsfw dans le channel nsfw',
+    )
+    async def gp(self, ctx):
+
+        if ctx.channel.id == 751340877728841738:
+            message = nsfw.Nsfw.get_gif()
+            await ctx.channel.send(str(message))
+        else:
+            await ctx.channel.send('mauvais channel')
 
 
 async def setup(bot):
