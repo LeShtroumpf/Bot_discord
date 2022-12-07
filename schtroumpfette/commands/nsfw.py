@@ -1,5 +1,6 @@
 import requests as rq
 
+
 class Nsfw:
     def __int__(self):
         pass
@@ -10,5 +11,6 @@ class Nsfw:
         response = rq.get(url=url, params=params)
         response = response.json()
         return response['message']
+
 
 Nsfw = Nsfw()

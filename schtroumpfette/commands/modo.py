@@ -28,7 +28,10 @@ class Modo(commands.Cog):
                        )
         os._exit(1)
 
-    @commands.command(name="Spam", help="J'avais promis à Onoz une commande pour le spam")
+    @commands.command(
+        name="Spam",
+        help="J'avais promis à Onoz une commande pour le spam"
+    )
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def spam(self, ctx):
         casse_couille = os.environ['CASSEBONBON']
@@ -45,7 +48,10 @@ class Modo(commands.Cog):
             await user.send(str(message))
             time.sleep(0.5)
 
-    @commands.command(name="Stop_spam", help="Il faut toujours savoir s'arrêter.")
+    @commands.command(
+        name="Stop_spam",
+        help="Il faut toujours savoir s'arrêter."
+    )
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def stop_spam(self, ctx):
         self.spam = False

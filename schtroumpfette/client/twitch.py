@@ -37,7 +37,9 @@ class Twitch:
 
         for streamer_url in self.favorite_streamer:
             name = self.get_streamer_name(streamer_url)
-            get_online_stream = rq.get(f'{streamer_url}').content.decode('utf-8')
+            get_online_stream = rq.get(
+                f'{streamer_url}').content.decode('utf-8'
+                                                  )
             if 'isLiveBroadcast' in get_online_stream and\
                     name not in already_post:
                 findstreamer = rq.get(
@@ -57,13 +59,24 @@ class Twitch:
                     streamer = findstreamer.json()
                     streamer_id = streamer['data'][0]['id']
                     profile_img = streamer['data'][0]['profile_image_url']
-                    await self.get_data_stream(streamer_id, streamer_url, channel, profile_img)
+                    await self.get_data_stream(
+                        streamer_id,
+                        streamer_url,
+                        channel,
+                        profile_img
+                    )
                     already_post.append(name)
                     time.sleep(5)
             else:
                 already_post.remove(name)
 
-    async def get_data_stream(self, streamer_id, streamer_url, channel, profil_img):
+    async def get_data_stream(
+            self,
+            streamer_id,
+            streamer_url,
+            channel,
+            profil_img
+    ):
         """Get data of an online streamer"""
         data = rq.get(
             'https://api.twitch.tv/helix/streams',
@@ -76,7 +89,12 @@ class Twitch:
             }
         )
         data_to_analyse = data.json()
-        await TwitchMessage.online(data_to_analyse, streamer_url, channel, profil_img)
+        await TwitchMessage.online(
+            data_to_analyse,
+            streamer_url,
+            channel,
+            profil_img
+        )
 
     def get_streamer_name(self, url: string):
         """Get the name login of a streamer"""

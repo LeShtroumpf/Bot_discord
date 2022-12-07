@@ -1,9 +1,13 @@
-import asyncio
+import asyncio  # noqa
 
 from discord.ext import commands, tasks
 from discord.utils import get
-from ressource.embed import Role, TwitchMessage
-from settings import dict_role, voice_allow_list, dict_chan
+from ressource.embed import Role, TwitchMessage  # noqa
+from settings import (  # noqa
+    dict_role,
+    voice_allow_list,
+    dict_chan
+)
 import discord
 
 from .twitch import twitch
