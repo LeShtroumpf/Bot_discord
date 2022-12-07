@@ -1,6 +1,7 @@
 import os
 
 import time
+from commands import nsfw
 
 import discord
 from discord.ext import commands
@@ -30,9 +31,9 @@ class Modo(commands.Cog):
     @commands.command(name="Spam", help="J'avais promis à Onoz une commande pour le spam")
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def spam(self, ctx):
-        message = "Coucou, je suis là pour te casser les pieds."
         casse_couille = os.environ['CASSEBONBON']
         member = casse_couille.split('#')
+        print(member)
         user = discord.utils.get(
             ctx.guild.members,
             name=member[0],
@@ -41,7 +42,8 @@ class Modo(commands.Cog):
         user = self.bot.get_user(user.id)
         self.spam = True
         while self.spam:
-            await user.send(message)
+            message = nsfw.Nsfw.get_gif()
+            await user.send(str(message))
             time.sleep(0.5)
 
     @commands.command(name="Stop_spam", help="Il faut toujours savoir s'arrêter.")
