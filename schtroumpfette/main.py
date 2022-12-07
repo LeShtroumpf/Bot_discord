@@ -13,7 +13,7 @@ bot = client.event.EventListener(
     description=description,
     intents=intents,
 )
-cogs = ['commands.everyone', 'commands.modo', 'commands.roleplay']
+cogs = ['commands.everyone', 'commands.modo']
 
 
 async def main():
