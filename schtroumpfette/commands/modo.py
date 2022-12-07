@@ -33,7 +33,6 @@ class Modo(commands.Cog):
     async def spam(self, ctx):
         casse_couille = os.environ['CASSEBONBON']
         member = casse_couille.split('#')
-        print(member)
         user = discord.utils.get(
             ctx.guild.members,
             name=member[0],
