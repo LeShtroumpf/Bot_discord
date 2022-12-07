@@ -38,7 +38,7 @@ class Everyone(commands.Cog):
     )
     async def gp(self, ctx):
 
-        if ctx.channel.id == 751340877728841738:
+        if ctx.channel.id == 436270715109376010:
             message = nsfw.Nsfw.get_gif()
             await ctx.channel.send(str(message))
         else:
