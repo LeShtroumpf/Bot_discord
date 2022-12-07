@@ -3,6 +3,5 @@ from . import (
     game_cmd,
     modo,
     nsfw,
-    roleplay,
 #    youtube,
 )
