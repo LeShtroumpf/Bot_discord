@@ -36,12 +36,10 @@ class Twitch:
             self.gettoken()
 
         for streamer_url in self.favorite_streamer:
-            print('for')
             name = self.get_streamer_name(streamer_url)
             get_online_stream = rq.get(f'{streamer_url}').content.decode('utf-8')
             if 'isLiveBroadcast' in get_online_stream and\
                     name not in already_post:
-                print('true')
                 findstreamer = rq.get(
                     'https://api.twitch.tv/helix/users',
                     headers={
