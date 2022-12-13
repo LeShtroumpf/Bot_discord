@@ -1,13 +1,9 @@
 import asyncio  # noqa
+import json  # noqa
 
 from discord.ext import commands, tasks
 from discord.utils import get
 from ressource.embed import Role, TwitchMessage  # noqa
-from settings import (  # noqa
-    dict_role,
-    voice_allow_list,
-    dict_chan
-)
 import discord
 
 from .twitch import twitch
@@ -22,6 +18,9 @@ class EventListener(commands.Bot):
         )
         self.GUILD = "Les Champions du dimanche"
         self.temp_voice = list()
+        self.dict_role = dict()
+        self.voice_allow_list_channel = list()
+        self.dict_chan = dict()
 
     async def on_ready(self):
         """First event. Set the activity"""
@@ -31,11 +30,21 @@ class EventListener(commands.Bot):
         print(f'{self.user} has connected to the following guild:\n'
               f'{guild.name}(id: {guild.id})')
         activity = discord.Game(name="Subir les avances d'Onoz.")
+        self.build()
         await self.change_presence(
             status=discord.Status.idle,
             activity=activity
         )
         await self.on_post_online_stream.start()
+
+    def build(self):
+        with open('settings.json', mode='r') as file:
+            data = json.load(file)
+        self.dict_role = data['dict_role']
+        self.dict_chan = data['dict_chan']
+        for value in data['voice_allow_list_channel'].values():
+            self.voice_allow_list_channel.append(value)
+        return self.dict_role, self.dict_chan, self.voice_allow_list_channel
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):
@@ -63,9 +72,9 @@ class EventListener(commands.Bot):
         if payload.message_id != 757583327783026699:
             pass
         else:
-            for key in dict_role.keys():
+            for key in self.dict_role.keys():
                 if payload.emoji.name == key:
-                    emoji_id = dict_role[key]
+                    emoji_id = self.dict_role[key]
                     role = get(self.get_guild(payload.guild_id).
                                roles, id=int(emoji_id))
                     await member.add_roles(role)
@@ -79,9 +88,9 @@ class EventListener(commands.Bot):
         if payload.message_id != 757583327783026699:
             pass
         else:
-            for key in dict_role.keys():
+            for key in self.dict_role.keys():
                 if payload.emoji.name == key:
-                    emoji_id = dict_role[key]
+                    emoji_id = self.dict_role[key]
                     role = get(self.get_guild(payload.guild_id).
                                roles, id=int(emoji_id))
                     await member.remove_roles(role)
@@ -89,9 +98,9 @@ class EventListener(commands.Bot):
 
     async def on_voice_state_update(self, member, before, after):
         """Create a voice channel when member join
-        specific voice channel in voice_allow_list"""
+        specific voice channel in voice_allow_list_channel"""
         if after.channel is not None and \
-                after.channel.id in voice_allow_list:
+                after.channel.id in self.voice_allow_list_channel:
             channel_id = after.channel.id
             channel_id = self.get_channel(channel_id)
             guild = self.get_guild(channel_id.guild.id)
