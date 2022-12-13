@@ -20,7 +20,7 @@ ytdl_format_options = {
     'quiet': False,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': '0.0.0.0'  # bind to ipv4 since ipv6 addresses cause issues sometimes  # noqa
 }
 
 ffmpeg_options = {
@@ -43,14 +43,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        data = await loop.run_in_executor(
+            None,
+            lambda: ytdl.extract_info(url, download=not stream)
+        )
 
         if 'entries' in data:
             # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        return cls(
+            discord.FFmpegPCMAudio(filename, **ffmpeg_options),
+            data=data
+        )
 
 
 class Music(commands.Cog):
@@ -71,7 +77,10 @@ class Music(commands.Cog):
         """Plays a file from the local filesystem"""
 
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
-        ctx.voice_client.play(source, after=lambda e: print('Player error: %s' % e) if e else None)
+        ctx.voice_client.play(
+            source,
+            after=lambda e: print('Player error: %s' % e) if e else None
+        )
 
         await ctx.send('En lecture: {}'.format(query))
 
@@ -81,7 +90,10 @@ class Music(commands.Cog):
 
         async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+            ctx.voice_client.play(
+                player,
+                after=lambda e: print('Player error: %s' % e) if e else None
+            )
 
         await ctx.send('En lecture: {}'.format(player.title))
 
@@ -90,8 +102,14 @@ class Music(commands.Cog):
         """Streams from a url (same as yt, but doesn't predownload)"""
 
         async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+            player = await YTDLSource.from_url(
+                url, loop=self.bot.loop,
+                stream=True
+            )
+            ctx.voice_client.play(
+                player,
+                after=lambda e: print('Player error: %s' % e) if e else None
+            )
 
         await ctx.send('En lecture: {}'.format(player.title))
 
@@ -120,7 +138,9 @@ class Music(commands.Cog):
                 await ctx.author.voice.channel.connect()
             else:
                 await ctx.send("Tu n'es pas en vocal.")
-                raise commands.CommandError("Author not connected to a voice channel.")
+                raise commands.CommandError(
+                    "Author not connected to a voice channel."
+                )
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
 
