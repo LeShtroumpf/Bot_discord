@@ -1,6 +1,5 @@
 [flake8]
 exclude =
     venv
-    youtube.py
     settings.py
     __init__.py
