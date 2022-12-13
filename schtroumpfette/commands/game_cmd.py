@@ -13,12 +13,14 @@ class GeoGuessr:
         self.build()
 
     def build(self):
+        """Get all local data from settings.json"""
         with open('settings.json', mode='r') as file:
             data = json.load(file)
         self.dict_defi = data['dict_defi']
         self.dict_url = data['dict_url']
         self.dict_map = data['dict_map']
         return self.dict_map, self.dict_url, self.dict_defi
+
     async def challenge(self, channel):
         rand_num = str(rd.randint(1, len(self.dict_map)))
         map = self.dict_map[rand_num]

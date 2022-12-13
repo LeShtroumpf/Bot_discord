@@ -38,6 +38,7 @@ class EventListener(commands.Bot):
         await self.on_post_online_stream.start()
 
     def build(self):
+        """Get all local data from settings.json"""
         with open('settings.json', mode='r') as file:
             data = json.load(file)
         self.dict_role = data['dict_role']
