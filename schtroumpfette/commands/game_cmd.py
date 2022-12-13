@@ -1,6 +1,6 @@
 import json
-
 import random as rd
+
 from ressource.embed import GeoGuessrChallenge
 
 

@@ -1,6 +1,6 @@
 import os
-
 import time
+
 from commands import nsfw
 
 import discord
@@ -14,8 +14,10 @@ class Modo(commands.Cog):
         self.bot = bot
         self.spam = False
 
-    @commands.command(name="Clear", help="Supprime le nombre "
-                                         "de message voulu dans le channel.")
+    @commands.command(
+        name="Clear",
+        help="Supprime le nombre de message voulu dans le channel."
+    )
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def clear(self, ctx, amount=2):
         await ctx.channel.purge(limit=amount+1)
@@ -23,9 +25,9 @@ class Modo(commands.Cog):
     @commands.command(name="Restart", help="Redémarre le bot.")
     @commands.has_role("Les Champions du Dimanche" or "Les colombus")
     async def restart(self, ctx):
-        await ctx.send('Je vais faire une petite sieste. '
-                       'Je reviens de suite.'
-                       )
+        await ctx.send(
+            'Je vais faire une petite sieste. Je reviens de suite.'
+        )
         os._exit(1)
 
     @commands.command(

@@ -1,12 +1,12 @@
 import asyncio  # noqa
 import json  # noqa
 
+from ressource.embed import Role, TwitchMessage  # noqa
+from .twitch import twitch
+
 from discord.ext import commands, tasks
 from discord.utils import get
-from ressource.embed import Role, TwitchMessage  # noqa
 import discord
-
-from .twitch import twitch
 
 
 class EventListener(commands.Bot):
@@ -76,8 +76,10 @@ class EventListener(commands.Bot):
             for key in self.dict_role.keys():
                 if payload.emoji.name == key:
                     emoji_id = self.dict_role[key]
-                    role = get(self.get_guild(payload.guild_id).
-                               roles, id=int(emoji_id))
+                    role = get(self.get_guild(
+                        payload.guild_id).roles,
+                               id=int(emoji_id)
+                               )
                     await member.add_roles(role)
                     await Role.add_role(member, role, channelLog)
 
@@ -92,8 +94,10 @@ class EventListener(commands.Bot):
             for key in self.dict_role.keys():
                 if payload.emoji.name == key:
                     emoji_id = self.dict_role[key]
-                    role = get(self.get_guild(payload.guild_id).
-                               roles, id=int(emoji_id))
+                    role = get(
+                        self.get_guild(payload.guild_id).roles,
+                        id=int(emoji_id)
+                    )
                     await member.remove_roles(role)
                     await Role.remove_role(member, role, channelLog)
 

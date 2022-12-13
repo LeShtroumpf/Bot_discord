@@ -1,8 +1,10 @@
 import os
 import asyncio
 
-import discord
 import client
+
+import discord
+
 
 command_prefix = "$"
 description = '''Bot discord by Le Shtroumpf#6750'''
