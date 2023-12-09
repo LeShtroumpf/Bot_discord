@@ -1,6 +1,7 @@
 import discord
 from datetime import datetime
 import asyncio
+import random as rd
 
 class Role:
 
@@ -114,9 +115,10 @@ class GuessFlagEmbeded:
 
     async def flag(self, data: dict, country_list: list, channel):
         global good_answer_reply
-        description = f":one: {data[country_list[0]]}\n :two: {data[country_list[1]]}\n :three: {data[country_list[2]]}\n :four:{data[country_list[3]]}\n"
-        flag_url = f"https://flagcdn.com/h240/{country_list[0]}.png"
-        good_answer = data[country_list[0]]
+        choose_flag = rd.randint(0, 3)
+        description = f":one: {data[country_list[0]]}\n :two: {data[country_list[1]]}\n :three: {data[country_list[2]]}\n :four: {data[country_list[3]]}\n"
+        flag_url = f"https://flagcdn.com/h240/{country_list[choose_flag]}.png"
+        good_answer = data[country_list[choose_flag]]
         embed_flag = discord.Embed(title="Quel est ce pays?",
                               description=description,
                               colour=0x6312b4,
