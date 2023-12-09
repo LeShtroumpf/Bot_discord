@@ -1,7 +1,8 @@
 import json
 import random as rd
+import requests as rq
 
-from ressource.embed import GeoGuessrChallenge
+from ressource.embed import GeoGuessrChallenge, GuessFlagEmbeded
 
 
 class GeoGuessr:
@@ -48,4 +49,21 @@ class GeoGuessr:
             )
 
 
+class GuessFlag:
+    def __init__(self):
+        self.guess_flag = dict()
+        self.country_choose = list()
+
+    async def launch(self, channel):
+        list_country = "https://flagcdn.com/fr/codes.json"
+        request = rq.get(list_country)
+        response = request.json()
+        self.country_choose = rd.sample(list(response), 4)
+        for country in self.country_choose:
+            self.guess_flag[country] = response[country]
+        await GuessFlagEmbeded.flag(self.guess_flag, self.country_choose, channel)
+
+
+
 GeoGuessr = GeoGuessr()
+GuessFlag = GuessFlag()

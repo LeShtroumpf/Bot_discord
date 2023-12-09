@@ -1,6 +1,8 @@
 from commands import game_cmd, nsfw
+from ressource import embed
 
 from discord.ext import commands
+import asyncio
 
 
 class Everyone(commands.Cog):
@@ -65,6 +67,27 @@ class Everyone(commands.Cog):
                 "Je n'ai pas trouvé l'utilisateur, "
                 "es-tu sûr de l'avoir mentionné?"
             )
+
+    @commands.command(
+        name='Flag',
+        help="Tu connais les drapeaux, alors devines celui-ci",
+    )
+    async def guessFlag(self, ctx):
+        channel = self.bot.get_channel(780779953288773702)
+        if ctx.channel.id == 780779953288773702:
+            await game_cmd.GuessFlag.launch(channel)
+            good_answer = embed.good_answer_reply
+            message = await channel.fetch_message(channel.last_message_id)
+            await message.add_reaction("1️⃣")
+            await message.add_reaction("2️⃣")
+            await message.add_reaction("3️⃣")
+            await message.add_reaction("4️⃣")
+        else:
+            await ctx.channel.send(f"Mauvais channel. Retente "
+                                   f"la commande dans {channel.mention}")
+        await asyncio.sleep(10)
+        await ctx.channel.send(f"La bonne réponse est {good_answer}")
+
 
 
 async def setup(bot):
