@@ -1,7 +1,6 @@
 import discord
 from datetime import datetime
-import asyncio
-import random as rd
+
 
 class Role:
 

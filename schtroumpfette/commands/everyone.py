@@ -1,9 +1,7 @@
 from . import nsfw
 from . game_cmd import guess_flag, geoguessr
-from ressource import embed
 
 from discord.ext import commands
-import asyncio
 
 
 class Everyone(commands.Cog):

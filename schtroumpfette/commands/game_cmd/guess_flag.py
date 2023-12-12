@@ -48,9 +48,11 @@ class FlagButton(discord.ui.View):
 
         user = interaction.user.name
         self.message = interaction.message
-        if user not in self.user_answer and interaction.data["custom_id"] == good_answer_reply:
+        if (user not in self.user_answer and
+                interaction.data["custom_id"] == good_answer_reply):
             self.user_answer.append(user)
-        if user in self.user_answer and interaction.data["custom_id"] != good_answer_reply:
+        if (user in self.user_answer and
+                interaction.data["custom_id"] != good_answer_reply):
             self.user_answer.remove(user)
         global_user_answer = self.user_answer
 
@@ -83,7 +85,8 @@ class GuessFlag:
         for country in self.country_choose:
             self.guess_flag[country] = response[country]
         choose_flag = rd.randint(0, 3)
-        flag_url = f"https://flagcdn.com/h240/{self.country_choose[choose_flag]}.png"
+        flag_url = (f"https://flagcdn.com/h240/"
+                    f"{self.country_choose[choose_flag]}.png")
         good_answer = self.guess_flag[self.country_choose[choose_flag]]
         embed_flag = discord.Embed(title="Quel est ce pays?",
                                    description="",
@@ -107,14 +110,23 @@ class GuessFlag:
 
     async def give_answer(self, ctx):
         if not global_user_answer:
-            await ctx.channel.send("Dommage, la bonne réponse était {}".format(good_answer_reply))
+            await ctx.channel.send(
+                "Dommage, la bonne réponse était {}".format(
+                    good_answer_reply
+                ))
         if len(global_user_answer) == 1:
-            await ctx.channel.send("Bravo a {} pour la bonne réponse qui était {}".format(global_user_answer[0], good_answer_reply))
+            await ctx.channel.send(
+                "Bravo a {} pour la bonne réponse qui était {}".format(
+                    global_user_answer[0],
+                    good_answer_reply
+                ))
         if 1 < len(global_user_answer) < 5:
             message = "Bravo a "
             for user in global_user_answer:
                 message += " {} , ".format(user)
-            message += "pour avoir trouver la bonne réponse qui est {}".format(good_answer_reply)
+            message += "pour avoir trouver la bonne réponse qui est {}".format(
+                good_answer_reply
+            )
             await ctx.channel.send(message)
 
     def code_to_country(self, guess_flag: dict):
