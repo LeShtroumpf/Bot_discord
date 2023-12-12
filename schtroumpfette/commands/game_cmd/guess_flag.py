@@ -95,8 +95,13 @@ class GuessFlag:
         good_answer_reply = good_answer
         choose_country = self.code_to_country(self.guess_flag)
         message = await ctx.channel.send(embed=embed_flag, view=FlagButton())
-        task = [FlagButton().wait(), asyncio.sleep(10)]
-        await asyncio.wait(task, return_when=asyncio.FIRST_COMPLETED)
+        task = asyncio.create_task(FlagButton().wait())
+        loop = asyncio.get_event_loop()
+        loop.call_later(10, lambda: task.cancel())
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
         await self.give_answer(ctx)
         await FlagButton().disable(message)
 
