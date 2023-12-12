@@ -44,6 +44,7 @@ class FlagButton(discord.ui.View):
 
     async def on_button_click(self, interaction: discord.Interaction):
         global global_user_answer
+        await interaction.response.defer(ephemeral=True)
 
         user = interaction.user.name
         self.message = interaction.message
