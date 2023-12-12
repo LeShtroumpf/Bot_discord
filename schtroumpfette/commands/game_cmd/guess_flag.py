@@ -50,6 +50,8 @@ class FlagButton(discord.ui.View):
         self.message = interaction.message
         if user not in self.user_answer and interaction.data["custom_id"] == good_answer_reply:
             self.user_answer.append(user)
+        if user in self.user_answer and interaction.data["custom_id"] != good_answer_reply:
+            self.user_answer.remove(user)
         global_user_answer = self.user_answer
 
     async def disable(self, message):
