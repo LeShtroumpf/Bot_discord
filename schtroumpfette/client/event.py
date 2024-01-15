@@ -1,7 +1,7 @@
 import asyncio  # noqa
 import json  # noqa
 
-from ressource.embed import Role, TwitchMessage  # noqa
+from utils.embed import Role, TwitchMessage  # noqa
 from .twitch import twitch
 
 from discord.ext import commands, tasks

@@ -86,6 +86,7 @@ class GeoGuessrChallenge:
 class TwitchMessage:
 
     async def online(self, data, stream_url, channel, profil_img):
+        print("in embed")
         data = data['data'][0]
         user_login = data['user_login']
         game_name = data['game_name']

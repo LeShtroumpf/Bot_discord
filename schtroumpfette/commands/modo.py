@@ -7,6 +7,8 @@ from commands import nsfw
 import discord
 from discord.ext import commands
 
+from utils.call_url import CallUrl
+
 
 class Modo(commands.Cog):
     """Outils de modération."""

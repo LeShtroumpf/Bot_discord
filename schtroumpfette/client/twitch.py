@@ -2,29 +2,25 @@ import os
 import string
 
 import time
-import requests as rq
 
-from ressource.embed import TwitchMessage
+from utils.embed import TwitchMessage
+from utils.call_url import CallUrl
 
 
 class Twitch:
     def __init__(self):
         self.token = str()
         self.client_id = os.environ['CLIENT_ID']
-        self.favorite_streamer = ['twitch streamer url']
+        self.favorite_streamer = ['streamer url']
 
     def gettoken(self):
         """get app access token"""
         client_secret = os.environ['CLIENT_SECRET']
-
-        gettoken = rq.post(
-            'https://id.twitch.tv/oauth2/token',
-            params={
+        gettoken = CallUrl.send_request("https://id.twitch.tv/oauth2/token", "POST", params={
                 'client_id': self.client_id,
                 'client_secret': client_secret,
                 'grant_type': 'client_credentials'
-            }
-        )
+            })
         access_token = gettoken.json()
         self.token = f'Bearer {access_token["access_token"]}'
 
@@ -37,13 +33,12 @@ class Twitch:
 
         for streamer_url in self.favorite_streamer:
             name = self.get_streamer_name(streamer_url)
-            get_online_stream = rq.get(
-                f'{streamer_url}').content.decode('utf-8'
-                                                  )
+            get_online_stream = CallUrl.send_request(f'{streamer_url}', "GET").content.decode('utf-8')
             if 'isLiveBroadcast' in get_online_stream and\
                     name not in already_post:
-                findstreamer = rq.get(
+                findstreamer = CallUrl.send_request(
                     'https://api.twitch.tv/helix/users',
+                    "GET",
                     headers={
                         'Authorization': self.token,
                         'Client-Id': self.client_id
@@ -78,8 +73,9 @@ class Twitch:
             profil_img
     ):
         """Get data of an online streamer"""
-        data = rq.get(
+        data = CallUrl.send_request(
             'https://api.twitch.tv/helix/streams',
+            "GET",
             headers={
                 'Authorization': self.token,
                 'Client-Id': self.client_id

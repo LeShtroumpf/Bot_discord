@@ -1,7 +1,8 @@
 from datetime import datetime
 import asyncio
 import random as rd
-import requests as rq
+
+from utils.call_url import CallUrl
 
 from discord.ui import Button
 import discord.integrations
@@ -79,7 +80,7 @@ class GuessFlag:
 
         self.guess_flag.clear()
         list_country = "https://flagcdn.com/fr/codes.json"
-        request = rq.get(list_country)
+        request = CallUrl.send_request(list_country, "GET")
         response = request.json()
         self.country_choose = rd.sample(list(response), 4)
         for country in self.country_choose:
