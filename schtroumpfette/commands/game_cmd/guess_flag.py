@@ -72,16 +72,14 @@ class GuessFlag:
         self.country_choose = list()
 
     async def guessing_flag(self, ctx):
-        global good_answer_reply
-        global choose_country
 
         global global_user_answer
         global_user_answer = []
 
         self.guess_flag.clear()
-        list_country = "https://flagcdn.com/fr/codes.json"
-        request = CallUrl.send_request(list_country, "GET")
-        response = request.json()
+
+        response = CallUrl.send_request("https://flagcdn.com/fr/codes.json", "GET").json()
+
         self.country_choose = rd.sample(list(response), 4)
         for country in self.country_choose:
             self.guess_flag[country] = response[country]
@@ -89,16 +87,23 @@ class GuessFlag:
         flag_url = (f"https://flagcdn.com/h240/"
                     f"{self.country_choose[choose_flag]}.png")
         good_answer = self.guess_flag[self.country_choose[choose_flag]]
-        embed_flag = discord.Embed(title="Quel est ce pays?",
-                                   description="",
-                                   colour=0x6312b4,
-                                   timestamp=datetime.now())
+
+        embed_flag = discord.Embed(
+            title="Quel est ce pays?",
+            description="",
+            colour=0x6312b4,
+            timestamp=datetime.now())
         embed_flag.set_author(name="La Schtroumpfette")
         embed_flag.set_image(url=flag_url)
         embed_flag.set_footer(text="Schtroumpfette inc")
+
+        global good_answer_reply
+        global choose_country
         good_answer_reply = good_answer
         choose_country = self.code_to_country(self.guess_flag)
+
         message = await ctx.channel.send(embed=embed_flag, view=FlagButton())
+
         task = asyncio.create_task(FlagButton().wait())
         loop = asyncio.get_event_loop()
         loop.call_later(10, lambda: task.cancel())
@@ -131,6 +136,7 @@ class GuessFlag:
             await ctx.channel.send(message)
 
     def code_to_country(self, guess_flag: dict):
+        """renvoie les pays dans un liste en fonction des codes dans guess_flag"""
         country_list = []
         for value in guess_flag.values():
             country_list.append(value)
