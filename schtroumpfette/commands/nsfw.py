@@ -1,5 +1,6 @@
 from utils.call_url import CallUrl
 
+
 class Nsfw:
     def __int__(self):
         pass

@@ -78,7 +78,10 @@ class GuessFlag:
 
         self.guess_flag.clear()
 
-        response = CallUrl.send_request("https://flagcdn.com/fr/codes.json", "GET").json()
+        response = CallUrl.send_request(
+            "https://flagcdn.com/fr/codes.json",
+            "GET"
+        ).json()
 
         self.country_choose = rd.sample(list(response), 4)
         for country in self.country_choose:
@@ -136,7 +139,7 @@ class GuessFlag:
             await ctx.channel.send(message)
 
     def code_to_country(self, guess_flag: dict):
-        """renvoie les pays dans un liste en fonction des codes dans guess_flag"""
+        """renvoie les pays dans un liste en fonction des codes dans guess_flag"""  # noqa
         country_list = []
         for value in guess_flag.values():
             country_list.append(value)
