@@ -11,7 +11,7 @@ class Twitch:
     def __init__(self):
         self.token = str()
         self.client_id = os.environ['CLIENT_ID']
-        self.favorite_streamer = ['https://www.twitch.tv/monodie']
+        self.favorite_streamer = ['streamer_url']
 
     def gettoken(self):
         """get app access token"""
@@ -95,7 +95,7 @@ class Twitch:
             }
         )
         data_to_analyse = data.json()
-        await TwitchMessage().online(
+        await TwitchMessage.message_online(
             data_to_analyse,
             streamer_url,
             channel,

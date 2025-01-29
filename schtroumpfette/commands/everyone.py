@@ -30,7 +30,6 @@ class Everyone(commands.Cog):
         GeoGuessr = geoguessr.GeoGuessr()
         channel = self.bot.get_channel(780779953288773702)
         if ctx.channel.id == 780779953288773702:
-            print("this is the good channel")
             await GeoGuessr.challenge(channel)
         else:
             await ctx.channel.send(f"Mauvais channel. Retente "

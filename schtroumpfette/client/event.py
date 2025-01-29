@@ -128,7 +128,7 @@ class EventListener(commands.Bot):
                 self.temp_voice.remove(before.channel.id)
                 await before.channel.delete()
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=1)
     async def on_post_online_stream(self):
         channel = self.get_channel(1039915997827694622)
         await Twitch().is_online_streamer(channel)
