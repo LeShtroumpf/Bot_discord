@@ -27,9 +27,11 @@ class Everyone(commands.Cog):
         help="Vous donne un défi aléatoire.",
         )
     async def challenge(self, ctx):
+        GeoGuessr = geoguessr.GeoGuessr()
         channel = self.bot.get_channel(780779953288773702)
         if ctx.channel.id == 780779953288773702:
-            await geoguessr.GeoGuessr.challenge(channel)
+            print("this is the good channel")
+            await GeoGuessr.challenge(channel)
         else:
             await ctx.channel.send(f"Mauvais channel. Retente "
                                    f"la commande dans {channel.mention}")
@@ -41,7 +43,7 @@ class Everyone(commands.Cog):
     async def gp(self, ctx):
 
         if ctx.channel.id == 436270715109376010:
-            message = nsfw.Nsfw.get_gif()
+            message = nsfw.Nsfw().get_gif()
             await ctx.channel.send(str(message))
         else:
             await ctx.channel.send('mauvais channel')
@@ -80,5 +82,5 @@ class Everyone(commands.Cog):
                                    f"la commande dans {channel.mention}")
 
 
-async def setup(bot):
+async def setup(bot):  # pragma: no cover
     await bot.add_cog(Everyone(bot))

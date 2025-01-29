@@ -6,7 +6,8 @@ from utils.embed import GeoGuessrChallenge
 
 class GeoGuessr:
 
-    def __init__(self):
+    def __init__(self):  # pragma: no cover
+        print("hello from geo init function")
         self.dict_map = dict()
         self.dict_url = dict()
         self.dict_defi = dict()
@@ -14,6 +15,7 @@ class GeoGuessr:
 
     def build(self):
         """Get all local data from settings.json"""
+        print("hello from geo building part")
         with open('settings.json', mode='r') as file:
             data = json.load(file)
         self.dict_defi = data['dict_defi']
@@ -21,7 +23,8 @@ class GeoGuessr:
         self.dict_map = data['dict_map']
         return self.dict_map, self.dict_url, self.dict_defi
 
-    async def challenge(self, channel):
+    async def challenge(self, channel):  # pragma: no cover
+        print("hello from challenge!", channel)
         rand_num = str(rd.randint(1, len(self.dict_map)))
         map = self.dict_map[rand_num]
         url = self.dict_url[rand_num]
@@ -48,4 +51,3 @@ class GeoGuessr:
             )
 
 
-GeoGuessr = GeoGuessr()

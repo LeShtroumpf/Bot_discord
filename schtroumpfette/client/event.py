@@ -1,12 +1,12 @@
 import asyncio  # noqa
 import json  # noqa
 
-from utils.embed import Role, TwitchMessage  # noqa
-from .twitch import twitch
-
 from discord.ext import commands, tasks
 from discord.utils import get
 import discord
+
+from .twitch import Twitch
+from utils.embed import Role
 
 
 class EventListener(commands.Bot):
@@ -131,4 +131,4 @@ class EventListener(commands.Bot):
     @tasks.loop(minutes=30)
     async def on_post_online_stream(self):
         channel = self.get_channel(1039915997827694622)
-        await twitch.is_online_streamer(channel)
+        await Twitch().is_online_streamer(channel)

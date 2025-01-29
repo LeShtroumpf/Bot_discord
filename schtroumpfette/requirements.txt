@@ -2,3 +2,8 @@ discord
 discord-ui
 discord.py
 requests
+pytest
+pytest-cov
+pytest-mock
+pytest-env
+pytest-asyncio

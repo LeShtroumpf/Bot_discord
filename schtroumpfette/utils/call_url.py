@@ -2,11 +2,9 @@ import requests as rq
 
 
 class CallUrl:
-    def __init__(self):
-        pass
 
+    @classmethod
     def send_request(self, url:str, method:str, headers:dict=None, params:dict=None) -> rq.Response:  # noqa
-        print(url, method, headers, params)
         if method not in ["GET", "POST"]:
             raise ValueError("wrong method called")
         if method == "GET":
@@ -21,5 +19,5 @@ class CallUrl:
                 print(f"POST request error: {e}")
         return response
 
-
-CallUrl = CallUrl()
+if __name__ == "__main__":  # pragma: no cover
+    CallUrl = CallUrl()

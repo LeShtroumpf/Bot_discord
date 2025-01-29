@@ -1,11 +1,13 @@
 import os
 import time
 
-from commands import nsfw
+#from commands import nsfw
 
 
 import discord
 from discord.ext import commands
+
+from commands import nsfw
 
 
 class Modo(commands.Cog):
@@ -60,5 +62,5 @@ class Modo(commands.Cog):
         self.spam = False
 
 
-async def setup(bot):
+async def setup(bot):  # pragma: no cover
     await bot.add_cog(Modo(bot))

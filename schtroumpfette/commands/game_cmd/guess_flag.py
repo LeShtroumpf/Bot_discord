@@ -2,10 +2,12 @@ from datetime import datetime
 import asyncio
 import random as rd
 
-from utils.call_url import CallUrl
+# from utils.call_url import CallUrl
 
 from discord.ui import Button
 import discord.integrations
+
+from utils.call_url import CallUrl
 
 
 class FlagButton(discord.ui.View):
@@ -79,8 +81,8 @@ class GuessFlag:
         self.guess_flag.clear()
 
         response = CallUrl.send_request(
-            "https://flagcdn.com/fr/codes.json",
-            "GET"
+            url="https://flagcdn.com/fr/codes.json",
+            method="GET"
         ).json()
 
         self.country_choose = rd.sample(list(response), 4)
@@ -144,6 +146,5 @@ class GuessFlag:
         for value in guess_flag.values():
             country_list.append(value)
         return country_list
-
 
 GuessFlag = GuessFlag()

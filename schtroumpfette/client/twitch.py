@@ -11,7 +11,7 @@ class Twitch:
     def __init__(self):
         self.token = str()
         self.client_id = os.environ['CLIENT_ID']
-        self.favorite_streamer = ['streamer url']
+        self.favorite_streamer = ['https://www.twitch.tv/monodie']
 
     def gettoken(self):
         """get app access token"""
@@ -24,8 +24,12 @@ class Twitch:
                 'client_secret': client_secret,
                 'grant_type': 'client_credentials'
             })
-        access_token = gettoken.json()
-        self.token = f'Bearer {access_token["access_token"]}'
+        if gettoken.status_code == 200:
+            access_token = gettoken.json()
+            self.token = f'Bearer {access_token["access_token"]}'
+            return self.token
+        else:
+            raise ValueError(f"Invalid token: {gettoken.json()}")
 
     async def is_online_streamer(self, channel):
         """Check if a streamer is online and get the streamer id"""
@@ -91,7 +95,7 @@ class Twitch:
             }
         )
         data_to_analyse = data.json()
-        await TwitchMessage.online(
+        await TwitchMessage().online(
             data_to_analyse,
             streamer_url,
             channel,
@@ -103,5 +107,5 @@ class Twitch:
         name = url.split('/')
         return name[-1]
 
-
-twitch = Twitch()
+if __name__ == '__main__':  # pragma: no cover
+    twitch = Twitch()

@@ -1,10 +1,10 @@
 import os
 import asyncio
 
-import client
 
 import discord
 
+import client
 
 command_prefix = "$"
 description = '''Bot discord by Le Shtroumpf#6750'''
@@ -28,5 +28,5 @@ async def load_extension():
     for cog in cogs:
         await bot.load_extension(cog)
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     asyncio.run(main())

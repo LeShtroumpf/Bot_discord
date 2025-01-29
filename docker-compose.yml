@@ -4,4 +4,6 @@ services:
     image: schtroumpfette
     restart: always
     volumes:
-      - .bot_run:/run
+      - ./schtroumpfette:/app/schtroumpfette
+    build:
+      context: ./schtroumpfette
