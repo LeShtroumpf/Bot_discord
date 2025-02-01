@@ -147,4 +147,5 @@ class GuessFlag:
             country_list.append(value)
         return country_list
 
+
 GuessFlag = GuessFlag()

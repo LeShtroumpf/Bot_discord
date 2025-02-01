@@ -109,6 +109,7 @@ class TwitchMessage:
         )
         await channel.send(embed=embed_twitch)
 
+
 Role = Role()
 GeoGuessrChallenge = GeoGuessrChallenge()
 TwitchMessage = TwitchMessage()

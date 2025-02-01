@@ -1,15 +1,16 @@
 import os
 import asyncio
-
-
+from dotenv import load_dotenv
 import discord
 
 import client
 
+load_dotenv()
+
 command_prefix = "$"
 description = '''Bot discord by Le Shtroumpf#6750'''
 intents = discord.Intents.all()
-token = os.environ['TOKEN']
+token = os.getenv('TOKEN')
 bot = client.event.EventListener(
     command_prefix=command_prefix,
     description=description,

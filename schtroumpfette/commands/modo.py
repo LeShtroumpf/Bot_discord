@@ -1,9 +1,6 @@
 import os
 import time
 
-#from commands import nsfw
-
-
 import discord
 from discord.ext import commands
 

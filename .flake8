@@ -3,3 +3,5 @@ exclude =
     venv
     settings.py
     __init__.py
+    test
+max-line-length = 140

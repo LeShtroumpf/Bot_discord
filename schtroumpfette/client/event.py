@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 import discord
 
-from .twitch import Twitch
+from .twitch import twitch
 from utils.embed import Role
 
 
@@ -39,13 +39,16 @@ class EventListener(commands.Bot):
 
     def build(self):
         """Get all local data from settings.json"""
-        with open('settings.json', mode='r') as file:
-            data = json.load(file)
-        self.dict_role = data['dict_role']
-        self.dict_chan = data['dict_chan']
-        for value in data['voice_allow_list_channel'].values():
-            self.voice_allow_list_channel.append(value)
-        return self.dict_role, self.dict_chan, self.voice_allow_list_channel
+        try:
+            with open('settings.json', mode='r') as file:
+                data = json.load(file)
+            self.dict_role = data['dict_role']
+            self.dict_chan = data['dict_chan']
+            for value in data['voice_allow_list_channel'].values():
+                self.voice_allow_list_channel.append(value)
+            return self.dict_role, self.dict_chan, self.voice_allow_list_channel
+        except Exception as e:
+            print("error build: ", e)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):
@@ -131,4 +134,4 @@ class EventListener(commands.Bot):
     @tasks.loop(minutes=1)
     async def on_post_online_stream(self):
         channel = self.get_channel(1039915997827694622)
-        await Twitch().is_online_streamer(channel)
+        await twitch.is_online_streamer(channel)

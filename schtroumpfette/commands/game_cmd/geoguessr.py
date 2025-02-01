@@ -46,5 +46,3 @@ class GeoGuessr:
                 url,
                 challenge_geo
             )
-
-

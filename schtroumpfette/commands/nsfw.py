@@ -10,5 +10,6 @@ class Nsfw:
         response = response.json()
         return response['message']
 
+
 if __name__ == '__main__':  # pragma: no cover
     Nsfw = Nsfw()

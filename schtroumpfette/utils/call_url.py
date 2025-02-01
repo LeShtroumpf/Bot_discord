@@ -19,5 +19,6 @@ class CallUrl:
                 print(f"POST request error: {e}")
         return response
 
+
 if __name__ == "__main__":  # pragma: no cover
     CallUrl = CallUrl()
