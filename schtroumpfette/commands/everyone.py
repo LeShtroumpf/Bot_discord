@@ -8,7 +8,7 @@ class Everyone(commands.Cog):
     """Commands which are for all user."""
 
     def __init__(self, bot):
-        print('bot initialzed')
+        print('bot initialized')
         self.bot = bot
 
     """Commande utilisateur."""
@@ -57,7 +57,7 @@ class Everyone(commands.Cog):
             member = member.replace(car, '')
         user = self.bot.get_user(int(member))
         if user:
-            message = nsfw.Nsfw.get_gif()
+            message = nsfw.get_gif()
             await user.send(str(message))
             channel = self.bot.get_channel(ctx.channel.id)
             msg = await channel.fetch_message(ctx.message.id)

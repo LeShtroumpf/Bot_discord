@@ -1,11 +1,13 @@
-FROM python:3
+FROM python:3.12.6
 
-RUN mkdir -p /schtroumpfette
-WORKDIR /schtroumpfette
+# RUN mkdir -p /schtroumpfette
+WORKDIR /app/schtroumpfette
 
-COPY . schtroumpfette
+COPY requirements.txt .
 
+RUN pip install --no-cache-dir -U -r requirements.txt
 
-RUN pip install --no-cache-dir -U -r schtroumpfette/requirements.txt
+COPY . /app
+
 RUN echo "hello to schtroumpfette"
-CMD ["python3", "schtroumpfette/main.py"]
+CMD ["python3", "-u", "main.py"]

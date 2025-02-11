@@ -1,7 +1,9 @@
 from . import (
     everyone,
     game_cmd,
+    nsfw
+)
+from .moderation import (
     modo,
-    nsfw,
-#    youtube,
+    twitch_cmd
 )

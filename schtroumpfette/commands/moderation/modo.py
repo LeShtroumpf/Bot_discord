@@ -4,7 +4,7 @@ import time
 import discord
 from discord.ext import commands
 
-from commands import nsfw
+from commands.nsfw import nsfw
 
 
 class Modo(commands.Cog):
@@ -46,7 +46,7 @@ class Modo(commands.Cog):
         user = self.bot.get_user(user.id)
         self.spam = True
         while self.spam:
-            message = nsfw.Nsfw.get_gif()
+            message = nsfw.get_gif()
             await user.send(str(message))
             time.sleep(0.5)
 

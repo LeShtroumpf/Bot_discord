@@ -1,9 +1,11 @@
-version: '3.8'
 services:
   bot:
     image: schtroumpfette
     restart: always
+    env_file:
+      - .env
     volumes:
       - ./schtroumpfette:/app/schtroumpfette
     build:
       context: ./schtroumpfette
+      dockerfile: Dockerfile

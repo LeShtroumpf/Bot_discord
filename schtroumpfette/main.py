@@ -16,7 +16,7 @@ bot = client.event.EventListener(
     description=description,
     intents=intents,
 )
-cogs = ['commands.everyone', 'commands.modo']
+cogs = ['commands.everyone', 'commands.moderation.modo', 'commands.moderation.twitch_cmd']
 
 
 async def main():

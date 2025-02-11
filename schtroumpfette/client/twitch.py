@@ -1,20 +1,25 @@
+import json
 import os
 import string
 import time
 
-from utils.embed import TwitchMessage
+from dotenv import load_dotenv
+
 from utils.call_url import CallUrl
+from utils.embed import TwitchMessage
+
+load_dotenv()
 
 
 class Twitch:
     def __init__(self):
-        self.token = str
+        self.token = None
         self.client_id = os.getenv('TWITCH_CLIENT_ID')
-        self.favorite_streamer = []
+        self.already_post = []
 
     async def is_online_streamer(self, channel):
         """Check if a streamer is online and get the streamer id"""
-        already_post = []
+        self.favorite_streamer = self._load_streamer_followed()
 
         if not self.token:
             self._gettoken()
@@ -26,7 +31,7 @@ class Twitch:
                 "GET"
             ).content.decode('utf-8')
             if 'isLiveBroadcast' in get_online_stream and\
-                    name not in already_post:
+                    name not in self.already_post:
                 findstreamer = CallUrl.send_request(
                     'https://api.twitch.tv/helix/users',
                     "GET",
@@ -51,10 +56,10 @@ class Twitch:
                         channel,
                         profile_img
                     )
-                    already_post.append(name)
+                    self.already_post.append(name)
                     time.sleep(5)
-            else:
-                already_post.remove(name)
+            elif 'isLiveBroadcast' not in get_online_stream and name in self.already_post:
+                self.already_post.remove(name)
 
     async def _get_data_stream(
             self,
@@ -105,6 +110,17 @@ class Twitch:
             return self.token
         else:
             raise ValueError(f"Invalid token: {gettoken.json()}")
+
+    def _load_streamer_followed(self):
+        with open('settings.json', mode='r') as file:
+            data = json.load(file)
+            self.favorite_streamer = data['streamer_followed']
+            return self.favorite_streamer
+
+    def reload_streamer_followed(self, url: str = None):
+        self._load_streamer_followed()
+        if url in self.favorite_streamer:
+            self.favorite_streamer.remove(self._get_streamer_name(url))
 
 
 twitch = Twitch()

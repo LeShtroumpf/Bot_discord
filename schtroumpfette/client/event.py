@@ -135,3 +135,7 @@ class EventListener(commands.Bot):
     async def on_post_online_stream(self):
         channel = self.get_channel(1039915997827694622)
         await twitch.is_online_streamer(channel)
+
+    @on_post_online_stream.before_loop
+    async def before_on_post_online_stream(self):
+        await self.wait_until_ready()

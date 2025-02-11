@@ -1,3 +1,9 @@
-./.git/
-/venv/
-.coverage
+.gitignore
+coverage
+__pycache__
+*.pyc
+tests/
+venv
+.env
+.flake8
+.idea

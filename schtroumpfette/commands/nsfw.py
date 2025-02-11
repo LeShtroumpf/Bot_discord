@@ -11,5 +11,4 @@ class Nsfw:
         return response['message']
 
 
-if __name__ == '__main__':  # pragma: no cover
-    Nsfw = Nsfw()
+nsfw = Nsfw()
