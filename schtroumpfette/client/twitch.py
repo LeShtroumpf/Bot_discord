@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from utils.call_url import CallUrl
 from utils.embed import TwitchMessage
+from utils.file_management import settings_file_management
 
 load_dotenv()
 
@@ -24,76 +25,65 @@ class Twitch:
         if not self.token:
             self._gettoken()
 
-        for streamer_url in self.favorite_streamer:
+        for streamer_url in self.favorite_streamer.keys():
             name = self._get_streamer_name(streamer_url)
-            get_online_stream = CallUrl.send_request(
-                f'{streamer_url}',
-                "GET"
-            ).content.decode('utf-8')
-            if 'isLiveBroadcast' in get_online_stream and\
-                    name not in self.already_post:
-                findstreamer = CallUrl.send_request(
-                    'https://api.twitch.tv/helix/users',
-                    "GET",
-                    headers={
-                        'Authorization': self.token,
-                        'Client-Id': self.client_id
-                    },
-                    params={
-                        'login': name,
-                    }
+            get_streamer_status = CallUrl.send_request(
+                url='https://api.twitch.tv/helix/streams',
+                method='GET',
+                headers={
+                    'Authorization': self.token,
+                    'Client-Id': self.client_id
+                },
+                params={
+                    'user_login': name
+                }
+            )
+            if get_streamer_status.status_code != 200:
+                self._gettoken()
+            streamer_data_request = CallUrl.send_request(
+                'https://api.twitch.tv/helix/users',
+                "GET",
+                headers={
+                    'Authorization': self.token,
+                    'Client-Id': self.client_id
+                },
+                params={
+                    'login': name,
+                }
+            )
+            streamer_status = get_streamer_status.json()
+            streamer_data = streamer_data_request.json()
+            profile_img = streamer_data['data'][0]['profile_image_url']
+            if streamer_status['data'] != [] and self.favorite_streamer[streamer_url] is False:
+                settings_file_management.update_entry(
+                    main_key='streamer_followed',
+                    new_data={streamer_url: True},
+                )
+                await TwitchMessage.message_online(
+                    streamer_status,
+                    streamer_url,
+                    channel,
+                    profile_img
+                )
+            elif streamer_status['data'] == [] and self.favorite_streamer[streamer_url] is True:
+                settings_file_management.update_entry(
+                    main_key='streamer_followed',
+                    new_data={streamer_url: False},
+                )
+                await TwitchMessage.message_online(
+                    streamer_status,
+                    streamer_url,
+                    channel,
+                    profile_img
                 )
 
-                if findstreamer.status_code != 200:
-                    self._gettoken()
-                else:
-                    streamer = findstreamer.json()
-                    streamer_id = streamer['data'][0]['id']
-                    profile_img = streamer['data'][0]['profile_image_url']
-                    await self._get_data_stream(
-                        streamer_id,
-                        streamer_url,
-                        channel,
-                        profile_img
-                    )
-                    self.already_post.append(name)
-                    time.sleep(5)
-            elif 'isLiveBroadcast' not in get_online_stream and name in self.already_post:
-                self.already_post.remove(name)
 
-    async def _get_data_stream(
-            self,
-            streamer_id,
-            streamer_url,
-            channel,
-            profil_img
-    ):
-        """Get data of an online streamer"""
-        data = CallUrl.send_request(
-            'https://api.twitch.tv/helix/streams',
-            "GET",
-            headers={
-                'Authorization': self.token,
-                'Client-Id': self.client_id
-            },
-            params={
-                'user_id': streamer_id
-            }
-        )
-        data_to_analyse = data.json()
-        await TwitchMessage.message_online(
-            data_to_analyse,
-            streamer_url,
-            channel,
-            profil_img
-        )
-
-    def _get_streamer_name(self, url: string):
+    def _get_streamer_name(self, url: str) -> str:
         """Get the name login of a streamer"""
         name = url.split('/')
         return name[-1]
 
-    def _gettoken(self):
+    def _gettoken(self) -> str:
         """get app access token"""
         client_secret = os.getenv('TWITCH_CLIENT_SECRET')
         gettoken = CallUrl.send_request(
@@ -116,11 +106,6 @@ class Twitch:
             data = json.load(file)
             self.favorite_streamer = data['streamer_followed']
             return self.favorite_streamer
-
-    def reload_streamer_followed(self, url: str = None):
-        self._load_streamer_followed()
-        if url in self.favorite_streamer:
-            self.favorite_streamer.remove(self._get_streamer_name(url))
 
 
 twitch = Twitch()

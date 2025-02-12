@@ -90,6 +90,7 @@ class TwitchMessage:
         user_login = data['user_login']
         game_name = data['game_name']
         title = data['title']
+        preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566')
         thumbnail_url = profil_img
         embed_twitch = discord.Embed(
             title=f'Hey! {user_login} est en live.',
@@ -97,6 +98,7 @@ class TwitchMessage:
             color=0x9b59b6
         )
         embed_twitch.set_thumbnail(url=thumbnail_url)
+        embed_twitch.set_image(url=preview_image)
         embed_twitch.add_field(
             name='Titre du live:',
             value=title,
