@@ -6,6 +6,7 @@ class SettingsFileManagement:
         try:
             with open('settings.json', 'r') as f:
                 data = json.load(f)
+            f.close()
         except FileNotFoundError:
             print('Erreur : Le fichier settings.json n\'a pas été trouvé.')
             return
@@ -30,12 +31,14 @@ class SettingsFileManagement:
 
         with open('settings.json', 'w') as f:
             json.dump(data, f, indent=4)
+        f.close()
 
     def get_entry(self, main_key: str):
         """Retrieve the entry from the settings file."""
         try:
             with open('settings.json', 'r') as f:
                 data = json.load(f)
+            f.close()
         except FileNotFoundError:
             print('Erreur : Le fichier settings.json n\'a pas été trouvé.')
             return
