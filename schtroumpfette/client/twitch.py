@@ -27,30 +27,36 @@ class Twitch:
 
         for streamer_url in self.favorite_streamer.keys():
             name = self._get_streamer_name(streamer_url)
-            get_streamer_status = CallUrl.send_request(
-                url='https://api.twitch.tv/helix/streams',
-                method='GET',
-                headers={
-                    'Authorization': self.token,
-                    'Client-Id': self.client_id
-                },
-                params={
-                    'user_login': name
-                }
-            )
+            try:
+                get_streamer_status = CallUrl.send_request(
+                    url='https://api.twitch.tv/helix/streams',
+                    method='GET',
+                    headers={
+                        'Authorization': self.token,
+                        'Client-Id': self.client_id
+                    },
+                    params={
+                        'user_login': name
+                    }
+                )
+            except Exception as e:
+                print("error get_streamer_status", e)
             if get_streamer_status.status_code != 200:
                 self._gettoken()
-            streamer_data_request = CallUrl.send_request(
-                'https://api.twitch.tv/helix/users',
-                "GET",
-                headers={
-                    'Authorization': self.token,
-                    'Client-Id': self.client_id
-                },
-                params={
-                    'login': name,
-                }
-            )
+            try:
+                streamer_data_request = CallUrl.send_request(
+                    'https://api.twitch.tv/helix/users',
+                    "GET",
+                    headers={
+                        'Authorization': self.token,
+                        'Client-Id': self.client_id
+                    },
+                    params={
+                        'login': name,
+                    }
+                )
+            except Exception as e:
+                print("error streamer_data_request: ", e)
             streamer_status = get_streamer_status.json()
             streamer_data = streamer_data_request.json()
             profile_img = streamer_data['data'][0]['profile_image_url']
@@ -86,14 +92,17 @@ class Twitch:
     def _gettoken(self) -> str:
         """get app access token"""
         client_secret = os.getenv('TWITCH_CLIENT_SECRET')
-        gettoken = CallUrl.send_request(
-            "https://id.twitch.tv/oauth2/token",
-            "POST",
-            params={
-                'client_id': self.client_id,
-                'client_secret': client_secret,
-                'grant_type': 'client_credentials'
-            })
+        try:
+            gettoken = CallUrl.send_request(
+                "https://id.twitch.tv/oauth2/token",
+                "POST",
+                params={
+                    'client_id': self.client_id,
+                    'client_secret': client_secret,
+                    'grant_type': 'client_credentials'
+                })
+        except Exception as e:
+            print("error gettoken", e)
         if gettoken.status_code == 200:
             access_token = gettoken.json()
             self.token = f'Bearer {access_token["access_token"]}'
