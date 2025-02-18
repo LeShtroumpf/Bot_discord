@@ -1,5 +1,6 @@
 import discord
 from datetime import datetime
+import time
 
 
 class Role:
@@ -90,12 +91,13 @@ class TwitchMessage:
         user_login = data['user_login']
         game_name = data['game_name']
         title = data['title']
-        preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566')
+        preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566') + "?t=" + str(int(time.time()))
         thumbnail_url = profil_img
         embed_twitch = discord.Embed(
             title=f'Hey! {user_login} est en live.',
             url=stream_url,
-            color=0x9b59b6
+            color=0x9b59b6,
+            timestamp = datetime.now()
         )
         embed_twitch.set_thumbnail(url=thumbnail_url)
         embed_twitch.set_image(url=preview_image)
@@ -109,6 +111,7 @@ class TwitchMessage:
             value=game_name,
             inline=True
         )
+
         await channel.send(embed=embed_twitch)
 
 
