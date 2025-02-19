@@ -20,12 +20,12 @@ class Twitch:
 
     async def is_online_streamer(self, channel):
         """Check if a streamer is online and get the streamer id"""
-        self.favorite_streamer = self._load_streamer_followed()
+        favorite_streamer = self._load_streamer_followed()
 
         if not self.token:
             self._gettoken()
 
-        for streamer_url in self.favorite_streamer.keys():
+        for streamer_url in favorite_streamer.keys():
             name = self._get_streamer_name(streamer_url)
             try:
                 get_streamer_status = CallUrl.send_request(
@@ -60,7 +60,7 @@ class Twitch:
             streamer_status = get_streamer_status.json()
             streamer_data = streamer_data_request.json()
             profile_img = streamer_data['data'][0]['profile_image_url']
-            if streamer_status['data'] != [] and self.favorite_streamer[streamer_url] is False:
+            if streamer_status['data'] != [] and favorite_streamer[streamer_url] is False:
                 settings_file_management.update_entry(
                     main_key='streamer_followed',
                     new_data={streamer_url: True},
@@ -71,7 +71,7 @@ class Twitch:
                     channel,
                     profile_img
                 )
-            elif streamer_status['data'] == [] and self.favorite_streamer[streamer_url] is True:
+            elif streamer_status['data'] == [] and favorite_streamer[streamer_url] is True:
                 settings_file_management.update_entry(
                     main_key='streamer_followed',
                     new_data={streamer_url: False},
@@ -111,10 +111,8 @@ class Twitch:
             raise ValueError(f"Invalid token: {gettoken.json()}")
 
     def _load_streamer_followed(self):
-        with open('settings.json', mode='r') as file:
-            data = json.load(file)
-            self.favorite_streamer = data['streamer_followed']
-            return self.favorite_streamer
+        favorite_streamer = settings_file_management.get_entry('streamer_followed')
+        return favorite_streamer
 
 
 twitch = Twitch()
