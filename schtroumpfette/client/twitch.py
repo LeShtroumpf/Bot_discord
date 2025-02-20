@@ -76,12 +76,6 @@ class Twitch:
                     main_key='streamer_followed',
                     new_data={streamer_url: False},
                 )
-                await TwitchMessage.message_online(
-                    streamer_status,
-                    streamer_url,
-                    channel,
-                    profile_img
-                )
 
 
     def _get_streamer_name(self, url: str) -> str:
