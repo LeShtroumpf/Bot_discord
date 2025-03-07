@@ -11,7 +11,8 @@
         "ARK": "458565452185206814",
         "7day": "758738376140259378",
         "geo": "780779171475226634",
-        "mw2": "1038007240495480872"
+        "mw2": "1038007240495480872",
+        "viewer": "1347519191321804881"
     },
     "dict_chan": {
         "750998493908303872": "dev"
@@ -50,5 +51,9 @@
         "Geoguessr": 797498645825847336,
         "Dev": 750998493908303872
     },
-    "streamer_followed": {}
+    "streamer_followed": {
+        "https://www.twitch.tv/manuelferraratv": false,
+        "https://www.twitch.tv/tonton": true,
+        "https://www.twitch.tv/le_shtroumpf": false
+    }
 }

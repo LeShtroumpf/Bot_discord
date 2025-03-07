@@ -61,6 +61,9 @@ class Twitch:
             streamer_data = streamer_data_request.json()
             profile_img = streamer_data['data'][0]['profile_image_url']
             if streamer_status['data'] != [] and favorite_streamer[streamer_url] is False:
+                viewer_tag = False
+                if streamer_url == "https://www.twitch.tv/le_shtroumpf":
+                    viewer_tag = True
                 settings_file_management.update_entry(
                     main_key='streamer_followed',
                     new_data={streamer_url: True},
@@ -69,7 +72,7 @@ class Twitch:
                     streamer_status,
                     streamer_url,
                     channel,
-                    profile_img
+                    profile_img, viewer_tag
                 )
             elif streamer_status['data'] == [] and favorite_streamer[streamer_url] is True:
                 settings_file_management.update_entry(
