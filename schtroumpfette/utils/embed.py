@@ -95,7 +95,7 @@ class TwitchMessage:
         thumbnail_url = profil_img
         if viewer_tag:
             embed_twitch = discord.Embed(
-                title=f'Hey @Viewer! {user_login} est en live.',
+                title=f'Hey <@&1347519191321804881> ! {user_login} est en live.',
                 url=stream_url,
                 color=0x9b59b6,
                 timestamp = datetime.now()
