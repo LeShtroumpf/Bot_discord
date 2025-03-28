@@ -94,19 +94,15 @@ class TwitchMessage:
         preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566') + "?t=" + str(int(time.time()))
         thumbnail_url = profil_img
         if viewer_tag:
-            embed_twitch = discord.Embed(
-                title=f'Hey <@&1347519191321804881> ! {user_login} est en live.',
-                url=stream_url,
-                color=0x9b59b6,
-                timestamp = datetime.now()
-            )
+            message = f"Hey <@&1225183027626381494> ! {user_login} est en live. N'hésites pas a aller lui dire bonjour"
         else:
-            embed_twitch = discord.Embed(
-                title=f'Hey! {user_login} est en live.',
-                url=stream_url,
-                color=0x9b59b6,
-                timestamp=datetime.now()
-            )
+            message = ""
+        embed_twitch = discord.Embed(
+            title=f'{user_login} vient de lancer un truc qui devrait te plaire.',
+            url=stream_url,
+            color=0x9b59b6,
+            timestamp=datetime.now()
+        )
         embed_twitch.set_thumbnail(url=thumbnail_url)
         embed_twitch.set_image(url=preview_image)
         embed_twitch.add_field(
@@ -120,7 +116,7 @@ class TwitchMessage:
             inline=True
         )
 
-        await channel.send(embed=embed_twitch)
+        await channel.send(message, embed=embed_twitch)
 
 
 Role = Role()
