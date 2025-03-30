@@ -33,9 +33,6 @@
         "test": ""
     },
     "streamer_followed": {
-        "https://www.twitch.tv/manuelferraratv": false,
-        "https://www.twitch.tv/tonton": false,
-        "https://www.twitch.tv/le_shtroumpf": false
     },
     "message_role_id": ""
 }
