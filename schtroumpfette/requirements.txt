@@ -1,4 +1,4 @@
-dateutil
+dateutils
 discord
 discord-ui
 discord.py
