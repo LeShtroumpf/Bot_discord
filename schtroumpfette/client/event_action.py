@@ -14,6 +14,7 @@ class EventAction:
         self.temp_voice = list()
         self.dict_role = dict()
         self.voice_allow_list_channel = list()
+        self.static_voice_channel = list()
         self.dict_chan = dict()
         self.message_role_id = int()
 
@@ -21,6 +22,7 @@ class EventAction:
         print('on ready state')
         activity = discord.Game(name="Subir les avance d'Onoz!")
         self.build()
+        print(self.static_voice_channel)
         await bot.change_presence(
             status=discord.Status.idle,
             activity=activity
@@ -32,10 +34,13 @@ class EventAction:
             self.dict_role = settings_file_management.get_entry(main_key='dict_role')
             self.dict_chan = settings_file_management.get_entry(main_key='dict_chan')
             temp_voice_channel = settings_file_management.get_entry(main_key='voice_allow_list_channel')
+            temp_static_voice_channel = settings_file_management.get_entry(main_key='static_voice_channel')
             self.message_role_id = settings_file_management.get_entry(main_key='message_role_id')
             for value in temp_voice_channel.values():
                 self.voice_allow_list_channel.append(value)
-            return self.dict_role, self.dict_chan, self.voice_allow_list_channel
+            for value in temp_static_voice_channel.values():
+                self.static_voice_channel.append(value)
+            return self.dict_role, self.dict_chan, self.voice_allow_list_channel, self.static_voice_channel
         except Exception as e:
             print("error build: ", e)
 
@@ -80,19 +85,20 @@ class EventAction:
         """Create a voice channel when member join specific voice channel in voice_allow_list_channel"""
         try:
             if after.channel is not None and str(after.channel.id) in self.voice_allow_list_channel:
-                guild = after.channel.guild
-                overwrites = {
-                    member: discord.PermissionOverwrite(manage_channels=True)
-                }
-                new_channel = await guild.create_voice_channel(
-                    name=f"{member.display_name}",
-                    category=after.channel.category,
-                    overwrites=overwrites,
-                )
-                await member.move_to(new_channel)
+                if before.channel is None or str(before.channel.id) not in self.static_voice_channel:
+                    guild = after.channel.guild
+                    overwrites = {
+                        member: discord.PermissionOverwrite(manage_channels=True)
+                    }
+                    new_channel = await guild.create_voice_channel(
+                        name=f"{member.display_name}",
+                        category=after.channel.category,
+                        overwrites=overwrites,
+                    )
+                    await member.move_to(new_channel)
 
             if before.channel is not None and after.channel != before.channel:
-                if str(before.channel.id) not in self.voice_allow_list_channel:
+                if str(before.channel.id) not in self.voice_allow_list_channel and str(before.channel.id) not in self.static_voice_channel:
                     members = before.channel.members
                     if not members:
                         await before.channel.delete()
