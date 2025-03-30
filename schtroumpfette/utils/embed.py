@@ -1,40 +1,7 @@
 import discord
-from datetime import datetime
+from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 import time
-
-
-class Role:
-
-    async def add_role(self, member, role, channellog):
-        embed_add_role = discord.Embed(color=0x1608d9)
-        embed_add_role.set_author(
-            icon_url=f"{member.avatar_url}",
-            name=f"{member}"
-        )
-        embed_add_role.add_field(
-            name=f"@{member} a obtenu le rôle: ",
-            value=f"```{role}```",
-            inline=True
-        )
-        embed_add_role.set_footer(text=f"Le {datetime.now()}")
-        await channellog.send(embed=embed_add_role)
-
-    async def remove_role(self, member, role, channellog):
-        embed_remove_role = discord.Embed(color=0x1608d9)
-        embed_remove_role.set_author(
-            icon_url=f"{member.avatar_url}",
-            name=f"{member}"
-        )
-        embed_remove_role.add_field(name=f"@{member} a perdu le rôle: ",
-                                    value=f"```{role}```",
-                                    inline=True
-                                    )
-        embed_remove_role.set_footer(
-            text=f"Le {datetime.now()}"
-        )
-        await channellog.send(
-            embed=embed_remove_role
-        )
 
 
 class GeoGuessrChallenge:
@@ -119,6 +86,154 @@ class TwitchMessage:
         await channel.send(message, embed=embed_twitch)
 
 
-Role = Role()
+class LogsMessage:
+    def create_embed(self, data, type: str):
+        if type in ['edit', 'delete']:  # message management
+            try:
+                user = data['user']
+                message_before = data['message_before']
+                channel = data["channel"]
+                if type == 'edit':
+                    message_after = data['message_after']
+                    embed_logs = discord.Embed(
+                        color=int("ff7d00", 16),
+                        description=f"{user.mention} a modifié son message dans {channel.mention}.",
+                        timestamp=datetime.now()
+                    )
+                    embed_logs.add_field(
+                        name="Après:",
+                        value=f"{message_after}",
+                        inline=False
+                    )
+                if type == 'delete':
+                    embed_logs = discord.Embed(
+                        color=int("ff0000", 16),
+                        description=f"{user.mention} a supprimé son message dans {channel.mention}.",
+                        timestamp=datetime.now()
+                    )
+                embed_logs.set_author(
+                    icon_url=f"{user.avatar}",
+                    name=f"{user}"
+                )
+                embed_logs.add_field(
+                    name="Avant:\n",
+                    value=f"{message_before}",
+                    inline=False
+                )
+
+                return embed_logs
+            except Exception as e:
+                Exception(f"error with type edit or delete: {e}")
+
+        elif type in ['join', 'leave']:  # member join or leave
+            try:
+                user = data['user']
+                if type == 'join':
+                    embed_logs = discord.Embed(
+                        color=int("00ff10", 16),
+                        description=f"{user.mention} a rejoints le serveur.",
+                        timestamp=datetime.now()
+                    )
+                    date_creation_account = datetime.fromisoformat(str(user.created_at))
+                    age_account = relativedelta(datetime.now(timezone.utc), date_creation_account)
+                    embed_logs.add_field(
+                        name="Date de création de compte:",
+                        value=f"{age_account.years} année, {age_account.months} mois, {age_account.days} jours"
+                    )
+                elif type == 'leave':
+                    embed_logs = discord.Embed(
+                        color=int("ff0000", 16),
+                        description=f"{user.mention} a quitté le serveur.",
+                        timestamp=datetime.now()
+                    )
+
+                embed_logs.set_author(
+                    icon_url=f"{user.avatar}",
+                    name=f"{user}"
+                )
+                embed_logs.set_thumbnail(url=user.avatar)
+                return embed_logs
+            except Exception as e:
+                raise Exception(f"error with join or leave type: {e}")
+
+        elif type in ['add', 'remove']:  # role management
+            try:
+                user = data["user"]
+                role = data["role"]
+                if type == 'add':
+                    embed_logs = discord.Embed(
+                        color=int("002aff", 16),
+                        description=f"{user.mention} a obtenu le rôle {role.name}",
+                        timestamp=datetime.now()
+                    )
+                    embed_logs.set_author(
+                        icon_url=f"{user.avatar}",
+                        name=f"{user}"
+                    )
+                    return embed_logs
+                if type == 'remove':
+                    embed_logs = discord.Embed(
+                        color=int("ff0000", 16),
+                        description=f"{user.mention} a perdu le rôle {role.name}",
+                        timestamp=datetime.now()
+                    )
+                    embed_logs.set_author(
+                        icon_url=f"{user.avatar}",
+                        name=f"{user}"
+                    )
+                    return embed_logs
+            except Exception as e:
+                raise Exception(f"error with add or remove type: {e}")
+
+        elif type == "voice":  # voice management
+            try:
+                after = data["after"]
+                before = data["before"]
+                user = data["user"]
+                if after.channel is None:
+                    embed_logs = discord.Embed(
+                        color=int("ff0000", 16),
+                        description=f"{user.mention} a quitté le vocal {before.channel.mention}",
+                        timestamp=datetime.now()
+                    )
+                elif before.channel is None:
+                    embed_logs = discord.Embed(
+                        color=int("002aff", 16),
+                        description=f"{user.mention} a rejoint le vocal {after.channel.mention}",
+                        timestamp=datetime.now()
+                    )
+                else:
+                    embed_logs = discord.Embed(
+                        color=int("ff8333", 16),
+                        description=f"{user.mention} a switch de vocal {before.channel.mention} -> {after.channel.mention}",
+                        timestamp=datetime.now()
+                    )
+                embed_logs.set_author(
+                    icon_url=f"{user.avatar}",
+                    name=f"{user}"
+                )
+                return embed_logs
+            except Exception as e:
+                raise Exception(f"error with join_voice or leave_voice or move_voice type: {e}")
+
+        elif type == 'error':
+            try:
+                error = data["error"]
+                origine = data["origine"]
+                embed_logs = discord.Embed(
+                    color=int("000000", 16),
+                    description=f"Error with last event: {origine}",
+                    timestamp=datetime.now()
+                )
+                embed_logs.add_field(
+                    name="Error content:",
+                    value=error
+                )
+                return embed_logs
+            except Exception as e:
+                raise Exception(f"error with error: {e}")
+
+
 GeoGuessrChallenge = GeoGuessrChallenge()
 TwitchMessage = TwitchMessage()
+logs_message = LogsMessage()

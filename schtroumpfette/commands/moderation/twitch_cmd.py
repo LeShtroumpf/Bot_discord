@@ -1,5 +1,3 @@
-import json
-
 from discord.ext import commands
 
 from utils.file_management import settings_file_management

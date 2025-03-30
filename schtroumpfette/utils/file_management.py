@@ -1,5 +1,6 @@
 import json
 
+
 class SettingsFileManagement:
     def update_entry(self, main_key: str, new_data):
         """Update the settings file with new data."""
@@ -51,5 +52,6 @@ class SettingsFileManagement:
             return
 
         return data[main_key]
+
 
 settings_file_management = SettingsFileManagement()

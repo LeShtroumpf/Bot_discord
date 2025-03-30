@@ -1,8 +1,4 @@
-import json
 import os
-import string
-import time
-
 from dotenv import load_dotenv
 
 from utils.call_url import CallUrl
@@ -79,7 +75,6 @@ class Twitch:
                     main_key='streamer_followed',
                     new_data={streamer_url: False},
                 )
-
 
     def _get_streamer_name(self, url: str) -> str:
         """Get the name login of a streamer"""
