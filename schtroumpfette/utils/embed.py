@@ -61,7 +61,7 @@ class TwitchMessage:
         preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566') + "?t=" + str(int(time.time()))
         thumbnail_url = profil_img
         if viewer_tag:
-            message = f"Hey <@&1225183027626381494> ! {user_login} est en live. N'hésites pas a aller lui dire bonjour"
+            message = f"Hey <@&1347519191321804881> ! {user_login} est en live. N'hésites pas a aller lui dire bonjour"
         else:
             message = ""
         embed_twitch = discord.Embed(
