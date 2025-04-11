@@ -19,10 +19,8 @@ class EventAction:
         self.message_role_id = int()
 
     async def on_ready(self, bot: commands.Bot):
-        print('on ready state')
         activity = discord.Game(name="Subir les avance d'Onoz!")
         self.build()
-        print(self.static_voice_channel)
         await bot.change_presence(
             status=discord.Status.idle,
             activity=activity

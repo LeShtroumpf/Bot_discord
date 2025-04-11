@@ -32,6 +32,8 @@ class EventLogs:
 
     async def on_message_edit_log(self, bot: commands.Bot, payload: discord.Message, channel: discord.TextChannel):
         try:
+            if payload.cached_message.content == payload.data["content"]:
+                return
             member = bot.get_user(int(payload.data["author"]["id"]))
             if not payload.cached_message:
                 message_before = ""
@@ -75,6 +77,8 @@ class EventLogs:
     async def on_voice_state_update_log(self, bot: commands.Bot, member: discord.Member, before: discord.VoiceState,
                                         after: discord.VoiceState, channel: discord.TextChannel):
         try:
+            if before.channel is not None and after.channel is not None and before.channel.id == after.channel.id:
+                return
             data = {
                 "user": member,
                 "before": before,

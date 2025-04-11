@@ -21,6 +21,7 @@ class EventListener(commands.Bot):
             intents=intents,
         )
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
+        self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
 
 
@@ -126,7 +127,7 @@ class EventListener(commands.Bot):
 
     @tasks.loop(minutes=1)
     async def on_post_online_stream(self):
-        channel = self.get_channel(1338814811999440896)
+        channel = self.get_channel(int(self.stream_channel))
         await twitch.is_online_streamer(channel)
 
     @on_post_online_stream.before_loop
