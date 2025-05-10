@@ -41,7 +41,6 @@ class Everyone(commands.Cog):
     )
     @commands.has_role("Les Champions du Dimanche" or "Les colombus" or "Bro")
     async def gp(self, ctx):
-
         if ctx.channel.id == 436270715109376010:
             message = nsfw.Nsfw().get_gif()
             await ctx.channel.send(str(message))
@@ -58,7 +57,7 @@ class Everyone(commands.Cog):
             member = member.replace(car, '')
         user = self.bot.get_user(int(member))
         if user:
-            message = nsfw.get_gif()
+            message = nsfw.Nsfw().get_gif()
             await user.send(str(message))
             channel = self.bot.get_channel(ctx.channel.id)
             msg = await channel.fetch_message(ctx.message.id)
