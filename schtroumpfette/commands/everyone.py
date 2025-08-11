@@ -39,7 +39,8 @@ class Everyone(commands.Cog):
         name='gp',
         help='Poste un gif nsfw dans le channel nsfw',
     )
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus" or "Bro")
+    #@commands.has_role("Les Champions du Dimanche" or "Les colombus" or "Bro")
+    @commands.has_any_role(531584682207215616, 276408996577935360, 1346147451970650182) # Champions, colombus, bro
     async def gp(self, ctx):
         if ctx.channel.id == 436270715109376010:
             message = nsfw.Nsfw().get_gif()
