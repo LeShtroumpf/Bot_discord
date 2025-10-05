@@ -1,6 +1,3 @@
-async def on_ready():
-    pass
-
 import asyncio  # noqa
 import json  # noqa
 
@@ -9,7 +6,6 @@ from discord.ext import commands, tasks
 from .twitch import twitch
 from .event_action import EventAction
 from .event_logs import event_logs
-from utils.embed import logs_message
 from utils.file_management import settings_file_management
 
 
@@ -24,7 +20,6 @@ class EventListener(commands.Bot):
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
 
-
     async def on_ready(self):
         """Called when the bot is connected to Discord."""
         await self.event_actions.on_ready(self)
@@ -32,18 +27,18 @@ class EventListener(commands.Bot):
 
     async def on_raw_message_edit(self, payload):
         """Called when a message is edited."""
-        logs_channel= self.get_channel(int(self.logs_channel_id))
+        logs_channel = self.get_channel(int(self.logs_channel_id))
         await event_logs.on_message_edit_log(self, payload=payload, channel=logs_channel)
 
     async def on_raw_message_delete(self, payload):
         """Called when a message is deleted."""
-        logs_channel= self.get_channel(int(self.logs_channel_id))
+        logs_channel = self.get_channel(int(self.logs_channel_id))
         await event_logs.on_message_delete_log(self, payload=payload, channel=logs_channel)
 
     async def on_raw_reaction_add(self, payload):
         """Called when a reaction is added to a message."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await self.event_actions.on_reaction_add_action(self, payload)
         except Exception as error:
             await event_logs.on_error_log(self, error, origine="on_reaction_add", channel=logs_channel)
@@ -51,7 +46,7 @@ class EventListener(commands.Bot):
     async def on_raw_reaction_remove(self, payload):
         """Called when a reaction is removed from a message."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await self.event_actions.on_reaction_remove_action(self, payload)
         except Exception as error:
             await event_logs.on_error_log(self, error, origine="on_reaction_remove", channel=logs_channel)
@@ -59,7 +54,7 @@ class EventListener(commands.Bot):
     async def on_member_join(self, member):
         """Called when a member joins the server."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await self.event_actions.on_member_join_action(self, member)
             await event_logs.on_member_join_log(self, member, logs_channel)
         except Exception as error:
@@ -68,7 +63,7 @@ class EventListener(commands.Bot):
     async def on_raw_member_remove(self, payload):
         """Called when a member leaves the server."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await event_logs.on_raw_member_remove_log(self, payload, logs_channel)
         except Exception as error:
             await event_logs.on_error_log(self, error, origine="on_raw_member_remove", channel=logs_channel)
@@ -76,7 +71,7 @@ class EventListener(commands.Bot):
     async def on_member_update(self, before, after):
         """Called when a member is updated (roles, nickname, etc.)."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await event_logs.on_member_update_log(self, before, after, logs_channel)
         except Exception as error:
             await event_logs.on_error_log(self, error, origine="on_member_update", channel=logs_channel)
@@ -84,11 +79,20 @@ class EventListener(commands.Bot):
     async def on_voice_state_update(self, member, before, after):
         """Called when a member joins, leaves, or switches voice channels."""
         try:
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await self.event_actions.on_voice_state_update_action(self, member, before, after)
             await event_logs.on_voice_state_update_log(self, member, before, after, logs_channel)
         except Exception as error:
             await event_logs.on_error_log(self, error, origine="on_voice_state_update", channel=logs_channel)
+
+    async def on_message(self, message):
+        if not message.content.startswith("$"):
+            if self.voice_clients:
+                await self.event_actions.on_message_tts_action(self, message)
+            else:
+                pass
+        else:
+            await self.process_commands(message)
 
     async def on_guild_channel_create(self, channel):
         """Called when a channel is created."""
@@ -120,7 +124,7 @@ class EventListener(commands.Bot):
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):
-            logs_channel= self.get_channel(int(self.logs_channel_id))
+            logs_channel = self.get_channel(int(self.logs_channel_id))
             await ctx.send("Tu n'as pas le droit d'utiliser "
                            "cette commande petit chenapan! :wink:")
         await event_logs.on_error_log(self, error, origine="on_commande_error", channel=logs_channel)

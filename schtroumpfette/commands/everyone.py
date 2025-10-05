@@ -1,6 +1,7 @@
 from . import nsfw
 from . game_cmd import guess_flag, geoguessr
 
+import discord
 from discord.ext import commands
 
 
@@ -39,8 +40,7 @@ class Everyone(commands.Cog):
         name='gp',
         help='Poste un gif nsfw dans le channel nsfw',
     )
-    #@commands.has_role("Les Champions du Dimanche" or "Les colombus" or "Bro")
-    @commands.has_any_role(531584682207215616, 276408996577935360, 1346147451970650182) # Champions, colombus, bro
+    @commands.has_any_role(531584682207215616, 276408996577935360, 1346147451970650182)  # Champions, colombus, bro
     async def gp(self, ctx):
         if ctx.channel.id == 436270715109376010:
             message = nsfw.Nsfw().get_gif()
@@ -80,6 +80,45 @@ class Everyone(commands.Cog):
         else:
             await ctx.channel.send(f"Mauvais channel. Retente "
                                    f"la commande dans {channel.mention}")
+
+    @commands.command(
+        name='join',
+        help="Connection pour le TTS"
+    )
+    async def join(self, ctx):
+        # Vérifier si l'utilisateur est dans un channel vocal
+        if not ctx.author.voice:
+            await ctx.send("Tu dois être dans un channel vocal pour que je puisse te rejoindre !")
+            return
+
+        # Vérifier si le bot n'est pas déjà connecté
+        if ctx.voice_client:
+            await ctx.send("Je suis déjà connecté à un channel vocal !")
+            return
+
+        try:
+            # Se connecter au channel vocal de l'utilisateur
+            print('trying to join')
+            voice_channel = ctx.author.voice.channel
+            voice_client = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+            if not voice_client or not voice_client.is_connected():
+                voice_client = await voice_channel.connect()
+            print(f"Bot connecté à : {voice_channel.name}")
+
+        except Exception as e:
+            await ctx.send(f"Erreur lors de la connexion : {e}")
+            print(f"Erreur : {e}")
+
+    @commands.command(
+        name='leave',
+        help="Deconnexion pour le TTS"
+    )
+    async def leave(self, ctx):
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
+            await ctx.send("Déconnecté du channel vocal !")
+        else:
+            await ctx.send("Je ne suis pas connecté à un channel vocal.")
 
 
 async def setup(bot):  # pragma: no cover

@@ -2,11 +2,13 @@ dateutils
 discord
 discord-ui
 discord.py
+elevenlabs
+flake8
 requests
+PyNaCl
 pytest
 pytest-cov
 pytest-mock
 pytest-env
 pytest-asyncio
 python-dotenv
-

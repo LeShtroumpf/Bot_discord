@@ -1,11 +1,17 @@
 import asyncio  # noqa
-import json  # noqa/
+from io import BytesIO
+import json  # noqa
+import os
 
 from discord.ext import commands
 from discord.utils import get
 import discord
+from dotenv import load_dotenv
+from elevenlabs.client import ElevenLabs
 
 from utils.file_management import settings_file_management
+
+load_dotenv()
 
 
 class EventAction:
@@ -17,6 +23,7 @@ class EventAction:
         self.static_voice_channel = list()
         self.dict_chan = dict()
         self.message_role_id = int()
+        self.elevent_client = os.getenv('ELEVENLAB_TOKEN')
 
     async def on_ready(self, bot: commands.Bot):
         activity = discord.Game(name="Subir les avance d'Onoz!")
@@ -86,7 +93,13 @@ class EventAction:
                 if before.channel is None or str(before.channel.id) not in self.static_voice_channel:
                     guild = after.channel.guild
                     overwrites = {
-                        member: discord.PermissionOverwrite(manage_channels=True)
+                        member: discord.PermissionOverwrite(manage_channels=True),
+                        bot.user: discord.PermissionOverwrite(
+                            connect=True,
+                            speak=True,
+                            view_channel=True,
+                            use_voice_activation=True
+                        )
                     }
                     new_channel = await guild.create_voice_channel(
                         name=f"{member.display_name}",
@@ -102,3 +115,35 @@ class EventAction:
                         await before.channel.delete()
         except Exception as e:
             raise Exception(f"Error on_voice_state_update_action: {e}")
+
+    async def on_message_tts_action(self, bot: commands.Bot, message: discord.Message):
+        try:
+            client = ElevenLabs(
+                api_key=self.elevent_client
+            )
+            audio_generator = client.text_to_speech.convert(
+                text=str(message.content),
+                voice_id="flHkNRp1BlvT73UL6gyz",
+                model_id="eleven_multilingual_v2",
+                output_format="mp3_44100_128",
+            )
+
+            audio_buffer = BytesIO()
+            for chunk in audio_generator:
+                audio_buffer.write(chunk)
+            audio_buffer.seek(0)
+
+            voice_client = message.guild.voice_client
+
+            if not voice_client.is_playing():
+                audio_source = discord.FFmpegPCMAudio(
+                    audio_buffer,
+                    pipe=True
+                )
+                voice_client.play(audio_source)
+
+                # Attendre la fin
+                while voice_client.is_playing():
+                    await asyncio.sleep(0.1)
+        except Exception as e:
+            print(e)
