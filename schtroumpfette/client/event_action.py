@@ -109,6 +109,9 @@ class EventAction:
                     await member.move_to(new_channel)
 
             if before.channel is not None and after.channel != before.channel:
+                if before.channel.id == bot.voice_clients[0].channel.id:
+                    if len(before.channel.members) == 1:
+                       await bot.voice_clients[0].disconnect()
                 if str(before.channel.id) not in self.voice_allow_list_channel and str(before.channel.id) not in self.static_voice_channel:
                     members = before.channel.members
                     if not members:

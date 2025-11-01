@@ -87,7 +87,7 @@ class EventListener(commands.Bot):
 
     async def on_message(self, message):
         if not message.content.startswith("$"):
-            if self.voice_clients:
+            if self.voice_clients and self.voice_clients[0].channel.id== message.channel.id:
                 await self.event_actions.on_message_tts_action(self, message)
             else:
                 pass
