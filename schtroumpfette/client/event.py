@@ -15,7 +15,9 @@ class EventListener(commands.Bot):
             command_prefix=command_prefix,
             description=description,
             intents=intents,
+            max_messages=50,
         )
+        self.chunk_guilds_at_startup = False
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
@@ -131,9 +133,29 @@ class EventListener(commands.Bot):
 
     @tasks.loop(minutes=1)
     async def on_post_online_stream(self):
-        channel = self.get_channel(int(self.stream_channel))
-        await twitch.is_online_streamer(channel)
+        try:
+            channel = self.get_channel(int(self.stream_channel))
+            if channel:
+                await twitch.is_online_streamer(channel)
+        except Exception as error:
+            await event_logs.on_error_log(self, error, origine="on_post_online_stream",)
 
     @on_post_online_stream.before_loop
     async def before_on_post_online_stream(self):
         await self.wait_until_ready()
+
+    async def setup_hook(self):
+        """✅ CORRECTION 5 : Garbage collector périodique"""
+        self.gc_task.start()
+
+    @tasks.loop(hours=2)
+    async def gc_task(self):
+        """Nettoie la mémoire toutes les 2 heures"""
+        import gc
+        collected = gc.collect()
+        print(f"[GC] Objets collectés : {collected}")
+
+        # Nettoie le cache des messages
+        if hasattr(self, '_connection'):
+            if hasattr(self._connection, '_messages'):
+                self._connection._messages.clear()

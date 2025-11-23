@@ -23,7 +23,7 @@ class EventAction:
         self.static_voice_channel = list()
         self.dict_chan = dict()
         self.message_role_id = int()
-        self.elevent_client = os.getenv('ELEVENLAB_TOKEN')
+        self.elevent_client = ElevenLabs(api_key=os.getenv('ELEVENLAB_TOKEN'))
 
     async def on_ready(self, bot: commands.Bot):
         activity = discord.Game(name="Subir les avance d'Onoz!")
@@ -122,10 +122,7 @@ class EventAction:
 
     async def on_message_tts_action(self, bot: commands.Bot, message: discord.Message):
         try:
-            client = ElevenLabs(
-                api_key=self.elevent_client
-            )
-            audio_generator = client.text_to_speech.convert(
+            audio_generator = self.elevent_client.text_to_speech.convert(
                 text=str(message.content),
                 voice_id="flHkNRp1BlvT73UL6gyz",
                 model_id="eleven_multilingual_v2",
@@ -149,5 +146,7 @@ class EventAction:
                 # Attendre la fin
                 while voice_client.is_playing():
                     await asyncio.sleep(0.1)
+
+                audio_buffer.close()
         except Exception as e:
             print(e)
