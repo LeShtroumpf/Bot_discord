@@ -2,6 +2,7 @@ import os
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from commands.nsfw import nsfw
@@ -14,27 +15,27 @@ class Modo(commands.Cog):
         self.bot = bot
         self.spam = False
 
-    @commands.command(
-        name="Clear",
-        help="Supprime le nombre de message voulu dans le channel."
+    @app_commands.command(
+        name="clear",
+        description="Supprime le nombre de message voulu dans le channel."
     )
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
-    async def clear(self, ctx, amount=2):
-        await ctx.channel.purge(limit=amount+1)
+    @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
+    async def clear(self, interaction: discord.Interaction, amount: int = 2):
+        await interaction.channel.purge(limit=amount+1)
 
-    @commands.command(name="Restart", help="Redémarre le bot.")
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
-    async def restart(self, ctx):
-        await ctx.send(
+    @app_commands.command(name="restart", description="Redémarre le bot.")
+    @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
+    async def restart(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
             'Je vais faire une petite sieste. Je reviens de suite.'
         )
         os._exit(1)
 
-    @commands.command(
-        name="Spam",
-        help="J'avais promis à Onoz une commande pour le spam"
+    @app_commands.command(
+        name="spam",
+        description="J'avais promis à Onoz une commande pour le spam"
     )
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
+    @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
     async def spam(self, ctx):
         casse_couille = os.environ['CASSEBONBON']
         member = casse_couille.split('#')
@@ -50,12 +51,12 @@ class Modo(commands.Cog):
             await user.send(str(message))
             time.sleep(0.5)
 
-    @commands.command(
-        name="Stop_spam",
-        help="Il faut toujours savoir s'arrêter."
+    @app_commands.command(
+        name="stop_spam",
+        description="Il faut toujours savoir s'arrêter."
     )
-    @commands.has_role("Les Champions du Dimanche" or "Les colombus")
-    async def stop_spam(self, ctx):
+    @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
+    async def stop_spam(self, interaction: discord.Interaction):
         self.spam = False
 
 

@@ -1,6 +1,7 @@
 import asyncio  # noqa
 import json  # noqa
 
+import discord
 from discord.ext import commands, tasks
 
 from .twitch import twitch
@@ -23,7 +24,8 @@ class EventListener(commands.Bot):
         self.event_actions = EventAction()
 
     async def on_ready(self):
-        """Called when the bot is connected to Discord."""
+        synced = await self.tree.sync()
+        print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
         await self.on_post_online_stream.start()
 
@@ -145,7 +147,6 @@ class EventListener(commands.Bot):
         await self.wait_until_ready()
 
     async def setup_hook(self):
-        """✅ CORRECTION 5 : Garbage collector périodique"""
         self.gc_task.start()
 
     @tasks.loop(hours=2)
@@ -159,3 +160,17 @@ class EventListener(commands.Bot):
         if hasattr(self, '_connection'):
             if hasattr(self._connection, '_messages'):
                 self._connection._messages.clear()
+
+    @tasks.loop(hours=2)
+    async def gc_task(self):
+        """Nettoie la mémoire toutes les 2 heures"""
+        import gc
+        collected = gc.collect()
+        print(f"[GC] Objets collectés : {collected}")
+        if hasattr(self, '_connection'):
+            if hasattr(self._connection, '_messages'):
+                self._connection._messages.clear()
+
+    @gc_task.before_loop
+    async def before_gc_task(self):
+        await self.wait_until_ready()

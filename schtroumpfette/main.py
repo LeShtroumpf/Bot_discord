@@ -7,7 +7,7 @@ import client
 
 load_dotenv()
 
-command_prefix = "$"
+command_prefix = "/"
 description = '''Bot discord by Le Shtroumpf#6750'''
 intents = discord.Intents.default()
 intents.message_content = True  # Pour lire les messages
