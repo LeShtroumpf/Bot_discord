@@ -32,15 +32,18 @@ ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
 # de la barre des activités en jeu (blanches sur fond transparent), par le wiki officiel.
 ICON_BASE = "https://browse.wf"
 WIKI_IMAGES = "https://wiki.warframe.com/images/"
+# Icônes du dépôt (warframe/data/icons/), servies par GitHub depuis master : exclues de l'image Docker.
+REPO_ICONS = "https://raw.githubusercontent.com/LeShtroumpf/Bot_discord/master/schtroumpfette/warframe/data/icons/"
 VOID_TRACES = ICON_BASE + "/Lotus/Interface/Icons/StoreIcons/Currency/Luminous.png"  # Traces du Néant
+ALERT_TRIANGLE = REPO_ICONS + "AlertTriangle.png"  # triangle d'alerte du menu en jeu, redessiné
 ICONS = {
     "arbitrage": ICON_BASE + "/Lotus/Materials/Emblems/EliteAlertIcon.png",  # insigne d'alerte d'élite
     "fissures": VOID_TRACES,
     "fissures_sp": VOID_TRACES,
     "tempetes": WIKI_IMAGES + "IconRailjack%28xWhite%29.png",
     "invasions": WIKI_IMAGES + "InvasionIcon%28xWhite%29.png",
-    "alertes": ICON_BASE + "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",
-    "events": ICON_BASE + "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",  # si l'event n'a pas d'icône
+    "alertes": ALERT_TRIANGLE,
+    "events": ALERT_TRIANGLE,  # si l'event n'a pas d'icône propre
     "cycles": ICON_BASE + "/Lotus/Interface/Icons/Syndicates/FactionSigilEidolonCetusElder.png",  # Ostron
     "circuit": ICON_BASE + "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
     "baro": ICON_BASE + "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",

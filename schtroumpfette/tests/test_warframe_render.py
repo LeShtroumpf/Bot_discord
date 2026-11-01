@@ -38,7 +38,8 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
         "Fissures du Néant", "Fissures — Route de l'Acier", "Tempêtes du Néant (Railjack)"]
     for embeds in rendered.values():  # chaque message a son en-tête et sa miniature
         for embed in embeds:
-            hosts = ("https://browse.wf/Lotus/", "https://wiki.warframe.com/images/")
+            hosts = ("https://browse.wf/Lotus/", "https://wiki.warframe.com/images/",
+                     "https://raw.githubusercontent.com/LeShtroumpf/Bot_discord/master/")
             assert embed.author.name and embed.thumbnail.url.startswith(hosts)
     assert rendered["events"][0].thumbnail.url.endswith(worldstate["Goals"][0]["Icon"])  # icône propre à l'event
     current = schedule.current(now)
@@ -133,3 +134,15 @@ def test_unicode_emojis_keep_the_letter(translator, schedule, tiers, now):
     first = embed.fields[2].value.splitlines()[0]
     assert first.split(" ", 1)[0] in DEFAULT_EMOJIS.values()
     assert " Tier | " in first and first.split(" ")[1].startswith("**")
+
+
+def test_repo_icons_exist():
+    """Les icônes servies depuis GitHub doivent exister dans le dépôt (sinon miniature vide une fois sur master)."""
+    from pathlib import Path
+
+    from warframe import DATA_DIR
+    from warframe.render import ICONS, REPO_ICONS
+    for url in ICONS.values():
+        if url.startswith(REPO_ICONS):
+            assert (DATA_DIR / "icons" / url[len(REPO_ICONS):]).is_file(), url
+    assert Path(DATA_DIR / "icons" / "AlertTriangle.png").is_file()
