@@ -28,6 +28,20 @@ FIELDS_MAX = 25
 EMBED_MAX = 5800  # limite Discord : 6 000, on garde de la marge pour le pied de page
 PARIS = ZoneInfo("Europe/Paris")
 ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
+# Icônes d'en-tête (icône d'auteur, ~24 px) : icônes officielles du jeu servies par browse.wf.
+ICON_BASE = "https://browse.wf"
+ICONS = {
+    "arbitrage": "/Lotus/Interface/Icons/Syndicates/FactionSigilJudge.png",          # Arbitres d'Hexis
+    "fissures": "/Lotus/Interface/Icons/Relics/RelicAxiA.png",
+    "fissures_sp": "/Lotus/Interface/Icons/Relics/RelicImmortalA.png",               # relique Requiem
+    "tempetes": "/Lotus/Interface/Icons/StoreIcons/Resources/Railjack/RailjackComponentAsterite.png",
+    "invasions": "/Lotus/Interface/Icons/Player/FactionGrineer.png",
+    "alertes": "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",
+    "events": "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",             # si l'event n'a pas d'icône
+    "cycles": "/Lotus/Interface/Icons/Syndicates/FactionSigilEidolonCetusElder.png",  # Ostron
+    "circuit": "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
+    "baro": "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",
+}
 COLORS = {
     "fissures": 0xC9A227, "fissures_sp": 0xB71C1C, "tempetes": 0x5C6BC0, "invasions": 0x8D6E63,
     "alertes": 0xFFB300, "events": 0xEC407A, "cycles": 0x26A69A, "circuit": 0x7E57C2, "baro": 0x00897B,
@@ -83,6 +97,12 @@ def add_fields(embed: discord.Embed, fields: list[tuple[str, str]], inline: bool
     return embed
 
 
+def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
+    """En-tête de l'embed : petite icône + nom du sujet, sans réduire la largeur du texte (contrairement à une miniature)."""
+    embed.set_author(name=name, icon_url=ICON_BASE + (ICONS.get(icon) or icon))
+    return embed
+
+
 def finish(embed: discord.Embed, ctx: Context, needs_worldstate: bool = True) -> discord.Embed:
     """Pied de page : la date des données n'apparaît que si elles sont périmées (API injoignable)."""
     if needs_worldstate and ctx.stale and ctx.worldstate_at:
@@ -108,8 +128,8 @@ def active(entries: list[dict], now: dt.datetime) -> list[dict]:
     return sorted(out, key=lambda e: ws_date(e.get("Expiry")) or now)
 
 
-def worldstate_missing(title: str, color: int, ctx: Context) -> list[discord.Embed]:
-    embed = discord.Embed(title=title, description="Les données Warframe arrivent…", color=color)
+def worldstate_missing(topic: str, color: int, ctx: Context) -> list[discord.Embed]:
+    embed = header(discord.Embed(description="Les données Warframe arrivent…", color=color), TOPICS[topic], topic)
     return [finish(embed, ctx)]
 
 
@@ -125,9 +145,8 @@ def tier_label(tier: Tier, emojis: dict[str, str]) -> tuple[str, str]:
 def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     current = ctx.schedule.current(ctx.now)
     if current is None:
-        embed = discord.Embed(title="Arbitrage", color=TIER_COLORS["F"],
-                              description="Planning des arbitrages indisponible pour le moment.")
-        return [finish(embed, ctx, needs_worldstate=False)]
+        embed = discord.Embed(color=TIER_COLORS["F"], description="Planning des arbitrages indisponible pour le moment.")
+        return [finish(header(embed, "Arbitrage", "arbitrage"), ctx, needs_worldstate=False)]
     tier = ctx.tiers.get(current.node, Tier())
     description = f"Se termine {ts(current.end)}"
     if tier.saryn:
@@ -135,6 +154,7 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     emoji, label = tier_label(tier, ctx.tier_emojis)
     embed = discord.Embed(title=f"{emoji} {label} | {ctx.tr.node(current.node)}".strip(),
                           description=description, color=TIER_COLORS.get(tier.tier, TIER_COLORS["F"]))
+    header(embed, "Arbitrage", "arbitrage")
     embed.add_field(name="Ennemi", value=ctx.tr.node_faction(current.node))
     embed.add_field(name="Type de mission", value=ctx.tr.node_mission(current.node))
 
@@ -150,9 +170,9 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     return [finish(embed, ctx, needs_worldstate=False)]
 
 
-def _fissure_embed(title: str, color: int, missions: list[tuple[str, str, str, dt.datetime]], ctx: Context) -> discord.Embed:
+def _fissure_embed(title: str, icon: str, missions: list[tuple[str, str, str, dt.datetime]], ctx: Context) -> discord.Embed:
     """missions : (ère, nœud, type de mission traduit, fin)."""
-    embed = discord.Embed(title=title, color=color)
+    embed = header(discord.Embed(color=COLORS[icon]), title, icon)
     if not missions:
         embed.description = "Aucune fissure en cours."
         return finish(embed, ctx)
@@ -167,7 +187,7 @@ def _fissure_embed(title: str, color: int, missions: list[tuple[str, str, str, d
 
 def render_fissures(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["fissures"], COLORS["fissures"], ctx)
+        return worldstate_missing("fissures", COLORS["fissures"], ctx)
     normal, hard = [], []
     for mission in active(ctx.worldstate.get("ActiveMissions", []), ctx.now):
         entry = (mission.get("Modifier"), mission.get("Node"), ctx.tr.mission(mission.get("MissionType")),
@@ -176,9 +196,9 @@ def render_fissures(ctx: Context) -> list[discord.Embed]:
     storms = [(storm.get("ActiveMissionTier"), storm.get("Node"), ctx.tr.node_mission(storm.get("Node")),
                ws_date(storm.get("Expiry"))) for storm in active(ctx.worldstate.get("VoidStorms", []), ctx.now)]
     return [
-        _fissure_embed("Fissures du Néant", COLORS["fissures"], normal, ctx),
-        _fissure_embed("Fissures — Route de l'Acier", COLORS["fissures_sp"], hard, ctx),
-        _fissure_embed("Tempêtes du Néant (Railjack)", COLORS["tempetes"], storms, ctx),
+        _fissure_embed("Fissures du Néant", "fissures", normal, ctx),
+        _fissure_embed("Fissures — Route de l'Acier", "fissures_sp", hard, ctx),
+        _fissure_embed("Tempêtes du Néant (Railjack)", "tempetes", storms, ctx),
     ]
 
 
@@ -191,8 +211,8 @@ def invasion_progress(invasion: dict) -> float:
 
 def render_invasions(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["invasions"], COLORS["invasions"], ctx)
-    embed = discord.Embed(title="Invasions", color=COLORS["invasions"])
+        return worldstate_missing("invasions", COLORS["invasions"], ctx)
+    embed = header(discord.Embed(color=COLORS["invasions"]), "Invasions", "invasions")
     fields = []
     for invasion in ctx.worldstate.get("Invasions", []):
         if invasion.get("Completed"):
@@ -213,8 +233,8 @@ def render_invasions(ctx: Context) -> list[discord.Embed]:
 
 def render_alertes(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["alertes"], COLORS["alertes"], ctx)
-    embed = discord.Embed(title="Alertes", color=COLORS["alertes"])
+        return worldstate_missing("alertes", COLORS["alertes"], ctx)
+    embed = header(discord.Embed(color=COLORS["alertes"]), "Alertes", "alertes")
     fields = []
     for alert in active(ctx.worldstate.get("Alerts", []), ctx.now):
         info = alert.get("MissionInfo", {})
@@ -229,10 +249,12 @@ def render_alertes(ctx: Context) -> list[discord.Embed]:
 
 def render_events(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["events"], COLORS["events"], ctx)
-    embed = discord.Embed(title="Events", color=COLORS["events"])
+        return worldstate_missing("events", COLORS["events"], ctx)
+    goals = active(ctx.worldstate.get("Goals", []), ctx.now)
+    icon = next((goal["Icon"] for goal in goals if str(goal.get("Icon", "")).startswith("/Lotus/")), "events")
+    embed = header(discord.Embed(color=COLORS["events"]), "Events", icon)
     fields = []
-    for goal in active(ctx.worldstate.get("Goals", []), ctx.now):
+    for goal in goals:
         name = ctx.tr.text(goal.get("Desc")) or goal.get("Tag") or "Event"
         value = f"Fin {ts(ws_date(goal.get('Expiry')))}"
         if goal.get("Goal", 0) > 1 and not goal.get("Personal"):
@@ -252,7 +274,7 @@ def _cycle_value(cycle: cycles.Cycle, icon: str) -> str:
 
 
 def render_cycles(ctx: Context) -> list[discord.Embed]:
-    embed = discord.Embed(title="Cycles", color=COLORS["cycles"])
+    embed = header(discord.Embed(color=COLORS["cycles"]), "Cycles", "cycles")
     bounty_end = cycles.cetus_bounty_end(ctx.worldstate)
     if bounty_end:
         cetus = cycles.cetus(bounty_end, ctx.now)
@@ -271,8 +293,8 @@ def render_cycles(ctx: Context) -> list[discord.Embed]:
 
 def render_circuit(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["circuit"], COLORS["circuit"], ctx)
-    embed = discord.Embed(title="Circuit (Duviri)", color=COLORS["circuit"])
+        return worldstate_missing("circuit", COLORS["circuit"], ctx)
+    embed = header(discord.Embed(color=COLORS["circuit"]), "Circuit (Duviri)", "circuit")
     schedule = active(ctx.worldstate.get("EndlessXpSchedule", []), ctx.now)
     if not schedule:
         embed.description = "Rotation inconnue pour le moment."
@@ -287,8 +309,8 @@ def render_circuit(ctx: Context) -> list[discord.Embed]:
 
 def render_baro(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
-        return worldstate_missing(TOPICS["baro"], COLORS["baro"], ctx)
-    embed = discord.Embed(title="Baro Ki'Teer", color=COLORS["baro"])
+        return worldstate_missing("baro", COLORS["baro"], ctx)
+    embed = header(discord.Embed(color=COLORS["baro"]), "Baro Ki'Teer", "baro")
     traders = ctx.worldstate.get("VoidTraders", [])
     if not traders:
         embed.description = "Pas d'info sur Baro Ki'Teer pour le moment."
