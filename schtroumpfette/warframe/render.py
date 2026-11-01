@@ -28,19 +28,22 @@ FIELDS_MAX = 25
 EMBED_MAX = 5800  # limite Discord : 6 000, on garde de la marge pour le pied de page
 PARIS = ZoneInfo("Europe/Paris")
 ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
-# Miniatures des messages : icônes officielles du jeu servies par browse.wf.
+# Miniatures des messages. Icônes officielles du jeu : servies par browse.wf (chemins du jeu) ou, pour les icônes
+# de la barre des activités en jeu (blanches sur fond transparent), par le wiki officiel.
 ICON_BASE = "https://browse.wf"
+WIKI_IMAGES = "https://wiki.warframe.com/images/"
+VOID_TRACES = ICON_BASE + "/Lotus/Interface/Icons/StoreIcons/Currency/Luminous.png"  # Traces du Néant
 ICONS = {
-    "arbitrage": "/Lotus/Interface/Icons/Syndicates/FactionSigilJudge.png",          # Arbitres d'Hexis
-    "fissures": "/Lotus/Interface/Icons/Relics/RelicAxiA.png",
-    "fissures_sp": "/Lotus/Interface/Icons/Relics/RelicImmortalA.png",               # relique Requiem
-    "tempetes": "/Lotus/Interface/Icons/StoreIcons/Resources/Railjack/RailjackComponentAsterite.png",
-    "invasions": "/Lotus/Interface/Icons/Player/FactionGrineer.png",
-    "alertes": "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",
-    "events": "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",             # si l'event n'a pas d'icône
-    "cycles": "/Lotus/Interface/Icons/Syndicates/FactionSigilEidolonCetusElder.png",  # Ostron
-    "circuit": "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
-    "baro": "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",
+    "arbitrage": ICON_BASE + "/Lotus/Materials/Emblems/EliteAlertIcon.png",  # insigne d'alerte d'élite
+    "fissures": VOID_TRACES,
+    "fissures_sp": VOID_TRACES,
+    "tempetes": WIKI_IMAGES + "IconRailjack%28xWhite%29.png",
+    "invasions": WIKI_IMAGES + "InvasionIcon%28xWhite%29.png",
+    "alertes": ICON_BASE + "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",
+    "events": ICON_BASE + "/Lotus/Interface/Icons/Sigils/ConclaveTacAlertEmblem.png",  # si l'event n'a pas d'icône
+    "cycles": ICON_BASE + "/Lotus/Interface/Icons/Syndicates/FactionSigilEidolonCetusElder.png",  # Ostron
+    "circuit": ICON_BASE + "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
+    "baro": ICON_BASE + "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",
 }
 COLORS = {
     "fissures": 0xC9A227, "fissures_sp": 0xB71C1C, "tempetes": 0x5C6BC0, "invasions": 0x8D6E63,
@@ -102,7 +105,7 @@ def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
     L'icône d'auteur (~24 px, taille fixée par Discord) était trop petite ; la miniature réduit en revanche
     la largeur du texte."""
     embed.set_author(name=name)
-    embed.set_thumbnail(url=ICON_BASE + (ICONS.get(icon) or icon))
+    embed.set_thumbnail(url=ICONS.get(icon) or ICON_BASE + icon)  # sinon : chemin du jeu (icône propre à un event)
     return embed
 
 

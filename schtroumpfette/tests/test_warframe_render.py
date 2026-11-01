@@ -38,7 +38,8 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
         "Fissures du Néant", "Fissures — Route de l'Acier", "Tempêtes du Néant (Railjack)"]
     for embeds in rendered.values():  # chaque message a son en-tête et sa miniature
         for embed in embeds:
-            assert embed.author.name and embed.thumbnail.url.startswith("https://browse.wf/Lotus/Interface/")
+            hosts = ("https://browse.wf/Lotus/", "https://wiki.warframe.com/images/")
+            assert embed.author.name and embed.thumbnail.url.startswith(hosts)
     assert rendered["events"][0].thumbnail.url.endswith(worldstate["Goals"][0]["Icon"])  # icône propre à l'event
     current = schedule.current(now)
     tier = tiers[current.node].tier if current.node in tiers else "F"
