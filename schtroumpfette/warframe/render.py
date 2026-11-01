@@ -164,8 +164,8 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     if tier.saryn:
         description += "\nSaryn viable sur ce nœud"
     description += BLANK_LINE  # 1. détache l'en-tête des champs
-    emoji, label = tier_label(tier, ctx.tier_emojis)
-    embed = discord.Embed(title=f"{emoji} {label} | {ctx.tr.node(current.node)}".strip(),
+    # Titre en texte, comme sur la maquette : un emoji personnalisé y est mal aligné (décalé vers le haut).
+    embed = discord.Embed(title=f"{tier.tier} Tier | {ctx.tr.node(current.node)}",
                           description=description, color=TIER_COLORS.get(tier.tier, TIER_COLORS["F"]))
     header(embed, "Arbitrage", "arbitrage")
     # 2. ligne vide sous le bloc Ennemi / Type de mission (sur les deux colonnes, pour qu'elles restent alignées)

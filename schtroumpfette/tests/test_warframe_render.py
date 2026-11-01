@@ -47,7 +47,7 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
     assert rendered["events"][0].thumbnail.url.endswith(worldstate["Goals"][0]["Icon"])  # icône propre à l'event
     current = schedule.current(now)
     tier = tiers[current.node].tier if current.node in tiers else "F"
-    assert rendered["arbitrage"][0].title == f"{DEFAULT_EMOJIS[tier]} {tier} Tier | {translator.node(current.node)}"
+    assert rendered["arbitrage"][0].title == f"{tier} Tier | {translator.node(current.node)}"  # titre sans emoji
 
 
 def test_fissures_grouped_by_era(worldstate, translator, now):
@@ -128,7 +128,7 @@ def test_tier_emojis_in_arbitrage(translator, schedule, now):
               "SP": "<:tierSP:6>", "F": "<:tierF:7>"}
     tiers = {a.node: Tier("SP") for a in schedule.upcoming(now - dt.timedelta(hours=2), dt.timedelta(hours=40))}
     embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers, tier_emojis=custom))["arbitrage"][0]
-    assert embed.title.startswith("<:tierSP:6> Tier | ")             # la lettre est dans l'emoji
+    assert embed.title.startswith("SP Tier | ")                      # titre en texte, sans emoji
     assert embed.fields[2].value.startswith("<:tierSP:6> **Tier | ")
 
 
