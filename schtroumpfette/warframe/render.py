@@ -115,10 +115,11 @@ def worldstate_missing(title: str, color: int, ctx: Context) -> list[discord.Emb
 
 # --- Sujets ---------------------------------------------------------------------------------------------
 
-def tier_label(tier: Tier, emojis: dict[str, str]) -> str:
-    """« 🟪 SP Tier » : l'emoji donne la couleur du tier (Discord ne colore pas le texte)."""
+def tier_label(tier: Tier, emojis: dict[str, str]) -> tuple[str, str]:
+    """(emoji, texte). Emoji personnalisé : la lettre est dans l'emoji, comme chez les Arbitration Goons
+    -> ("<:tierSP:…>", "Tier"). Emoji Unicode : il ne porte que la couleur -> ("🟪", "SP Tier")."""
     emoji = emojis.get(tier.tier, "")
-    return f"{emoji} {tier.tier} Tier".strip()
+    return (emoji, "Tier") if emoji.startswith("<") else (emoji, f"{tier.tier} Tier")
 
 
 def render_arbitrage(ctx: Context) -> list[discord.Embed]:
@@ -131,15 +132,15 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     description = f"Se termine {ts(current.end)}"
     if tier.saryn:
         description += "\nSaryn viable sur ce nœud"
-    embed = discord.Embed(title=f"{tier_label(tier, ctx.tier_emojis)} | {ctx.tr.node(current.node)}",
+    emoji, label = tier_label(tier, ctx.tier_emojis)
+    embed = discord.Embed(title=f"{emoji} {label} | {ctx.tr.node(current.node)}".strip(),
                           description=description, color=TIER_COLORS.get(tier.tier, TIER_COLORS["F"]))
     embed.add_field(name="Ennemi", value=ctx.tr.node_faction(current.node))
     embed.add_field(name="Type de mission", value=ctx.tr.node_mission(current.node))
 
     def line(arbitration):
-        tier_of = ctx.tiers.get(arbitration.node, Tier())
-        emoji = ctx.tier_emojis.get(tier_of.tier, "")
-        return f"{emoji} **{tier_of.tier} Tier** | {ctx.tr.node(arbitration.node)} {ts(arbitration.start)}".strip()
+        emoji, label = tier_label(ctx.tiers.get(arbitration.node, Tier()), ctx.tier_emojis)
+        return f"{emoji} **{label} | {ctx.tr.node(arbitration.node)}** {ts(arbitration.start)}".strip()
 
     upcoming = ctx.schedule.upcoming(ctx.now, UPCOMING_WINDOW)
     notable = noteworthy(ctx.schedule, ctx.tiers, ctx.now, NOTEWORTHY_WINDOW, exclude=upcoming)

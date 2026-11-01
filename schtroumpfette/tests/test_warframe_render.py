@@ -114,5 +114,12 @@ def test_tier_emojis_in_arbitrage(translator, schedule, now):
               "SP": "<:tierSP:6>", "F": "<:tierF:7>"}
     tiers = {a.node: Tier("SP") for a in schedule.upcoming(now - dt.timedelta(hours=2), dt.timedelta(hours=40))}
     embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers, tier_emojis=custom))["arbitrage"][0]
-    assert embed.title.startswith("<:tierSP:6> SP Tier | ")
-    assert embed.fields[2].value.startswith("<:tierSP:6> **SP Tier** | ")
+    assert embed.title.startswith("<:tierSP:6> Tier | ")             # la lettre est dans l'emoji
+    assert embed.fields[2].value.startswith("<:tierSP:6> **Tier | ")
+
+
+def test_unicode_emojis_keep_the_letter(translator, schedule, tiers, now):
+    embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers))["arbitrage"][0]
+    first = embed.fields[2].value.splitlines()[0]
+    assert first.split(" ", 1)[0] in DEFAULT_EMOJIS.values()
+    assert " Tier | " in first and first.split(" ")[1].startswith("**")
