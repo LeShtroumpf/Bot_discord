@@ -12,6 +12,9 @@ class EventLogs:
         pass
 
     async def on_error_log(self, bot: commands.Bot, error, origine: str, channel: discord.TextChannel):
+        if channel is None:  # salon de logs introuvable (autre serveur, supprimé) : au moins dans la console
+            print(f"[{origine}] {error}", flush=True)
+            return
         try:
             data = {
                 'error': str(error),
@@ -20,7 +23,7 @@ class EventLogs:
             create_embed = logs_message.create_embed(data=data, type='error')
             await channel.send(embed=create_embed)
         except Exception as e:
-            print(e)
+            print(f"[{origine}] {error} (log impossible : {e})", flush=True)
 
     async def on_member_join_log(self, bot: commands.Bot, member: discord.Member, channel: discord.TextChannel):
         try:
@@ -32,17 +35,15 @@ class EventLogs:
 
     async def on_message_edit_log(self, bot: commands.Bot, payload: discord.Message, channel: discord.TextChannel):
         try:
-            if payload.cached_message.content == payload.data["content"]:
-                return
+            message_after = payload.data.get("content", "")
+            message_before = payload.cached_message.content if payload.cached_message else ""
+            if payload.cached_message and message_before == message_after:
+                return  # pas de changement de texte (ex. aperçu de lien ajouté)
             member = bot.get_user(int(payload.data["author"]["id"]))
-            if not payload.cached_message:
-                message_before = ""
-            else:
-                message_before = payload.cached_message.content
             data = {
                 "user": member,
                 "message_before": message_before,
-                "message_after": payload.data["content"],
+                "message_after": message_after,
                 "channel": bot.get_channel(int(payload.channel_id))
             }
             create_embed = logs_message.create_embed(data=data, type='edit')
