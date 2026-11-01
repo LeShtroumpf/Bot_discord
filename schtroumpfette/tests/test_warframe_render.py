@@ -154,3 +154,18 @@ def test_repo_icons_exist():
 def test_footer_only_when_stale(worldstate, translator, now):
     fresh = render_fissures(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
     assert fresh.footer.text is None  # plus de « Worldstate officiel de Warframe »
+
+
+def test_blank_line_between_era_groups(worldstate, translator, now):
+    embed = render_fissures(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
+    assert len(embed.fields) >= 2
+    assert all(f.value.endswith("\n\u200b") for f in embed.fields[:-1])
+    assert not embed.fields[-1].value.endswith("\u200b")  # pas d'espace inutile après le dernier groupe
+
+
+def test_arbitrage_blank_lines_between_blocks(translator, schedule, tiers, now):
+    embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers))["arbitrage"][0]
+    assert embed.description.endswith("\n\u200b")                      # après « Se termine »
+    assert embed.fields[0].value.endswith("\n\u200b") and embed.fields[1].value.endswith("\n\u200b")
+    assert embed.fields[2].value.endswith("\n\u200b")                  # entre prochains et notables
+    assert not embed.fields[3].value.endswith("\u200b")

@@ -98,3 +98,16 @@ async def test_cog_keeps_defaults_when_sync_fails():
         await cog.sync_emojis()
     assert cog.tier_emojis["S"] == "🟦"
     assert "emojis injoignable" in logs.call_args.args[1]
+
+
+def test_bar_color_matches_emoji_letter():
+    """La barre de l'embed a la couleur de la lettre de l'emoji (couleur dominante du PNG)."""
+    from collections import Counter
+    from io import BytesIO
+
+    PIL = pytest.importorskip("PIL.Image")
+    from warframe.arbitrations import TIER_COLORS
+    for tier, data in load_images(EMOJI_DIR).items():
+        pixels = [p[:3] for p in PIL.open(BytesIO(data)).convert("RGBA").getdata() if p[3] > 250]
+        r, g, b = Counter(pixels).most_common(1)[0][0]
+        assert TIER_COLORS[tier] == (r << 16) + (g << 8) + b, tier

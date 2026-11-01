@@ -27,6 +27,7 @@ FIELD_MAX = 1024
 FIELDS_MAX = 25
 EMBED_MAX = 5800  # limite Discord : 6 000, on garde de la marge pour le pied de page
 PARIS = ZoneInfo("Europe/Paris")
+BLANK_LINE = "\n\u200b"  # ligne vide en fin de valeur (Discord supprime les lignes vides finales, pas un \u200b)
 ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
 # Miniatures des messages. Icônes officielles du jeu : servies par browse.wf (chemins du jeu) ou, pour les icônes
 # de la barre des activités en jeu (blanches sur fond transparent), par le wiki officiel.
@@ -162,12 +163,14 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     description = f"Se termine {ts(current.end)}"
     if tier.saryn:
         description += "\nSaryn viable sur ce nœud"
+    description += BLANK_LINE  # 1. détache l'en-tête des champs
     emoji, label = tier_label(tier, ctx.tier_emojis)
     embed = discord.Embed(title=f"{emoji} {label} | {ctx.tr.node(current.node)}".strip(),
                           description=description, color=TIER_COLORS.get(tier.tier, TIER_COLORS["F"]))
     header(embed, "Arbitrage", "arbitrage")
-    embed.add_field(name="Ennemi", value=ctx.tr.node_faction(current.node))
-    embed.add_field(name="Type de mission", value=ctx.tr.node_mission(current.node))
+    # 2. ligne vide sous le bloc Ennemi / Type de mission (sur les deux colonnes, pour qu'elles restent alignées)
+    embed.add_field(name="Ennemi", value=ctx.tr.node_faction(current.node) + BLANK_LINE)
+    embed.add_field(name="Type de mission", value=ctx.tr.node_mission(current.node) + BLANK_LINE)
 
     def line(arbitration):
         emoji, label = tier_label(ctx.tiers.get(arbitration.node, Tier()), ctx.tier_emojis)
@@ -175,7 +178,8 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
 
     upcoming = ctx.schedule.upcoming(ctx.now, UPCOMING_WINDOW)
     notable = noteworthy(ctx.schedule, ctx.tiers, ctx.now, NOTEWORTHY_WINDOW, exclude=upcoming)
-    embed.add_field(name="Prochains arbitrages", value=join_lines([line(a) for a in upcoming]) or "—", inline=False)
+    upcoming_value = join_lines([line(a) for a in upcoming], FIELD_MAX - len(BLANK_LINE)) or "—"
+    embed.add_field(name="Prochains arbitrages", value=upcoming_value + BLANK_LINE, inline=False)  # 3. avant les notables
     embed.add_field(name="Arbitrages notables (24 h)", value=join_lines([line(a) for a in notable]) or "Aucun S, A ou SP",
                     inline=False)
     return [finish(embed, ctx, needs_worldstate=False)]
@@ -192,7 +196,9 @@ def _fissure_embed(title: str, icon: str, missions: list[tuple[str, str, str, dt
         lines = [f"{ctx.tr.node(node)} — {mission} — {ctx.tr.node_faction(node)} — fin {ts(end)}"
                  for e, node, mission, end in missions if e == era]
         if lines:
-            fields.append((f"{ctx.tr.era(era)} ({len(lines)})", join_lines(lines)))
+            fields.append((f"{ctx.tr.era(era)} ({len(lines)})", join_lines(lines, FIELD_MAX - len(BLANK_LINE))))
+    # Une ligne vide entre deux groupes d'ère, pour aérer (pas de champ vide : ils comptent dans les 25 champs).
+    fields = [(name, value + BLANK_LINE) for name, value in fields[:-1]] + fields[-1:]
     return finish(add_fields(embed, fields), ctx)
 
 

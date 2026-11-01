@@ -18,9 +18,10 @@ MAX_AGE = dt.timedelta(days=7)
 DURATION = dt.timedelta(hours=1)
 
 DEFAULT_TIER = "F"
+# Couleur de la barre de l'embed : la même que la lettre de l'emoji du tier (warframe/data/emojis/).
 TIER_COLORS = {
-    "S": 0x00E5FF, "A": 0x00E676, "B": 0xFFEB3B, "C": 0xFF9800,
-    "D": 0xE65100, "SP": 0x9575CD, "F": 0x9E9E9E,
+    "S": 0xE74D15, "A": 0xDB2B2B, "B": 0xEEAE32, "C": 0x318DE3,
+    "D": 0x15BA35, "SP": 0xC71DE9, "F": 0x6E6E6E,
 }
 NOTEWORTHY_TIERS = ("S", "A", "SP")
 DEFAULT_EMOJIS = {"S": "🟦", "A": "🟩", "B": "🟨", "C": "🟧", "D": "🟥", "SP": "🟪", "F": "⬜"}
