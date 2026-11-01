@@ -3,8 +3,10 @@ import datetime as dt
 
 import discord
 
+from warframe.arbitrations import Tier
 from warframe.render import (TOPICS, Context, add_fields, invasion_progress, join_lines, next_deadline, render_all,
                              render_baro, render_fissures)
+from warframe.arbitrations import DEFAULT_EMOJIS
 from warframe.translations import Translator
 
 
@@ -31,7 +33,7 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
         "Fissures du Néant", "Fissures — Route de l'Acier", "Tempêtes du Néant (Railjack)"]
     current = schedule.current(now)
     tier = tiers[current.node].tier if current.node in tiers else "F"
-    assert rendered["arbitrage"][0].title == f"{tier} Tier | {translator.node(current.node)}"
+    assert rendered["arbitrage"][0].title == f"{DEFAULT_EMOJIS[tier]} {tier} Tier | {translator.node(current.node)}"
 
 
 def test_fissures_grouped_by_era(worldstate, translator, now):
@@ -105,3 +107,12 @@ def test_next_deadline(worldstate, translator, schedule, now):
     deadline = next_deadline(ctx)
     assert now < deadline <= schedule.current(now).end
     assert next_deadline(Context(now=now, tr=translator)) is not None  # Vallée Orbis toujours connue
+
+
+def test_tier_emojis_in_arbitrage(translator, schedule, now):
+    custom = {"S": "<:tierS:1>", "A": "<:tierA:2>", "B": "<:tierB:3>", "C": "<:tierC:4>", "D": "<:tierD:5>",
+              "SP": "<:tierSP:6>", "F": "<:tierF:7>"}
+    tiers = {a.node: Tier("SP") for a in schedule.upcoming(now - dt.timedelta(hours=2), dt.timedelta(hours=40))}
+    embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers, tier_emojis=custom))["arbitrage"][0]
+    assert embed.title.startswith("<:tierSP:6> SP Tier | ")
+    assert embed.fields[2].value.startswith("<:tierSP:6> **SP Tier** | ")

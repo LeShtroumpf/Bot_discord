@@ -1,5 +1,15 @@
 {
     "_source": "Arbitration Goons (discord.gg/Arbitrations), tier list de novembre 2026. Noeud absent = tier F. saryn = Saryn viable.",
+    "_emojis": "Emoji affiché devant chaque tier. Emoji Unicode, ou emoji d'application/serveur au format <:nom:id>.",
+    "emojis": {
+        "S": "🟦",
+        "A": "🟩",
+        "B": "🟨",
+        "C": "🟧",
+        "D": "🟥",
+        "SP": "🟪",
+        "F": "⬜"
+    },
     "tiers": {
         "SolNode450": {
             "tier": "S",

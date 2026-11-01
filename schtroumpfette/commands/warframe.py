@@ -62,6 +62,7 @@ class Warframe(commands.Cog):
         self.schedule = arbitrations.Schedule()
         self.schedule_at: dt.datetime | None = None
         self.tiers = arbitrations.load_tiers(DATA_DIR / "arbitration_tiers.json")
+        self.tier_emojis = arbitrations.load_tier_emojis(DATA_DIR / "arbitration_tiers.json")
         self.worldstate: dict | None = None
         self.worldstate_at: dt.datetime | None = None
         self.rendered: dict[str, list[discord.Embed]] = {}
@@ -127,7 +128,7 @@ class Warframe(commands.Cog):
     def context(self, now: dt.datetime) -> Context:
         stale = self.worldstate_at is not None and now - self.worldstate_at > STALE_AFTER
         return Context(now=now, tr=self.translator, worldstate=self.worldstate, worldstate_at=self.worldstate_at,
-                       stale=stale, schedule=self.schedule, tiers=self.tiers)
+                       stale=stale, schedule=self.schedule, tiers=self.tiers, tier_emojis=self.tier_emojis)
 
     def delay(self, now: dt.datetime) -> float:
         deadline = next_deadline(self.context(now))

@@ -23,6 +23,7 @@ TIER_COLORS = {
     "D": 0xE65100, "SP": 0x9575CD, "F": 0x9E9E9E,
 }
 NOTEWORTHY_TIERS = ("S", "A", "SP")
+DEFAULT_EMOJIS = {"S": "🟦", "A": "🟩", "B": "🟨", "C": "🟧", "D": "🟥", "SP": "🟪", "F": "⬜"}
 
 
 class ScheduleError(Exception):
@@ -49,6 +50,12 @@ def load_tiers(path: Path) -> dict[str, Tier]:
     """Tier list : {"tiers": {"SolNode450": {"tier": "S", "saryn": true}}}. Un nœud absent est en tier F."""
     data = json.loads(path.read_text(encoding="utf-8"))
     return {node: Tier(entry["tier"], bool(entry.get("saryn"))) for node, entry in data["tiers"].items()}
+
+
+def load_tier_emojis(path: Path) -> dict[str, str]:
+    """Emoji de chaque tier ("emojis" du fichier), complété par les emojis Unicode par défaut."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {**DEFAULT_EMOJIS, **data.get("emojis", {})}
 
 
 class Schedule:

@@ -1,6 +1,8 @@
 import datetime as dt
 
-from warframe.arbitrations import Arbitration, Schedule, Tier, noteworthy, read_cache
+from warframe import DATA_DIR
+from warframe.arbitrations import (DEFAULT_EMOJIS, Arbitration, Schedule, Tier, load_tier_emojis, noteworthy,
+                                   read_cache)
 
 T0 = 1793538000  # 2026-11-01 12:00 UTC
 
@@ -59,3 +61,11 @@ def test_real_schedule_matches_tier_list(schedule, tiers, now):
 
 def test_read_cache_absent(tmp_path):
     assert read_cache(tmp_path) is None
+
+
+def test_tier_emojis_file(tmp_path):
+    assert load_tier_emojis(DATA_DIR / "arbitration_tiers.json") == DEFAULT_EMOJIS
+    partial = tmp_path / "tiers.json"
+    partial.write_text('{"emojis": {"S": "<:tierS:1>"}, "tiers": {}}', encoding="utf-8")
+    emojis = load_tier_emojis(partial)
+    assert emojis["S"] == "<:tierS:1>" and emojis["SP"] == DEFAULT_EMOJIS["SP"]  # complété par défaut
