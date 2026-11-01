@@ -149,3 +149,8 @@ def test_repo_icons_exist():
         if url.startswith(REPO_ICONS):
             assert (DATA_DIR / "icons" / url[len(REPO_ICONS):]).is_file(), url
     assert Path(DATA_DIR / "icons" / "AlertTriangle.png").is_file()
+
+
+def test_footer_only_when_stale(worldstate, translator, now):
+    fresh = render_fissures(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
+    assert fresh.footer.text is None  # plus de « Worldstate officiel de Warframe »

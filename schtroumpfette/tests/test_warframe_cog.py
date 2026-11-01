@@ -222,3 +222,36 @@ def test_delay_bounds(cog, worldstate, schedule):
     assert 1 <= cog.delay(now) <= cog_module.POLL_INTERVAL
     hour_end = schedule.current(now).end
     assert cog.delay(hour_end - dt.timedelta(seconds=5)) <= 6  # réveil à l'heure pile
+
+
+# --- Horodatage ---------------------------------------------------------------------------------------------
+
+def test_digest_ignores_timestamp():
+    a, b = discord.Embed(title="x"), discord.Embed(title="x")
+    a.timestamp, b.timestamp = dt.datetime(2026, 1, 1, tzinfo=dt.UTC), dt.datetime(2026, 6, 1, tzinfo=dt.UTC)
+    assert cog_module.digest([a]) == cog_module.digest([b])
+
+
+def test_stamp_changes_only_with_content(cog):
+    t1, t2, t3 = (dt.datetime(2026, 11, 1, h, tzinfo=dt.UTC) for h in (10, 11, 12))
+    cog.rendered = rendered()
+    cog.stamp(t1)
+    assert cog.rendered["baro"][0].timestamp == t1
+    cog.rendered = rendered()          # nouveau tour, même contenu
+    cog.stamp(t2)
+    assert cog.rendered["baro"][0].timestamp == t1
+    cog.rendered = rendered(" (changé)")
+    cog.stamp(t3)
+    assert cog.rendered["baro"][0].timestamp == t3
+
+
+@pytest.mark.asyncio
+async def test_stamped_content_is_not_republished(cog, info_channel, logs):
+    edit = info_channel.get_partial_message.return_value.edit
+    cog.rendered = rendered()
+    cog.stamp(dt.datetime(2026, 11, 1, 10, tzinfo=dt.UTC))
+    await cog.publish()
+    cog.rendered = rendered()
+    cog.stamp(dt.datetime(2026, 11, 1, 11, tzinfo=dt.UTC))
+    await cog.publish()
+    assert edit.await_count == 8  # l'horodatage seul ne déclenche pas de modification

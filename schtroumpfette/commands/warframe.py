@@ -34,7 +34,9 @@ def utcnow() -> dt.datetime:
 
 
 def digest(embeds: list[discord.Embed]) -> str:
-    return hashlib.sha1(json.dumps([e.to_dict() for e in embeds], sort_keys=True).encode()).hexdigest()
+    """Empreinte du contenu, sans l'horodatage (sinon chaque tour verrait un « changement »)."""
+    content = [{k: v for k, v in e.to_dict().items() if k != "timestamp"} for e in embeds]
+    return hashlib.sha1(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
 def read_config() -> dict:
@@ -67,6 +69,7 @@ class Warframe(commands.Cog):
         self.worldstate_at: dt.datetime | None = None
         self.rendered: dict[str, list[discord.Embed]] = {}
         self.published: dict[str, str] = {}   # sujet -> empreinte du dernier contenu publié
+        self.changed_at: dict[str, tuple[str, dt.datetime]] = {}  # sujet -> (empreinte, heure du dernier changement)
         self.failing: set[str] = set()        # sources en panne déjà signalées (un seul log par panne)
         self.next_reference_try: dict[str, dt.datetime] = {}
         self.stats = {"tours": 0, "total": 0.0, "max": 0.0, "since": utcnow()}
@@ -147,6 +150,7 @@ class Warframe(commands.Cog):
         except WorldstateError as error:
             await self.report("worldstate", error)
         self.rendered = render_all(self.context(utcnow()))
+        self.stamp(utcnow())
         await self.publish()
         self.record(time.monotonic() - started)
 
@@ -200,6 +204,17 @@ class Warframe(commands.Cog):
                 return None
         await self.report("salon d'info", None)
         return channel
+
+    def stamp(self, now: dt.datetime):
+        """Horodatage de chaque embed = heure du dernier changement de contenu du sujet (affiché par Discord
+        en pied de page, dans le fuseau de chaque membre). Un contenu inchangé garde son heure."""
+        for topic, embeds in self.rendered.items():
+            fingerprint = digest(embeds)
+            previous = self.changed_at.get(topic)
+            if previous is None or previous[0] != fingerprint:
+                self.changed_at[topic] = previous = (fingerprint, now)
+            for embed in embeds:
+                embed.timestamp = previous[1]
 
     async def publish(self):
         """Modifie les messages dont le contenu a changé ; recrée ceux qui ont disparu."""

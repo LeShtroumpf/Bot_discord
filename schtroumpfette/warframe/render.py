@@ -116,12 +116,11 @@ def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
 
 
 def finish(embed: discord.Embed, ctx: Context, needs_worldstate: bool = True) -> discord.Embed:
-    """Pied de page : la date des données n'apparaît que si elles sont périmées (API injoignable)."""
+    """Pied de page : seulement un avertissement si les données sont périmées (API injoignable).
+    L'heure de dernière modification (embed.timestamp) est posée par le cog, à la publication."""
     if needs_worldstate and ctx.stale and ctx.worldstate_at:
         when = ctx.worldstate_at.astimezone(PARIS).strftime("%d/%m à %H:%M")
         embed.set_footer(text=f"⚠️ Données du {when} : worldstate injoignable")
-    else:
-        embed.set_footer(text="Worldstate officiel de Warframe")
     return embed
 
 
