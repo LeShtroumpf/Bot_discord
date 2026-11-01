@@ -1,0 +1,14 @@
+# Contexte de build = schtroumpfette/ (docker-compose.yml : context: ./schtroumpfette).
+# Ce fichier doit donc être ici, pas à la racine du dépôt.
+
+# Python
+__pycache__/
+*.pyc
+
+# Tests (inutiles dans l'image)
+tests/
+pytest.ini
+
+# Module Warframe : cache reconstruit au démarrage, icônes servies depuis GitHub (pas lues par le bot)
+warframe/cache/
+warframe/data/icons/
