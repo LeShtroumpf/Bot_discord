@@ -36,7 +36,10 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
         assert raw not in text, raw  # tout est traduit
     assert [e.author.name for e in rendered["fissures"]] == [
         "Fissures du Néant", "Fissures — Route de l'Acier", "Tempêtes du Néant (Railjack)"]
-    for embeds in rendered.values():  # chaque message a son en-tête et sa miniature
+    assert rendered["cycles"][0].thumbnail.url is None  # pas de miniature pour les cycles
+    for topic, embeds in rendered.items():  # chaque message a son en-tête et sa miniature
+        if topic == "cycles":
+            continue
         for embed in embeds:
             hosts = ("https://browse.wf/Lotus/", "https://wiki.warframe.com/images/",
                      "https://raw.githubusercontent.com/LeShtroumpf/Bot_discord/master/")
@@ -142,7 +145,7 @@ def test_repo_icons_exist():
 
     from warframe import DATA_DIR
     from warframe.render import ICONS, REPO_ICONS
-    for url in ICONS.values():
+    for url in filter(None, ICONS.values()):
         if url.startswith(REPO_ICONS):
             assert (DATA_DIR / "icons" / url[len(REPO_ICONS):]).is_file(), url
     assert Path(DATA_DIR / "icons" / "AlertTriangle.png").is_file()

@@ -36,15 +36,16 @@ WIKI_IMAGES = "https://wiki.warframe.com/images/"
 REPO_ICONS = "https://raw.githubusercontent.com/LeShtroumpf/Bot_discord/master/schtroumpfette/warframe/data/icons/"
 VOID_TRACES = ICON_BASE + "/Lotus/Interface/Icons/StoreIcons/Currency/Luminous.png"  # Traces du Néant
 ALERT_TRIANGLE = REPO_ICONS + "AlertTriangle.png"  # triangle d'alerte du menu en jeu, redessiné
+VOID_TEAR = WIKI_IMAGES + "VoidTearIcon%28xWhite%29.png"  # icône des fissures du menu en jeu
 ICONS = {
-    "arbitrage": ICON_BASE + "/Lotus/Materials/Emblems/EliteAlertIcon.png",  # insigne d'alerte d'élite
-    "fissures": VOID_TRACES,
-    "fissures_sp": VOID_TRACES,
+    "arbitrage": WIKI_IMAGES + "EliteAlertIcon%28xWhite%29.png",  # insigne d'alerte d'élite du menu en jeu (512 px)
+    "fissures": VOID_TEAR,
+    "fissures_sp": VOID_TEAR,
     "tempetes": WIKI_IMAGES + "IconRailjack%28xWhite%29.png",
     "invasions": WIKI_IMAGES + "InvasionIcon%28xWhite%29.png",
     "alertes": ALERT_TRIANGLE,
     "events": ALERT_TRIANGLE,  # si l'event n'a pas d'icône propre
-    "cycles": ICON_BASE + "/Lotus/Interface/Icons/Syndicates/FactionSigilEidolonCetusElder.png",  # Ostron
+    "cycles": None,  # pas de miniature (l'icône Ostron ne représentait que Cetus)
     "circuit": ICON_BASE + "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
     "baro": ICON_BASE + "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",
 }
@@ -108,7 +109,9 @@ def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
     L'icône d'auteur (~24 px, taille fixée par Discord) était trop petite ; la miniature réduit en revanche
     la largeur du texte."""
     embed.set_author(name=name)
-    embed.set_thumbnail(url=ICONS.get(icon) or ICON_BASE + icon)  # sinon : chemin du jeu (icône propre à un event)
+    url = ICONS[icon] if icon in ICONS else ICON_BASE + icon  # sinon : chemin du jeu (icône propre à un event)
+    if url:
+        embed.set_thumbnail(url=url)
     return embed
 
 
