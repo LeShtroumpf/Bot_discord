@@ -32,6 +32,8 @@ class EventListener(commands.Bot):
 
     async def on_raw_message_edit(self, payload):
         """Called when a message is edited."""
+        if payload.message.author.bot:
+            return  # modifications des bots (dont les messages Warframe mis à jour en continu) : pas de log
         logs_channel = self.get_channel(int(self.logs_channel_id))
         await event_logs.on_message_edit_log(self, payload=payload, channel=logs_channel)
 

@@ -36,5 +36,19 @@
     "streamer_followed": {
         "https://www.twitch.tv/nom_du_streamer": false
     },
-    "message_role_id": ""
+    "message_role_id": "",
+    "warframe": {
+        "info_channel": "",
+        "command_channel": "",
+        "messages": {
+            "arbitrage": "",
+            "fissures": "",
+            "invasions": "",
+            "alertes": "",
+            "events": "",
+            "cycles": "",
+            "circuit": "",
+            "baro": ""
+        }
+    }
 }

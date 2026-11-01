@@ -24,7 +24,7 @@ bot = client.event.EventListener(
     description=description,
     intents=intents
 )
-cogs = ['commands.everyone', 'commands.moderation.modo', 'commands.moderation.twitch_cmd']
+cogs = ['commands.everyone', 'commands.moderation.modo', 'commands.moderation.twitch_cmd', 'commands.warframe']
 
 
 async def main():

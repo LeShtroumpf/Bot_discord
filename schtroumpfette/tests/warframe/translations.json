@@ -1,0 +1,746 @@
+{
+ "strings": {
+  "/Lotus/Language/G1Quests/TacAlertHalloweenTitle": "Cauchemars Hantés"
+ },
+ "nodes": {
+  "SolNode94": [
+   "Apollodorus",
+   "Mercure",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "SolNode130": [
+   "Lares",
+   "Mercure",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode12": [
+   "Elion",
+   "Mercure",
+   "MT_CAPTURE",
+   "FC_GRINEER"
+  ],
+  "SolNode224": [
+   "Odin",
+   "Mercure",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode123": [
+   "V Prime",
+   "Vénus",
+   "MT_SURVIVAL",
+   "FC_CORPUS"
+  ],
+  "SolNode2": [
+   "Aphrodite",
+   "Vénus",
+   "MT_MOBILE_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SolNode23": [
+   "Cytherean",
+   "Vénus",
+   "MT_TERRITORY",
+   "FC_CORPUS"
+  ],
+  "ClanNode1": [
+   "Malva",
+   "Vénus",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "SolNode22": [
+   "Tessera",
+   "Vénus",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "ClanNode0": [
+   "Romula",
+   "Vénus",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode26": [
+   "Lith",
+   "Terre",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode85": [
+   "Gaia",
+   "Terre",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode75": [
+   "Cervantes",
+   "Terre",
+   "MT_SABOTAGE",
+   "FC_GRINEER"
+  ],
+  "ClanNode2": [
+   "Coba",
+   "Terre",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode30": [
+   "Olympus",
+   "Mars",
+   "MT_ARTIFACT",
+   "FC_GRINEER"
+  ],
+  "SolNode113": [
+   "Ares",
+   "Mars",
+   "MT_SABOTAGE",
+   "FC_GRINEER"
+  ],
+  "SolNode46": [
+   "Spear",
+   "Mars",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode58": [
+   "Hellas",
+   "Mars",
+   "MT_EXTERMINATION",
+   "FC_GRINEER"
+  ],
+  "SolNode106": [
+   "Alator",
+   "Mars",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode41": [
+   "Arval",
+   "Mars",
+   "MT_INTEL",
+   "FC_GRINEER"
+  ],
+  "SolNode14": [
+   "Ultor",
+   "Mars",
+   "MT_EXTERMINATION",
+   "FC_CORPUS"
+  ],
+  "SolNode16": [
+   "Augustus",
+   "Mars",
+   "MT_EXCAVATE",
+   "FC_GRINEER"
+  ],
+  "ClanNode8": [
+   "Kadesh",
+   "Mars",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode65": [
+   "Gradivus",
+   "Mars",
+   "MT_SABOTAGE",
+   "FC_CORPUS"
+  ],
+  "SolNode11": [
+   "Tharsis",
+   "Mars",
+   "MT_MOBILE_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode450": [
+   "Col de Tyane",
+   "Mars",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SolNode87": [
+   "Ganymede",
+   "Jupiter",
+   "MT_ARTIFACT",
+   "FC_CORPUS"
+  ],
+  "SolNode125": [
+   "Io",
+   "Jupiter",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SolNode25": [
+   "Callisto",
+   "Jupiter",
+   "MT_TERRITORY",
+   "FC_CORPUS"
+  ],
+  "ClanNode4": [
+   "Sinai",
+   "Jupiter",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode42": [
+   "Helene",
+   "Saturne",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode67": [
+   "Dione",
+   "Saturne",
+   "MT_INTEL",
+   "FC_GRINEER"
+  ],
+  "SolNode18": [
+   "Rhea",
+   "Saturne",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode82": [
+   "Calypso",
+   "Saturne",
+   "MT_SABOTAGE",
+   "FC_GRINEER"
+  ],
+  "SolNode64": [
+   "Umbriel",
+   "Uranus",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode9": [
+   "Rosalind",
+   "Uranus",
+   "MT_INTEL",
+   "FC_GRINEER"
+  ],
+  "ClanNode16": [
+   "Ur",
+   "Uranus",
+   "MT_ARTIFACT",
+   "FC_INFESTATION"
+  ],
+  "SolNode122": [
+   "Stephano",
+   "Uranus",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode1": [
+   "Galatea",
+   "Neptune",
+   "MT_CAPTURE",
+   "FC_CORPUS"
+  ],
+  "SolNode17": [
+   "Proteus",
+   "Neptune",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SolNode78": [
+   "Triton",
+   "Neptune",
+   "MT_RESCUE",
+   "FC_CORPUS"
+  ],
+  "SolNode6": [
+   "Despina",
+   "Neptune",
+   "MT_EXCAVATE",
+   "FC_CORPUS"
+  ],
+  "SolNode118": [
+   "Laomedeia",
+   "Neptune",
+   "MT_ARTIFACT",
+   "FC_CORPUS"
+  ],
+  "ClanNode20": [
+   "Yursa",
+   "Neptune",
+   "MT_EVACUATION",
+   "FC_INFESTATION"
+  ],
+  "SolNode4": [
+   "Acheron",
+   "Pluton",
+   "MT_EXTERMINATION",
+   "FC_CORPUS"
+  ],
+  "SolNode72": [
+   "Outer Terminus",
+   "Pluton",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SolNode21": [
+   "Narcissus",
+   "Pluton",
+   "MT_EXTERMINATION",
+   "FC_CORPUS"
+  ],
+  "SolNode76": [
+   "Hydra",
+   "Pluton",
+   "MT_CAPTURE",
+   "FC_CORPUS"
+  ],
+  "SolNode56": [
+   "Cypress",
+   "Pluton",
+   "MT_SABOTAGE",
+   "FC_CORPUS"
+  ],
+  "SolNode43": [
+   "Cerberus",
+   "Pluton",
+   "MT_TERRITORY",
+   "FC_CORPUS"
+  ],
+  "SolNode81": [
+   "Palus",
+   "Pluton",
+   "MT_SURVIVAL",
+   "FC_CORPUS"
+  ],
+  "ClanNode24": [
+   "Sechura",
+   "Pluton",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode135": [
+   "Thon",
+   "Cérès",
+   "MT_SABOTAGE",
+   "FC_GRINEER"
+  ],
+  "SolNode149": [
+   "Casta",
+   "Cérès",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode147": [
+   "Cinxia",
+   "Cérès",
+   "MT_TERRITORY",
+   "FC_GRINEER"
+  ],
+  "SolNode146": [
+   "Draco",
+   "Cérès",
+   "MT_SURVIVAL",
+   "FC_GRINEER"
+  ],
+  "ClanNode23": [
+   "Gabii",
+   "Cérès",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "ClanNode22": [
+   "Seimeni",
+   "Cérès",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode153": [
+   "Brugia",
+   "Éris",
+   "MT_RESCUE",
+   "FC_INFESTATION"
+  ],
+  "SolNode164": [
+   "Kala-azar",
+   "Éris",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode162": [
+   "Isos",
+   "Éris",
+   "MT_CAPTURE",
+   "FC_INFESTATION"
+  ],
+  "SolNode167": [
+   "Œstrus",
+   "Éris",
+   "MT_PURIFY",
+   "FC_INFESTATION"
+  ],
+  "SolNode166": [
+   "Nimus",
+   "Éris",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "ClanNode18": [
+   "Akkad",
+   "Éris",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode172": [
+   "Xini",
+   "Éris",
+   "MT_TERRITORY",
+   "FC_INFESTATION"
+  ],
+  "SolNode175": [
+   "Naeglar",
+   "Éris",
+   "MT_HIVE",
+   "FC_INFESTATION"
+  ],
+  "SolNode177": [
+   "Kappa",
+   "Sedna",
+   "MT_ARTIFACT",
+   "FC_GRINEER"
+  ],
+  "SolNode187": [
+   "Selkie",
+   "Sedna",
+   "MT_SURVIVAL",
+   "FC_GRINEER"
+  ],
+  "SolNode195": [
+   "Hydron",
+   "Sedna",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "ClanNode15": [
+   "Sangeru",
+   "Sedna",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode203": [
+   "Abaddon",
+   "Europe",
+   "MT_CAPTURE",
+   "FC_CORPUS"
+  ],
+  "SolNode216": [
+   "Valefor",
+   "Europe",
+   "MT_EXCAVATE",
+   "FC_CORPUS"
+  ],
+  "SolNode211": [
+   "Ose",
+   "Europe",
+   "MT_TERRITORY",
+   "FC_CORPUS"
+  ],
+  "SolNode212": [
+   "Paimon",
+   "Europe",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "ClanNode6": [
+   "Larzac",
+   "Europe",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode402": [
+   "Taranis",
+   "Néant",
+   "MT_DEFENSE",
+   "FC_OROKIN"
+  ],
+  "SolNode404": [
+   "Stribog",
+   "Néant",
+   "MT_SABOTAGE",
+   "FC_OROKIN"
+  ],
+  "SolNode405": [
+   "Ani",
+   "Néant",
+   "MT_SURVIVAL",
+   "FC_OROKIN"
+  ],
+  "SolNode407": [
+   "Oxomoco",
+   "Néant",
+   "MT_EXTERMINATION",
+   "FC_OROKIN"
+  ],
+  "SolNode408": [
+   "Belenus",
+   "Néant",
+   "MT_DEFENSE",
+   "FC_OROKIN"
+  ],
+  "SolNode409": [
+   "Mot",
+   "Néant",
+   "MT_SURVIVAL",
+   "FC_OROKIN"
+  ],
+  "SolNode412": [
+   "Mithra",
+   "Néant",
+   "MT_TERRITORY",
+   "FC_OROKIN"
+  ],
+  "SettlementNode3": [
+   "Stickney",
+   "Phobos",
+   "MT_SURVIVAL",
+   "FC_CORPUS"
+  ],
+  "SettlementNode15": [
+   "Sharpless",
+   "Phobos",
+   "MT_MOBILE_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "SettlementNode11": [
+   "Gulliver",
+   "Phobos",
+   "MT_DEFENSE",
+   "FC_CORPUS"
+  ],
+  "ClanNode10": [
+   "Memphis",
+   "Phobos",
+   "MT_EVACUATION",
+   "FC_INFESTATION"
+  ],
+  "ClanNode11": [
+   "Zeugma",
+   "Phobos",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "SolNode707": [
+   "Hyf",
+   "Deimos",
+   "MT_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode711": [
+   "Terrorem",
+   "Deimos",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "SolNode717": [
+   "Persto",
+   "Deimos",
+   "MT_SURVIVAL",
+   "FC_MITW"
+  ],
+  "SolNode719": [
+   "MUNIO",
+   "Deimos",
+   "MT_DEFENSE",
+   "FC_MITW"
+  ],
+  "SolNode305": [
+   "Stöfler",
+   "Lua",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode308": [
+   "Apollo",
+   "Lua",
+   "MT_ARTIFACT",
+   "FC_CORPUS"
+  ],
+  "SolNode310": [
+   "Circulus",
+   "Lua",
+   "MT_SURVIVAL",
+   "FC_OROKIN"
+  ],
+  "SolNode742": [
+   "Nabuk",
+   "Forteresse Kuva",
+   "MT_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode745": [
+   "Tamu",
+   "Forteresse Kuva",
+   "MT_ARTIFACT",
+   "FC_GRINEER"
+  ],
+  "SolNode230": [
+   "Arc Bellevue",
+   "Zariman",
+   "MT_CORRUPTION",
+   "FC_GRINEER"
+  ],
+  "DeimosHub": [
+   "Necralisk",
+   "Deimos",
+   "MT_PVP",
+   null
+  ],
+  "SaturnHUB": [
+   "Relais Kronia",
+   "Saturne",
+   "MT_PVP",
+   null
+  ],
+  "CrewBattleNode518": [
+   "Amas Ogal",
+   "Proxima de la Terre",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode519": [
+   "Ceinture de Korm",
+   "Proxima de la Terre",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode503": [
+   "Écho Bifrost",
+   "Proxima de Vénus",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode512": [
+   "Orvin-Haarc",
+   "Proxima de Vénus",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode501": [
+   "Amas Mordo",
+   "Proxima de Saturne",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode530": [
+   "Repos de Kasio",
+   "Proxima de Saturne",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode516": [
+   "Mines de Nu-gua",
+   "Proxima de Neptune",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode524": [
+   "Étreinte du Souverain",
+   "Proxima de Neptune",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode527": [
+   "Sept sirènes",
+   "Proxima de Pluton",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode531": [
+   "Champ de Fenton",
+   "Proxima de Pluton",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode542": [
+   "Lu-yan",
+   "Proxima du Voile",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode543": [
+   "Nuage de Sabmir",
+   "Proxima du Voile",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ]
+ },
+ "missions": {
+  "MT_ASSASSINATION": "Assassinat",
+  "MT_EXTERMINATION": "Extermination",
+  "MT_SURVIVAL": "Survie",
+  "MT_RESCUE": "Sauvetage",
+  "MT_SABOTAGE": "Sabotage",
+  "MT_CAPTURE": "Capture",
+  "MT_INTEL": "Espionnage",
+  "MT_DEFENSE": "Défense",
+  "MT_MOBILE_DEFENSE": "Défense mobile",
+  "MT_PVP": "Conclave",
+  "MT_TERRITORY": "Interception",
+  "MT_RETRIEVAL": "Détournement",
+  "MT_HIVE": "Ruche",
+  "MT_SALVAGE": "Guerres de secteur",
+  "MT_EXCAVATE": "Excavation",
+  "MT_PURIFY": "Récupération infestée",
+  "MT_ARENA": "Arène",
+  "MT_JUNCTION": "Jonction de rail solaire",
+  "MT_PURSUIT": "Poursuite",
+  "MT_RACE": "Course",
+  "MT_ASSAULT": "Assaut",
+  "MT_EVACUATION": "Désertion",
+  "MT_LANDSCAPE": "Exploration libre",
+  "MT_ENDLESS_EXTERMINATION": "Assaut du sanctuaire",
+  "MT_ENDLESS_DUVIRI": "Le circuit",
+  "MT_ARTIFACT": "Perturbation",
+  "MT_CORRUPTION": "Déluge du néant",
+  "MT_VOID_CASCADE": "Cascade du néant",
+  "MT_ARMAGEDDON": "Apocalypse du néant",
+  "MT_VAULTS": "Cellule de Netra",
+  "MT_ALCHEMY": "Alchimie",
+  "MT_ASCENSION": "Ascension",
+  "MT_ENDLESS_CAPTURE": "Récolte de Legacytes",
+  "MT_OFFERING": "Défense du sanctuaire",
+  "MT_PVPVE": "Affrontement",
+  "MT_DESCENT": "La Descendia",
+  "MT_TAU_WAR": "La Rébellion Perita",
+  "MT_PAINT_FLOOD": "La Chasse de Follie"
+ },
+ "factions": {
+  "FC_GRINEER": "Grineer",
+  "FC_CORPUS": "Corpus",
+  "FC_INFESTATION": "Infesté",
+  "FC_OROKIN": "Orokin",
+  "FC_RED_VEIL": "Voile rouge",
+  "FC_SENTIENT": "Sentient",
+  "FC_NARMER": "Narmer",
+  "FC_MITW": "Le Murmure",
+  "FC_SCALDRA": "Scaldra",
+  "FC_TECHROT": "Techrot",
+  "FC_DUVIRI": "Duviri"
+ },
+ "items": {
+  "/Lotus/Types/Items/MiscItems/InfestedAladCoordinate": "Coord. Nav Alad V Mutaliste",
+  "/Lotus/Types/Items/MiscItems/Kuva": "Kuva",
+  "/Lotus/Types/Items/Research/BioComponent": "Masse Mutagène",
+  "/Lotus/Types/Items/Research/ChemComponent": "Injecteur de Détonite",
+  "/Lotus/Types/Items/Research/EnergyComponent": "Fieldron",
+  "/Lotus/Types/Items/ShipDecos/MacheteManicBobbleHead": "Statuette Noggle - Maniaque Grineer",
+  "/Lotus/Types/Recipes/Weapons/WeaponParts/DeraVandalStock": "Dera Vandal - Crosse",
+  "/Lotus/Types/Recipes/Weapons/WeaponParts/KarakWraithStock": "Karak Wraith - Crosse",
+  "/Lotus/Upgrades/Mods/Randomized/RawRifleRandomMod": "Mod Riven de Fusil",
+  "/Lotus/Types/StoreItems/AvatarImages/TenYearAnniversaryWeek4Glyph": "Glyphe de Rappel de Jack O'Naut"
+ },
+ "eras": {
+  "VoidT1": "Lith",
+  "VoidT2": "Meso",
+  "VoidT3": "Neo",
+  "VoidT4": "Axi",
+  "VoidT5": "Requiem",
+  "VoidT6": "Omnia"
+ }
+}
