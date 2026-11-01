@@ -1,0 +1,206 @@
+{
+    "_source": "Arbitration Goons (discord.gg/Arbitrations), tier list de novembre 2026. Noeud absent = tier F. saryn = Saryn viable.",
+    "tiers": {
+        "SolNode450": {
+            "tier": "S",
+            "nom": "Tyana Pass (Mars)"
+        },
+        "SolNode106": {
+            "tier": "S",
+            "nom": "Alator (Mars)"
+        },
+        "SolNode25": {
+            "tier": "S",
+            "nom": "Callisto (Jupiter)"
+        },
+        "SolNode23": {
+            "tier": "S",
+            "nom": "Cytherean (Venus)"
+        },
+        "SolNode172": {
+            "tier": "S",
+            "nom": "Xini (Eris)"
+        },
+        "SolNode719": {
+            "tier": "S",
+            "nom": "Munio (Deimos)"
+        },
+        "ClanNode4": {
+            "tier": "A",
+            "nom": "Sinai (Jupiter)"
+        },
+        "ClanNode22": {
+            "tier": "A",
+            "nom": "Seimeni (Ceres)",
+            "saryn": true
+        },
+        "SolNode149": {
+            "tier": "A",
+            "nom": "Casta (Ceres)",
+            "saryn": true
+        },
+        "SolNode147": {
+            "tier": "A",
+            "nom": "Cinxia (Ceres)"
+        },
+        "SolNode46": {
+            "tier": "B",
+            "nom": "Spear (Mars)"
+        },
+        "ClanNode8": {
+            "tier": "B",
+            "nom": "Kadesh (Mars)"
+        },
+        "ClanNode18": {
+            "tier": "B",
+            "nom": "Akkad (Eris)"
+        },
+        "SolNode164": {
+            "tier": "B",
+            "nom": "Kala-Azar (Eris)"
+        },
+        "ClanNode2": {
+            "tier": "B",
+            "nom": "Coba (Earth)"
+        },
+        "SolNode26": {
+            "tier": "B",
+            "nom": "Lith (Earth)"
+        },
+        "ClanNode24": {
+            "tier": "B",
+            "nom": "Sechura (Pluto)",
+            "saryn": true
+        },
+        "ClanNode6": {
+            "tier": "B",
+            "nom": "Larzac (Europa)"
+        },
+        "SolNode408": {
+            "tier": "B",
+            "nom": "Belenus (Void)"
+        },
+        "SolNode402": {
+            "tier": "B",
+            "nom": "Taranis (Void)"
+        },
+        "SolNode707": {
+            "tier": "B",
+            "nom": "Hyf (Deimos)"
+        },
+        "SolNode167": {
+            "tier": "B",
+            "nom": "Oestrus (Eris)"
+        },
+        "SolNode195": {
+            "tier": "C",
+            "nom": "Hydron (Sedna)"
+        },
+        "SolNode42": {
+            "tier": "C",
+            "nom": "Helene (Saturn)"
+        },
+        "SolNode211": {
+            "tier": "C",
+            "nom": "Ose (Europa)"
+        },
+        "SolNode412": {
+            "tier": "C",
+            "nom": "Mithra (Void)"
+        },
+        "SolNode212": {
+            "tier": "C",
+            "nom": "Paimon (Europa)"
+        },
+        "SolNode22": {
+            "tier": "C",
+            "nom": "Tessera (Venus)",
+            "saryn": true
+        },
+        "SolNode224": {
+            "tier": "C",
+            "nom": "Odin (Mercury)"
+        },
+        "SolNode125": {
+            "tier": "C",
+            "nom": "Io (Jupiter)"
+        },
+        "SolNode122": {
+            "tier": "C",
+            "nom": "Stephano (Uranus)"
+        },
+        "SettlementNode11": {
+            "tier": "C",
+            "nom": "Gulliver (Phobos)"
+        },
+        "ClanNode0": {
+            "tier": "C",
+            "nom": "Romula (Venus)"
+        },
+        "SolNode17": {
+            "tier": "C",
+            "nom": "Proteus (Neptune)"
+        },
+        "SolNode72": {
+            "tier": "C",
+            "nom": "Outer Terminus (Pluto)",
+            "saryn": true
+        },
+        "SolNode64": {
+            "tier": "D",
+            "nom": "Umbriel (Uranus)"
+        },
+        "SolNode43": {
+            "tier": "D",
+            "nom": "Cerberus (Pluto)"
+        },
+        "SolNode85": {
+            "tier": "D",
+            "nom": "Gaia (Earth)"
+        },
+        "SolNode305": {
+            "tier": "D",
+            "nom": "Stöfler (Lua)"
+        },
+        "ClanNode15": {
+            "tier": "D",
+            "nom": "Sangeru (Sedna)"
+        },
+        "SolNode130": {
+            "tier": "D",
+            "nom": "Lares (Mercury)"
+        },
+        "SolNode711": {
+            "tier": "SP",
+            "nom": "Terrorem (Deimos)"
+        },
+        "SolNode405": {
+            "tier": "SP",
+            "nom": "Ani (Void)"
+        },
+        "SolNode409": {
+            "tier": "SP",
+            "nom": "Mot (Void)"
+        },
+        "SolNode177": {
+            "tier": "SP",
+            "nom": "Kappa (Sedna)"
+        },
+        "ClanNode16": {
+            "tier": "SP",
+            "nom": "Ur (Uranus)"
+        },
+        "SolNode118": {
+            "tier": "SP",
+            "nom": "Laomedeia (Neptune)"
+        },
+        "SolNode308": {
+            "tier": "SP",
+            "nom": "Apollo (Lua)"
+        },
+        "SolNode87": {
+            "tier": "SP",
+            "nom": "Ganymede (Jupiter)"
+        }
+    }
+}
