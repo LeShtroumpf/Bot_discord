@@ -1,6 +1,6 @@
 {
     "_source": "Arbitration Goons (discord.gg/Arbitrations), tier list de novembre 2026. Noeud absent = tier F. saryn = Saryn viable.",
-    "_emojis": "Emoji affiché devant chaque tier. Emoji Unicode, ou emoji d'application/serveur au format <:nom:id>.",
+    "_emojis": "Emojis par défaut de chaque tier (Unicode, ou <:nom:id>). Remplacés automatiquement par les emojis d'application créés par le bot à partir de warframe/data/emojis/tier<TIER>.png.",
     "emojis": {
         "S": "🟦",
         "A": "🟩",

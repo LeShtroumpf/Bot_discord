@@ -18,7 +18,7 @@ from discord.ext import commands
 from client.event_logs import event_logs
 from commands.moderation.twitch_cmd import MODO_ROLES
 from utils.file_management import settings_file_management
-from warframe import CACHE_DIR, DATA_DIR, arbitrations, translations
+from warframe import CACHE_DIR, DATA_DIR, arbitrations, emojis, translations
 from warframe.render import TOPICS, Context, next_deadline, render_all
 from warframe.worldstate import WorldstateError, fetch_worldstate
 
@@ -107,6 +107,7 @@ class Warframe(commands.Cog):
     async def run(self):
         await self.bot.wait_until_ready()
         await self.load_caches()
+        await self.sync_emojis()
         while True:
             try:
                 await self.tick()
@@ -119,6 +120,17 @@ class Warframe(commands.Cog):
             except TimeoutError:
                 pass
             self.wakeup.clear()
+
+    async def sync_emojis(self):
+        """Emojis de tier : créés / retrouvés comme emojis d'application à partir de warframe/data/emojis/.
+        En cas d'échec, on garde les emojis du fichier de tiers (carrés de couleur par défaut)."""
+        try:
+            managed = await emojis.sync_tier_emojis(self.bot)
+        except (discord.DiscordException, OSError, ValueError) as error:
+            await self.report("emojis", error)
+            return
+        self.tier_emojis = {**self.tier_emojis, **managed}
+        self.published.clear()  # republier l'arbitrage avec les nouveaux emojis
 
     async def load_caches(self):
         cached = await asyncio.to_thread(translations.read_cache, CACHE_DIR)
