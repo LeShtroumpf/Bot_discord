@@ -28,7 +28,7 @@ FIELDS_MAX = 25
 EMBED_MAX = 5800  # limite Discord : 6 000, on garde de la marge pour le pied de page
 PARIS = ZoneInfo("Europe/Paris")
 ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
-# Icônes d'en-tête (icône d'auteur, ~24 px) : icônes officielles du jeu servies par browse.wf.
+# Miniatures des messages : icônes officielles du jeu servies par browse.wf.
 ICON_BASE = "https://browse.wf"
 ICONS = {
     "arbitrage": "/Lotus/Interface/Icons/Syndicates/FactionSigilJudge.png",          # Arbitres d'Hexis
@@ -98,8 +98,11 @@ def add_fields(embed: discord.Embed, fields: list[tuple[str, str]], inline: bool
 
 
 def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
-    """En-tête de l'embed : petite icône + nom du sujet, sans réduire la largeur du texte (contrairement à une miniature)."""
-    embed.set_author(name=name, icon_url=ICON_BASE + (ICONS.get(icon) or icon))
+    """En-tête de l'embed : nom du sujet en haut, icône en miniature (~80 px) à droite.
+    L'icône d'auteur (~24 px, taille fixée par Discord) était trop petite ; la miniature réduit en revanche
+    la largeur du texte."""
+    embed.set_author(name=name)
+    embed.set_thumbnail(url=ICON_BASE + (ICONS.get(icon) or icon))
     return embed
 
 
