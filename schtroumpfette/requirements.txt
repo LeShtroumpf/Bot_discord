@@ -1,14 +1,7 @@
-dateutils
-discord
-discord-ui
-discord.py
-elevenlabs
-flake8
-requests
-PyNaCl
-pytest
-pytest-cov
-pytest-mock
-pytest-env
-pytest-asyncio
-python-dotenv
+# Dépendances du bot (installées dans l'image Docker)
+discord.py[voice]==2.7.1  # [voice] : PyNaCl + davey (chiffrement vocal DAVE)
+elevenlabs==2.75.0
+python-dateutil==4.0.0
+python-dotenv==1.2.4
+requests==2.34.2
+certifi==2026.10.23  # >= 2026.10.19 : retrait des racines eMudhra/emSign (GHSA-6q48-6c7w-9gw2)

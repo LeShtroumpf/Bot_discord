@@ -1,5 +1,5 @@
+import asyncio
 import os
-import time
 
 import discord
 from discord import app_commands
@@ -13,7 +13,7 @@ class Modo(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.spam = False
+        self.spam_running = False
 
     @app_commands.command(
         name="clear",
@@ -21,7 +21,10 @@ class Modo(commands.Cog):
     )
     @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
     async def clear(self, interaction: discord.Interaction, amount: int = 2):
-        await interaction.channel.purge(limit=amount+1)
+        # La suppression peut prendre plus de 3 s : on diffère la réponse.
+        await interaction.response.defer(ephemeral=True)
+        deleted = await interaction.channel.purge(limit=amount)
+        await interaction.followup.send(f"{len(deleted)} message(s) supprimé(s).", ephemeral=True)
 
     @app_commands.command(name="restart", description="Redémarre le bot.")
     @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
@@ -36,20 +39,21 @@ class Modo(commands.Cog):
         description="J'avais promis à Onoz une commande pour le spam"
     )
     @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
-    async def spam(self, ctx):
+    async def spam(self, interaction: discord.Interaction):
         casse_couille = os.environ['CASSEBONBON']
         member = casse_couille.split('#')
         user = discord.utils.get(
-            ctx.guild.members,
+            interaction.guild.members,
             name=member[0],
             discriminator=member[1],
         )
         user = self.bot.get_user(user.id)
-        self.spam = True
-        while self.spam:
+        await interaction.response.send_message(f"C'est parti pour {user.mention} !", ephemeral=True)
+        self.spam_running = True
+        while self.spam_running:
             message = nsfw.get_gif()
             await user.send(str(message))
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
 
     @app_commands.command(
         name="stop_spam",
@@ -57,7 +61,11 @@ class Modo(commands.Cog):
     )
     @app_commands.checks.has_any_role("Les Champions du Dimanche", "Les colombus")
     async def stop_spam(self, interaction: discord.Interaction):
-        self.spam = False
+        if not self.spam_running:
+            await interaction.response.send_message("Aucun spam en cours.", ephemeral=True)
+            return
+        self.spam_running = False
+        await interaction.response.send_message("Spam arrêté.", ephemeral=True)
 
 
 async def setup(bot):  # pragma: no cover

@@ -2,6 +2,7 @@ import asyncio  # noqa
 import json  # noqa
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 
 from .twitch import twitch
@@ -91,7 +92,7 @@ class EventListener(commands.Bot):
 
     async def on_message(self, message):
         if not message.content.startswith("$"):
-            if self.voice_clients and self.voice_clients[0].channel.id== message.channel.id:
+            if self.voice_clients and self.voice_clients[0].channel.id == message.channel.id:
                 await self.event_actions.on_message_tts_action(self, message)
             else:
                 pass
@@ -127,8 +128,8 @@ class EventListener(commands.Bot):
         pass
 
     async def on_command_error(self, ctx, error):
+        logs_channel = self.get_channel(int(self.logs_channel_id))
         if isinstance(error, commands.errors.CheckFailure):
-            logs_channel = self.get_channel(int(self.logs_channel_id))
             await ctx.send("Tu n'as pas le droit d'utiliser "
                            "cette commande petit chenapan! :wink:")
         await event_logs.on_error_log(self, error, origine="on_commande_error", channel=logs_channel)
@@ -146,7 +147,33 @@ class EventListener(commands.Bot):
     async def before_on_post_online_stream(self):
         await self.wait_until_ready()
 
+    async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        """Called when a slash command raises (failed role checks included)."""
+        if isinstance(error, app_commands.CheckFailure):
+            message = "Tu n'as pas le droit d'utiliser cette commande petit chenapan! :wink:"
+        else:
+            message = "Une erreur est survenue !"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+        except discord.HTTPException:
+            pass  # interaction expirée : on log quand même
+
+        if isinstance(error, app_commands.CommandInvokeError):
+            error = error.original
+        command = f"/{interaction.command.name}" if interaction.command else "slash command"
+        logs_channel = self.get_channel(int(self.logs_channel_id))
+        await event_logs.on_error_log(
+            self,
+            f"{interaction.user} : {type(error).__name__}: {error}",
+            origine=command,
+            channel=logs_channel,
+        )
+
     async def setup_hook(self):
+        self.tree.on_error = self.on_app_command_error
         self.gc_task.start()
 
     @tasks.loop(hours=2)
@@ -157,16 +184,6 @@ class EventListener(commands.Bot):
         print(f"[GC] Objets collectés : {collected}")
 
         # Nettoie le cache des messages
-        if hasattr(self, '_connection'):
-            if hasattr(self._connection, '_messages'):
-                self._connection._messages.clear()
-
-    @tasks.loop(hours=2)
-    async def gc_task(self):
-        """Nettoie la mémoire toutes les 2 heures"""
-        import gc
-        collected = gc.collect()
-        print(f"[GC] Objets collectés : {collected}")
         if hasattr(self, '_connection'):
             if hasattr(self._connection, '_messages'):
                 self._connection._messages.clear()

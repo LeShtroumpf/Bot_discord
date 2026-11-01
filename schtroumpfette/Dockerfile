@@ -11,7 +11,9 @@ RUN apt-get update && \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -U -r requirements.txt
+# pip >= 26.2.2 : CVE-2026-1703, CVE-2026-3219, CVE-2026-8643, CVE-2026-13346 + certifi vendored à jour
+RUN pip install --no-cache-dir -U "pip>=26.2.2" && \
+    pip install --no-cache-dir -U -r requirements.txt
 
 COPY . /app
 

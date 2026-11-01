@@ -1,4 +1,8 @@
 /.db_run/
 /.bot_run/
 /venv/
-/__pycache__/
+__pycache__/
+*.pyc
+.idea/
+.env
+/schtroumpfette/settings.json

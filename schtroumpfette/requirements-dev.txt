@@ -1,0 +1,8 @@
+# Outils de dev (lint / tests), pas dans l'image
+-r requirements.txt
+flake8==7.5.0
+pytest==9.2.0
+pytest-asyncio==1.4.1
+pytest-cov==7.1.0
+pytest-env==1.8.4
+pytest-mock==3.17.0
