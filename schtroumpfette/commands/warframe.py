@@ -297,10 +297,11 @@ class Warframe(commands.Cog):
 
     # --- Commandes --------------------------------------------------------------------------------------
 
-    @app_commands.command(name="warframe", description="Affiche les infos du monde de Warframe")
-    @app_commands.describe(sujet="Le sujet à afficher", cible="La cible de synthèse à chercher, en français ou en anglais")
-    @app_commands.choices(sujet=[app_commands.Choice(name=label, value=topic) for topic, label in TOPICS.items()])
-    async def warframe(self, interaction: discord.Interaction, sujet: app_commands.Choice[str] | None = None,
+    @app_commands.command(name="warframe", description="Événements, alertes, timers et cibles de synthèse de Warframe")
+    @app_commands.describe(activite="Les événements, alertes et timers en cours",
+                           cible="La cible de synthèse à chercher, en français ou en anglais")
+    @app_commands.choices(activite=[app_commands.Choice(name=label, value=topic) for topic, label in TOPICS.items()])
+    async def warframe(self, interaction: discord.Interaction, activite: app_commands.Choice[str] | None = None,
                        cible: str | None = None):
         config = read_config()
         if not config["command_channel"]:
@@ -310,13 +311,13 @@ class Warframe(commands.Cog):
             await interaction.response.send_message(f"Mauvais salon, utilise <#{config['command_channel']}>.",
                                                     ephemeral=True)
             return
-        if (sujet is None) == (cible is None):
-            await interaction.response.send_message("Choisis un `sujet` ou une `cible`, mais pas les deux.", ephemeral=True)
+        if (activite is None) == (cible is None):
+            await interaction.response.send_message("Choisis une `activite` ou une `cible`, mais pas les deux.", ephemeral=True)
             return
         if cible is not None:
             await self.answer_target(interaction, cible)
             return
-        embeds = self.rendered.get(sujet.value)
+        embeds = self.rendered.get(activite.value)
         if not embeds:
             await interaction.response.send_message("Les données Warframe arrivent, réessaie dans quelques secondes.",
                                                     ephemeral=True)

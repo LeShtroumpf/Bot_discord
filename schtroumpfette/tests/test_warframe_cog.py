@@ -134,12 +134,12 @@ async def test_warframe_target_wrong_channel(cog_with_targets, interaction):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kwargs", [{}, {"sujet": choice("baro"), "cible": "lancer"}])
+@pytest.mark.parametrize("kwargs", [{}, {"activite": choice("baro"), "cible": "lancer"}])
 async def test_warframe_needs_exactly_one_parameter(cog_with_targets, interaction, kwargs):
     cog, interaction.channel_id = cog_with_targets, 123
     await cog.warframe.callback(cog, interaction, **kwargs)
     args = interaction.response.send_message.call_args
-    assert "`sujet`" in args.args[0] and args.kwargs["ephemeral"] is True
+    assert "`activite`" in args.args[0] and args.kwargs["ephemeral"] is True
 
 
 @pytest.mark.asyncio
