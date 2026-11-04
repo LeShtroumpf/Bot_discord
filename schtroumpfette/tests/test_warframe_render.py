@@ -1,11 +1,13 @@
 import copy
 import datetime as dt
 
+from unittest.mock import MagicMock
+
 import discord
 
 from warframe.arbitrations import Tier
 from warframe.render import (TOPICS, Context, add_fields, invasion_progress, join_lines, next_deadline, render_all,
-                             render_baro, render_fissures)
+                             render_baro, render_fissures, render_invasions)
 from warframe.arbitrations import DEFAULT_EMOJIS
 from warframe.translations import Translator
 
@@ -114,6 +116,54 @@ def test_invasion_progress():
     assert invasion_progress({"Count": 50, "Goal": 100, "Faction": "FC_GRINEER"}) == 75
     assert invasion_progress({"Count": -50, "Goal": 100, "Faction": "FC_INFESTATION"}) == 50
     assert invasion_progress({"Count": 500, "Goal": 100, "Faction": "FC_GRINEER"}) == 100
+
+
+def invasions_embed(now, *invasions) -> discord.Embed:
+    tr = MagicMock()
+    tr.node.side_effect = lambda key: key
+    tr.faction.side_effect = {"FC_INFESTATION": "Infesté", "FC_CORPUS": "Corpus", "FC_GRINEER": "Grineer"}.get
+    tr.item.side_effect = lambda key: key
+    tr.known_text.return_value = None
+    ctx = Context(now=now, tr=tr, worldstate={"Invasions": list(invasions)}, worldstate_at=now, schedule=None, tiers={})
+    return render_invasions(ctx)[0]
+
+
+def invasion(node="Regna (Pluton)", attacker="FC_INFESTATION", defender="FC_CORPUS", count=-3, goal=100, **extra) -> dict:
+    return {"Node": node, "Faction": attacker, "DefenderFaction": defender, "Count": count, "Goal": goal,
+            "DefenderReward": {"countedItems": [{"ItemType": "Fieldron", "ItemCount": 3}]}, **extra}
+
+
+def test_invasion_against_infested_shows_defender_advance(now):
+    value = invasions_embed(now, invasion()).fields[0].value
+    assert value == "🛡️ **Corpus** : 3× Fieldron\nAvancement : 3 % · contre les Infestés"
+
+
+def test_invasion_against_infested_keeps_an_attacker_reward(now):
+    reward = {"countedItems": [{"ItemType": "Mutagene", "ItemCount": 1}]}
+    value = invasions_embed(now, invasion(AttackerReward=reward)).fields[0].value
+    assert value.splitlines()[0] == "⚔️ **Infesté** : 1× Mutagene"
+
+
+def test_invasion_between_factions_shows_both_sides(now):
+    value = invasions_embed(now, invasion(attacker="FC_GRINEER", count=90)).fields[0].value
+    assert value.splitlines()[2] == "Progression : Grineer 95 % · Corpus 5 %"
+    assert value.startswith("⚔️ **Grineer**")
+
+
+def test_invasions_sorted_by_planet_then_node(now):
+    nodes = ["Regna (Pluton)", "Neso (Neptune)", "Acheron (Pluton)", "Casta (Cérès)"]
+    embed = invasions_embed(now, *[invasion(node=node) for node in nodes])
+    assert [field.name for field in embed.fields] == ["Casta (Cérès)", "Neso (Neptune)", "Acheron (Pluton)", "Regna (Pluton)"]
+
+
+def test_invasions_order_does_not_depend_on_the_api(now):
+    invasions = [invasion(node=node) for node in ("Hydra (Pluton)", "Outer Terminus (Pluton)", "Minthe (Pluton)")]
+    assert invasions_embed(now, *invasions).to_dict() == invasions_embed(now, *reversed(invasions)).to_dict()
+
+
+def test_completed_invasions_are_hidden(now):
+    embed = invasions_embed(now, invasion(Completed=True), invasion(node="Casta (Cérès)"))
+    assert [field.name for field in embed.fields] == ["Casta (Cérès)"]
 
 
 def test_next_deadline(worldstate, translator, schedule, now):
