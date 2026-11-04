@@ -195,13 +195,63 @@ async def test_tick_worldstate_down(cog, logs, settings_file, schedule, translat
     failing = AsyncMock(side_effect=WorldstateError("timeout"))
     with patch.object(cog_module, "fetch_worldstate", failing):
         await cog.tick()
+        cog.next_fetch = None
         await cog.tick()
     assert logs.await_count == 1  # une seule alerte pour la panne
     assert "worldstate injoignable" in logs.call_args.args[1]
     assert "<t:" in cog.rendered["cycles"][0].fields[1].value  # la Vallée Orbis continue d'être calculée
+    cog.next_fetch = None
     with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"Time": 1})):
         await cog.tick()
     assert logs.await_count == 2 and "de nouveau joignable" in logs.call_args.args[1]
+
+
+@pytest.mark.asyncio
+async def test_worldstate_fetch_is_throttled(cog, logs):
+    now = dt.datetime.now(dt.UTC)
+    fetch = AsyncMock(return_value={"Time": 1})
+    with patch.object(cog_module, "fetch_worldstate", fetch):
+        await cog.refresh_worldstate(now)
+        await cog.refresh_worldstate(now + dt.timedelta(seconds=1))  # réveil sur une échéance : pas de requête
+        await cog.refresh_worldstate(now + dt.timedelta(seconds=59))
+        assert fetch.await_count == 1
+        await cog.refresh_worldstate(now + dt.timedelta(seconds=60))
+    assert fetch.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_worldstate_backoff_grows_then_resets(cog, logs):
+    now = dt.datetime.now(dt.UTC)
+    waits = []
+    with patch.object(cog_module, "fetch_worldstate", AsyncMock(side_effect=WorldstateError("429"))):
+        for _ in range(5):
+            await cog.refresh_worldstate(now)
+            waits.append((cog.next_fetch - now).total_seconds() / 60)
+            now = cog.next_fetch
+    assert waits == [1, 2, 5, 10, 10]
+    with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"Time": 1})):
+        await cog.refresh_worldstate(now)
+    assert cog.fetch_failures == 0
+    assert cog.next_fetch - now == dt.timedelta(seconds=cog_module.POLL_INTERVAL)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("retry_after, expected", [(dt.timedelta(minutes=30), 30), (dt.timedelta(seconds=5), 1), (None, 1)])
+async def test_worldstate_backoff_honours_longer_retry_after(cog, logs, retry_after, expected):
+    now = dt.datetime.now(dt.UTC)
+    failing = AsyncMock(side_effect=WorldstateError("429", retry_after))
+    with patch.object(cog_module, "fetch_worldstate", failing):
+        await cog.refresh_worldstate(now)
+    assert cog.next_fetch - now == dt.timedelta(minutes=expected)
+
+
+@pytest.mark.asyncio
+async def test_unexpected_fetch_error_still_throttles(cog, logs):
+    now = dt.datetime.now(dt.UTC)
+    with patch.object(cog_module, "fetch_worldstate", AsyncMock(side_effect=RuntimeError("bug"))):
+        with pytest.raises(RuntimeError):
+            await cog.refresh_worldstate(now)
+    assert cog.next_fetch - now == dt.timedelta(seconds=cog_module.POLL_INTERVAL)
 
 
 @pytest.mark.asyncio
@@ -222,6 +272,14 @@ def test_delay_bounds(cog, worldstate, schedule):
     assert 1 <= cog.delay(now) <= cog_module.POLL_INTERVAL
     hour_end = schedule.current(now).end
     assert cog.delay(hour_end - dt.timedelta(seconds=5)) <= 6  # réveil à l'heure pile
+
+
+def test_delay_wakes_for_next_fetch(cog):
+    now = dt.datetime.now(dt.UTC)
+    cog.next_fetch = now + dt.timedelta(seconds=7)
+    assert cog.delay(now) <= 7
+    cog.next_fetch = now - dt.timedelta(seconds=7)  # requête en retard : pas de boucle serrée pour autant
+    assert cog.delay(now) >= 1
 
 
 # --- Horodatage ---------------------------------------------------------------------------------------------

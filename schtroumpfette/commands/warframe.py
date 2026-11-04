@@ -23,7 +23,9 @@ from warframe.render import TOPICS, Context, next_deadline, render_all
 from warframe.worldstate import WorldstateError, fetch_worldstate
 
 SETTINGS_KEY = "warframe"
-POLL_INTERVAL = 30          # secondes entre deux consultations du worldstate
+POLL_INTERVAL = 60          # secondes entre deux consultations du worldstate (et entre deux recalculs des embeds, au plus)
+# Attente après 1, 2, 3, 4+ échecs d'affilée : aucune limite n'est publiée, on lève le pied dès que l'API refuse ou tombe.
+FETCH_BACKOFF = tuple(dt.timedelta(minutes=minutes) for minutes in (1, 2, 5, 10))
 STALE_AFTER = dt.timedelta(minutes=2)
 RETRY_REFERENCE = dt.timedelta(minutes=10)  # délai entre deux essais de téléchargement des données de référence
 STATS_EVERY = dt.timedelta(hours=1)
@@ -72,6 +74,8 @@ class Warframe(commands.Cog):
         self.changed_at: dict[str, tuple[str, dt.datetime]] = {}  # sujet -> (empreinte, heure du dernier changement)
         self.failing: set[str] = set()        # sources en panne déjà signalées (un seul log par panne)
         self.next_reference_try: dict[str, dt.datetime] = {}
+        self.next_fetch: dt.datetime | None = None  # pas de requête worldstate avant cette heure
+        self.fetch_failures = 0               # échecs d'affilée du worldstate
         self.stats = {"tours": 0, "total": 0.0, "max": 0.0, "since": utcnow()}
         self.session: aiohttp.ClientSession | None = None
         self.wakeup = asyncio.Event()
@@ -146,25 +150,41 @@ class Warframe(commands.Cog):
                        stale=stale, schedule=self.schedule, tiers=self.tiers, tier_emojis=self.tier_emojis)
 
     def delay(self, now: dt.datetime) -> float:
+        """Temps avant le prochain tour : échéance à afficher ou requête à faire, selon ce qui vient en premier."""
+        delay = POLL_INTERVAL
         deadline = next_deadline(self.context(now))
-        if deadline is None:
-            return POLL_INTERVAL
-        return max(1.0, min(POLL_INTERVAL, (deadline - now).total_seconds() + 1))
+        if deadline is not None:
+            delay = min(delay, (deadline - now).total_seconds() + 1)
+        if self.next_fetch is not None and self.next_fetch > now:
+            delay = min(delay, (self.next_fetch - now).total_seconds())
+        return max(1.0, delay)
 
     async def tick(self):
         started = time.monotonic()
         now = utcnow()
         await self.refresh_reference(now)
-        try:
-            self.worldstate = await fetch_worldstate(self.session)
-            self.worldstate_at = now
-            await self.report("worldstate", None)
-        except WorldstateError as error:
-            await self.report("worldstate", error)
+        await self.refresh_worldstate(now)
         self.rendered = render_all(self.context(utcnow()))
         self.stamp(utcnow())
         await self.publish()
         self.record(time.monotonic() - started)
+
+    async def refresh_worldstate(self, now: dt.datetime):
+        """Une requête au plus toutes les POLL_INTERVAL secondes, quel que soit le nombre de tours de la boucle."""
+        if self.next_fetch is not None and now < self.next_fetch:
+            return
+        self.next_fetch = now + dt.timedelta(seconds=POLL_INTERVAL)  # posé avant l'appel : vaut aussi pour une erreur imprévue
+        try:
+            self.worldstate = await fetch_worldstate(self.session)
+        except WorldstateError as error:
+            backoff = FETCH_BACKOFF[min(self.fetch_failures, len(FETCH_BACKOFF) - 1)]
+            self.fetch_failures += 1
+            self.next_fetch = now + max(backoff, error.retry_after or backoff)
+            await self.report("worldstate", error)
+            return
+        self.worldstate_at = now
+        self.fetch_failures = 0
+        await self.report("worldstate", None)
 
     async def refresh_reference(self, now: dt.datetime):
         """Traductions (24 h) et planning des arbitrages (7 j), avec un nouvel essai au plus toutes les 10 min."""
