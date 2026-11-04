@@ -49,6 +49,7 @@ ICONS = {
     "cycles": None,  # pas de miniature (l'icône Ostron ne représentait que Cetus)
     "circuit": ICON_BASE + "/Lotus/Interface/Graphics/StartingZoneChoice/DuviriStartingZoneIconParadox.png",
     "baro": ICON_BASE + "/Lotus/Interface/Icons/Npcs/BaroKiTeerPortrait.png",
+    "synthese": ICON_BASE + "/Lotus/Interface/Icons/Categories/IconLibrarian256.png",  # sigil de Simaris
 }
 COLORS = {
     "fissures": 0xC9A227, "fissures_sp": 0xB71C1C, "tempetes": 0x5C6BC0, "invasions": 0x8D6E63,
@@ -280,7 +281,8 @@ def render_synthesis(tr: Translator, name: str, places: tuple[str, ...]) -> disc
 
     lines = [synthesis_location(tr, place) for place in sorted(places, key=by_planet)]
     description = "\n".join(lines) + f"\n\n{SYNTHESIS_SOURCE}"
-    return discord.Embed(title=synthesis.label(tr, name), description=description, color=COLORS["synthese"])
+    embed = discord.Embed(title=synthesis.label(tr, name), description=description, color=COLORS["synthese"])
+    return embed.set_thumbnail(url=ICONS["synthese"])
 
 
 def render_alertes(ctx: Context) -> list[discord.Embed]:

@@ -143,6 +143,11 @@ def test_render_both_languages(bilingual):
     assert places_of(embed) == ["Cambria (Terre / Earth) · Espionnage · Grineer"]
 
 
+def test_render_has_the_simaris_icon(bilingual):
+    embed = render_synthesis(bilingual, "Lancer", ("Cambria",))
+    assert embed.thumbnail.url == "https://browse.wf/Lotus/Interface/Icons/Categories/IconLibrarian256.png"
+
+
 def test_render_links_the_source(bilingual):
     embed = render_synthesis(bilingual, "Lancer", ("Cambria",))
     assert embed.description.endswith("\n\n[Source : wiki Warframe](https://wiki.warframe.com/w/Synthesis)")
