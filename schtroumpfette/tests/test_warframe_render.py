@@ -118,13 +118,14 @@ def test_invasion_progress():
     assert invasion_progress({"Count": 500, "Goal": 100, "Faction": "FC_GRINEER"}) == 100
 
 
-def invasions_embed(now, *invasions) -> discord.Embed:
+def invasions_embed(now, *invasions, faction_emojis=None) -> discord.Embed:
     tr = MagicMock()
     tr.node.side_effect = lambda key: key
     tr.faction.side_effect = {"FC_INFESTATION": "Infesté", "FC_CORPUS": "Corpus", "FC_GRINEER": "Grineer"}.get
     tr.item.side_effect = lambda key: key
     tr.known_text.return_value = None
-    ctx = Context(now=now, tr=tr, worldstate={"Invasions": list(invasions)}, worldstate_at=now, schedule=None, tiers={})
+    ctx = Context(now=now, tr=tr, worldstate={"Invasions": list(invasions)}, worldstate_at=now, schedule=None, tiers={},
+                  faction_emojis=faction_emojis or {})
     return render_invasions(ctx)[0]
 
 
@@ -148,6 +149,13 @@ def test_invasion_between_factions_shows_both_sides(now):
     value = invasions_embed(now, invasion(attacker="FC_GRINEER", count=90)).fields[0].value
     assert value.splitlines()[2] == "Progression : Grineer 95 % · Corpus 5 %"
     assert value.startswith("⚔️ **Grineer**")
+
+
+def test_invasion_uses_faction_emojis(now):
+    emojis = {"FC_CORPUS": "<:corpus:1>", "FC_GRINEER": "<:grineer:2>"}
+    value = invasions_embed(now, invasion(attacker="FC_GRINEER"), faction_emojis=emojis).fields[0].value
+    assert value.splitlines()[0].startswith("<:grineer:2> **Grineer**")
+    assert value.splitlines()[1].startswith("<:corpus:1> **Corpus**")
 
 
 def test_invasions_sorted_by_planet_then_node(now):

@@ -67,6 +67,7 @@ class Context:
     schedule: Schedule = field(default_factory=Schedule)
     tiers: dict[str, Tier] = field(default_factory=dict)
     tier_emojis: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_EMOJIS))
+    faction_emojis: dict[str, str] = field(default_factory=dict)
 
 
 # --- Outils ---------------------------------------------------------------------------------------------
@@ -232,12 +233,13 @@ def invasion_sort_key(tr: Translator, invasion: dict) -> tuple[str, str]:
     return planet, node
 
 
-def invasion_value(tr: Translator, invasion: dict) -> str:
+def invasion_value(ctx: Context, invasion: dict) -> str:
+    tr = ctx.tr
     attacker, defender = tr.faction(invasion.get("Faction")), tr.faction(invasion.get("DefenderFaction"))
     attacker_reward, defender_reward = rewards(tr, invasion.get("AttackerReward")), rewards(tr, invasion.get("DefenderReward"))
     progress = invasion_progress(invasion)
-    attacker_line = f"⚔️ **{attacker}** : {attacker_reward}"
-    defender_line = f"🛡️ **{defender}** : {defender_reward}"
+    attacker_line = f"{ctx.faction_emojis.get(invasion.get('Faction'), '⚔️')} **{attacker}** : {attacker_reward}"
+    defender_line = f"{ctx.faction_emojis.get(invasion.get('DefenderFaction'), '🛡️')} **{defender}** : {defender_reward}"
     if invasion.get("Faction") != "FC_INFESTATION":
         return f"{attacker_line}\n{defender_line}\nProgression : {attacker} {progress:.0f} % · {defender} {100 - progress:.0f} %"
     # Contre les Infestés, la jauge part de 100 % côté Infestés et descend vers 0 : seul l'avancement du défenseur parle.
@@ -255,7 +257,7 @@ def render_invasions(ctx: Context) -> list[discord.Embed]:
         name = ctx.tr.node(invasion.get("Node"))
         if ctx.tr.known_text(invasion.get("LocTag")):
             name += f" — {ctx.tr.known_text(invasion.get('LocTag'))}"
-        fields.append((name, invasion_value(ctx.tr, invasion)))
+        fields.append((name, invasion_value(ctx, invasion)))
     if not fields:
         embed.description = "Aucune invasion en cours."
     return [finish(add_fields(embed, fields), ctx)]
