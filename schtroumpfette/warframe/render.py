@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from . import cycles
+from . import cycles, synthesis
 from .arbitrations import DEFAULT_EMOJIS, DURATION, TIER_COLORS, Schedule, Tier, noteworthy
 from .translations import Translator
 from .worldstate import ws_date
@@ -53,7 +53,9 @@ ICONS = {
 COLORS = {
     "fissures": 0xC9A227, "fissures_sp": 0xB71C1C, "tempetes": 0x5C6BC0, "invasions": 0x8D6E63,
     "alertes": 0xFFB300, "events": 0xEC407A, "cycles": 0x26A69A, "circuit": 0x7E57C2, "baro": 0x00897B,
+    "synthese": 0x4FC3F7,
 }
+SYNTHESIS_CREDIT = "Source : wiki.warframe.com (CC BY-NC-SA 3.0)"
 
 
 @dataclass
@@ -261,6 +263,24 @@ def render_invasions(ctx: Context) -> list[discord.Embed]:
     if not fields:
         embed.description = "Aucune invasion en cours."
     return [finish(add_fields(embed, fields), ctx)]
+
+
+def synthesis_location(tr: Translator, place: str) -> str:
+    """"Cambria (Terre / Earth) · Espionnage · Grineer", ou le nom du wiki si le nœud est inconnu."""
+    key = tr.node_key(place)
+    location = tr.node_bilingual(place)
+    return f"{location} · {tr.node_mission(key)} · {tr.node_faction(key)}" if key else location
+
+
+def render_synthesis(tr: Translator, name: str, places: tuple[str, ...]) -> discord.Embed:
+    """Réponse à /warframe cible: : les lieux d'une cible, par planète puis par nœud."""
+    def by_planet(place: str) -> tuple[str, str]:
+        node, _, planet = tr.node_bilingual(place).partition(" (")
+        return synthesis.normalize(planet), synthesis.normalize(node)
+
+    lines = [synthesis_location(tr, place) for place in sorted(places, key=by_planet)]
+    embed = discord.Embed(title=synthesis.label(tr, name), description="\n".join(lines), color=COLORS["synthese"])
+    return embed.set_footer(text=SYNTHESIS_CREDIT)
 
 
 def render_alertes(ctx: Context) -> list[discord.Embed]:

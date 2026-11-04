@@ -38,6 +38,38 @@ def test_build_tables():
     assert "/Lotus/Language/Other/Unused" not in tables["strings"]
 
 
+def english_tables():
+    dict_fr = {"/Node": "Copernic", "/Lua": "Lua", "/Earth": "Terre", "/Cambria": "Cambria", "/Lancer": "Lancier", "/Loud": "HURLEUR"}
+    dict_en = {"/Node": "Copernicus", "/Lua": "Lua", "/Earth": "Earth", "/Cambria": "Cambria", "/Lancer": "Lancer", "/Loud": "Howler"}
+    regions = {"MoonNode4": {"name": "/Node", "systemName": "/Lua", "missionType": "MT_INTEL", "faction": "FC_CORPUS"},
+               "SolNode1": {"name": "/Cambria", "systemName": "/Earth", "missionType": "MT_INTEL", "faction": "FC_CORPUS"}}
+    enemies = {"avatars": {"/Enemy/Lancer": {"name": "/Lancer"}, "/Enemy/Loud": {"name": "/Loud"}, "/Enemy/NoName": {}}}
+    return build_tables(dict_fr, regions, {}, {}, [], {}, dict_en, enemies)
+
+
+def test_english_tables():
+    tr = Translator(english_tables())
+    assert tr.node_key("Copernicus") == "MoonNode4"
+    assert tr.node_key("COPERNICUS") == "MoonNode4"
+    assert tr.node_bilingual("Copernicus") == "Copernic (Lua)"
+    assert tr.node_bilingual("Cambria") == "Cambria (Terre / Earth)"
+    assert tr.enemy("Lancer") == "Lancier"
+    assert tr.enemy("Howler") == "Hurleur"
+
+
+def test_unknown_english_names():
+    tr = Translator(english_tables())
+    assert tr.node_key("Atlantide") is None
+    assert tr.node_bilingual("Atlantide") == "Atlantide"
+    assert tr.enemy("Inconnu") is None
+
+
+def test_cache_without_english_tables_is_rebuilt(tmp_path):
+    tables = {key: value for key, value in tiny_tables().items() if key not in ("nodes_en", "enemies")}
+    translations.write_cache(tmp_path, tables, dt.datetime(2026, 1, 1, tzinfo=dt.UTC))
+    assert translations.read_cache(tmp_path) is None
+
+
 def test_translator_real_data(translator):
     assert translator.node("SolNode450") == "Col de Tyane (Mars)"
     assert translator.node("SaturnHUB") == "Relais Kronia (Saturne)"

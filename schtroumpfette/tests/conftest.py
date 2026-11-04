@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from warframe import DATA_DIR, arbitrations
+from warframe import DATA_DIR, arbitrations, synthesis
 from warframe.translations import Translator
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,3 +59,32 @@ def schedule():
 @pytest.fixture
 def tiers():
     return arbitrations.load_tiers(DATA_DIR / "arbitration_tiers.json")
+
+
+@pytest.fixture
+def synthesis_lua():
+    """Extrait réel du module Synthesis/data du wiki."""
+    return (WARFRAME_DATA / "synthesis.lua").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def targets(synthesis_lua):
+    return synthesis.parse(synthesis_lua, minimum=1)
+
+
+@pytest.fixture
+def bilingual():
+    """Traductions avec les tables anglaises, comme les construit build_tables."""
+    return Translator({
+        "nodes": {"SolNode1": ["Cambria", "Terre", "MT_INTEL", "FC_GRINEER"],
+                  "SolNode2": ["Caloris", "Mercure", "MT_RESCUE", "FC_GRINEER"],
+                  "SolNode3": ["Elion", "Mercure", "MT_CAPTURE", "FC_GRINEER"],
+                  "MoonNode4": ["Copernic", "Lua", "MT_CAPTURE", "FC_GRINEER"],
+                  "SolNode4": ["Ara", "Mars", "MT_CAPTURE", "FC_GRINEER"]},
+        "nodes_en": {"cambria": ["SolNode1", "Earth"], "caloris": ["SolNode2", "Mercury"], "elion": ["SolNode3", "Mercury"],
+                     "copernicus": ["MoonNode4", "Lua"], "ara": ["SolNode4", "Mars"]},
+        "enemies": {"lancer": "Lancier", "shield lancer": "Lancier à Bouclier", "corrupted lancer": "Lancier Corrompu",
+                    "eviscerator": "Éviscérateur", "arid eviscerator": "Éviscérateur Aride", "hellion": "Hellion"},
+        "missions": {"MT_INTEL": "Espionnage", "MT_RESCUE": "Sauvetage", "MT_CAPTURE": "Capture"},
+        "factions": {"FC_GRINEER": "Grineer"},
+    })

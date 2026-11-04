@@ -85,6 +85,77 @@ async def test_warframe_public_answer(cog, interaction, settings_file):
     assert args.kwargs == {"embeds": embeds}  # publique : pas d'ephemeral
 
 
+@pytest.fixture
+def cog_with_targets(cog, settings_file, targets, bilingual):
+    configure(settings_file, command_channel="123")
+    cog.targets, cog.translator = targets, bilingual
+    return cog
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["lancer", "lancier"])
+async def test_warframe_target_answer_is_ephemeral(cog_with_targets, interaction, query):
+    cog, interaction.channel_id = cog_with_targets, 123
+    await cog.warframe.callback(cog, interaction, cible=query)
+    args = interaction.response.send_message.call_args
+    assert args.kwargs["embed"].title == "Lancier (Lancer)" and args.kwargs["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+async def test_warframe_unknown_target_suggests_names(cog_with_targets, interaction):
+    cog, interaction.channel_id = cog_with_targets, 123
+    await cog.warframe.callback(cog, interaction, cible="lansier")
+    args = interaction.response.send_message.call_args
+    assert args.args[0].startswith("Connais pas cette cible. Tu voulais dire : ") and "Lancier (Lancer)" in args.args[0]
+    assert args.kwargs["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+async def test_warframe_unknown_target_without_suggestion(cog_with_targets, interaction):
+    cog, interaction.channel_id = cog_with_targets, 123
+    await cog.warframe.callback(cog, interaction, cible="xyz")
+    assert interaction.response.send_message.call_args.args[0] == "Connais pas cette cible."
+
+
+@pytest.mark.asyncio
+async def test_warframe_target_data_missing(cog, interaction, settings_file):
+    configure(settings_file, command_channel="123")
+    interaction.channel_id = 123
+    await cog.warframe.callback(cog, interaction, cible="lancer")
+    args = interaction.response.send_message.call_args
+    assert "pas dispo" in args.args[0] and args.kwargs["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+async def test_warframe_target_wrong_channel(cog_with_targets, interaction):
+    cog, interaction.channel_id = cog_with_targets, 999
+    await cog.warframe.callback(cog, interaction, cible="lancer")
+    assert interaction.response.send_message.call_args.args[0] == "Mauvais salon, utilise <#123>."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kwargs", [{}, {"sujet": choice("baro"), "cible": "lancer"}])
+async def test_warframe_needs_exactly_one_parameter(cog_with_targets, interaction, kwargs):
+    cog, interaction.channel_id = cog_with_targets, 123
+    await cog.warframe.callback(cog, interaction, **kwargs)
+    args = interaction.response.send_message.call_args
+    assert "`sujet`" in args.args[0] and args.kwargs["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("current", ["lancer", "lancier"])
+async def test_target_autocomplete_in_both_languages(cog_with_targets, interaction, current):
+    cog = cog_with_targets
+    choices = await cog.target_autocomplete(interaction, current)
+    assert choices[0].name == "Lancier (Lancer)" and choices[0].value == "Lancer"
+    assert {choice.value for choice in choices} == {"Lancer", "Shield Lancer", "Corrupted Lancer"}
+
+
+@pytest.mark.asyncio
+async def test_target_autocomplete_without_data(cog, interaction):
+    assert await cog.target_autocomplete(interaction, "lancer") == []
+
+
 # --- /warframe_setup ---------------------------------------------------------------------------------------
 
 def text_channel(channel_id: int):
@@ -192,6 +263,7 @@ async def test_tick_worldstate_down(cog, logs, settings_file, schedule, translat
     now = dt.datetime.now(dt.UTC)
     cog.translator, cog.translations_at = translator, now
     cog.schedule, cog.schedule_at = schedule, now
+    cog.targets_at = now
     failing = AsyncMock(side_effect=WorldstateError("timeout"))
     with patch.object(cog_module, "fetch_worldstate", failing):
         await cog.tick()
@@ -259,11 +331,41 @@ async def test_reference_retry_is_throttled(cog, logs):
     now = dt.datetime.now(dt.UTC)
     cog.refresh_translations = AsyncMock(side_effect=cog_module.translations.TranslationError("down"))
     cog.refresh_schedule = AsyncMock()
+    cog.refresh_targets = AsyncMock()
     await cog.refresh_reference(now)
     await cog.refresh_reference(now + dt.timedelta(minutes=5))
     assert cog.refresh_translations.await_count == 1  # pas de nouvel essai avant 10 min
     await cog.refresh_reference(now + dt.timedelta(minutes=11))
     assert cog.refresh_translations.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_targets_reload_every_seven_days(cog, logs):
+    now = dt.datetime.now(dt.UTC)
+    cog.translations_at = cog.schedule_at = now
+    cog.refresh_targets = AsyncMock()
+    cog.targets_at = now - dt.timedelta(days=6)
+    await cog.refresh_reference(now)
+    cog.refresh_targets.assert_not_awaited()
+    cog.targets_at = now - dt.timedelta(days=8)
+    await cog.refresh_reference(now)
+    cog.refresh_targets.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_targets_failure_keeps_data_and_logs_once(cog, logs, targets):
+    now = dt.datetime.now(dt.UTC)
+    cog.translations_at = cog.schedule_at = now
+    cog.targets = targets
+    failing = AsyncMock(side_effect=cog_module.synthesis.SynthesisError("wiki en panne"))
+    with patch.object(cog_module.synthesis, "download", failing):
+        await cog.refresh_reference(now)
+        await cog.refresh_reference(now + dt.timedelta(minutes=5))   # pas de nouvel essai avant 10 min
+        assert failing.await_count == 1
+        await cog.refresh_reference(now + dt.timedelta(minutes=11))
+    assert failing.await_count == 2
+    assert cog.targets == targets
+    assert logs.await_count == 1 and "cibles injoignable" in logs.call_args.args[1]
 
 
 def test_delay_bounds(cog, worldstate, schedule):

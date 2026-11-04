@@ -15,6 +15,7 @@ EXPORT_BASE = "https://browse.wf/warframe-public-export-plus/"
 EXPORT_TIMEOUT = aiohttp.ClientTimeout(total=60)
 MAX_AGE = dt.timedelta(hours=24)
 CACHE_FILE = "translations.json"
+REQUIRED_TABLES = {"nodes", "nodes_en", "enemies"}
 
 # Exports dont chaque entrée est {"name": "/Lotus/Language/…"} : noms d'objets.
 ITEM_EXPORTS = (
@@ -52,15 +53,23 @@ def normalize_case(text: str) -> str:
 
 
 def build_tables(dict_fr: dict, regions: dict, mission_types: dict, factions: dict, item_exports: list[dict],
-                 recipes: dict) -> dict:
+                 recipes: dict, dict_en: dict | None = None, enemies: dict | None = None) -> dict:
     """Construit les tables compactes à partir des exports complets."""
     def fr(key):
         return dict_fr.get(key) if key else None
 
-    tables = {"strings": {}, "nodes": {}, "missions": {}, "factions": {}, "items": {}, "eras": {}}
+    def en(key):
+        return (dict_en or {}).get(key) if key else None
+
+    tables = {"strings": {}, "nodes": {}, "nodes_en": {}, "enemies": {}, "missions": {}, "factions": {}, "items": {}, "eras": {}}
     for key, region in regions.items():
         tables["nodes"][key] = [fr(region.get("name")), fr(region.get("systemName")),
                                 region.get("missionType"), region.get("faction")]
+        if en(region.get("name")):
+            tables["nodes_en"].setdefault(en(region["name"]).casefold(), [key, en(region.get("systemName"))])
+    for enemy in (enemies or {}).get("avatars", {}).values():
+        if en(enemy.get("name")) and fr(enemy.get("name")):
+            tables["enemies"].setdefault(en(enemy["name"]).casefold(), normalize_case(fr(enemy["name"])))
     for key, mission in mission_types.items():
         if fr(mission.get("name")):
             tables["missions"][key] = normalize_case(fr(mission["name"]))
@@ -92,6 +101,8 @@ class Translator:
         tables = tables or {}
         self.strings = tables.get("strings", {})
         self.nodes = tables.get("nodes", {})
+        self.nodes_en = tables.get("nodes_en", {})
+        self.enemies = tables.get("enemies", {})
         self.missions = tables.get("missions", {})
         self.factions = tables.get("factions", {})
         self.items = tables.get("items", {})
@@ -108,6 +119,23 @@ class Translator:
             return humanize(key)
         name = normalize_case(name)  # quelques nœuds sont en majuscules dans le dictionnaire ("MUNIO")
         return f"{name} ({system})" if system else name
+
+    def node_key(self, english_name: str) -> str | None:
+        """"Copernicus" -> "MoonNode4", ou None si le nœud est inconnu."""
+        return self.nodes_en.get(english_name.casefold(), (None, None))[0]
+
+    def node_bilingual(self, english_name: str) -> str:
+        """"Copernicus" -> "Copernic (Lune / Lua)". Nœud inconnu : le nom anglais tel quel."""
+        key, system_en = self.nodes_en.get(english_name.casefold(), (None, None))
+        if key is None or key not in self.nodes:
+            return english_name
+        name, system = normalize_case(self.nodes[key][0]), self.nodes[key][1]
+        systems = system if not system_en or system == system_en else f"{system} / {system_en}"
+        return f"{name} ({systems})" if systems else name
+
+    def enemy(self, english_name: str) -> str | None:
+        """Nom français d'un ennemi à partir de son nom anglais."""
+        return self.enemies.get(english_name.casefold())
 
     def node_mission(self, key: str) -> str:
         mission = self.nodes.get(key, (None, None, None, None))[2]
@@ -147,6 +175,8 @@ def read_cache(cache_dir: Path) -> tuple[Translator, dt.datetime] | None:
     """Traductions du cache disque et leur date, ou None si absent ou illisible."""
     try:
         data = json.loads((cache_dir / CACHE_FILE).read_text(encoding="utf-8"))
+        if not REQUIRED_TABLES <= data["tables"].keys():  # cache d'une ancienne version : on reconstruit
+            return None
         return Translator(data["tables"]), dt.datetime.fromisoformat(data["built_at"])
     except (OSError, ValueError, KeyError):
         return None
@@ -168,10 +198,10 @@ async def _fetch_json(session: aiohttp.ClientSession, name: str) -> dict:
 async def download_tables(session: aiohttp.ClientSession) -> dict:
     """Télécharge les exports et construit les tables (le calcul tourne hors de la boucle asyncio)."""
     names = ["dict.fr.json", "ExportRegions.json", "ExportMissionTypes.json", "ExportFactions.json",
-             "ExportRecipes.json"] + [f"{name}.json" for name in ITEM_EXPORTS]
+             "ExportRecipes.json", "dict.en.json", "ExportEnemies.json"] + [f"{name}.json" for name in ITEM_EXPORTS]
     try:
         results = await asyncio.gather(*(_fetch_json(session, name) for name in names))
     except (aiohttp.ClientError, TimeoutError, ValueError) as error:
         raise TranslationError(f"{type(error).__name__}: {error}") from error
-    dict_fr, regions, mission_types, factions, recipes, *items = results
-    return await asyncio.to_thread(build_tables, dict_fr, regions, mission_types, factions, items, recipes)
+    dict_fr, regions, mission_types, factions, recipes, dict_en, enemies, *items = results
+    return await asyncio.to_thread(build_tables, dict_fr, regions, mission_types, factions, items, recipes, dict_en, enemies)
