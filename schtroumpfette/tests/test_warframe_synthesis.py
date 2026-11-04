@@ -4,7 +4,7 @@ import aiohttp
 import pytest
 
 from warframe import synthesis
-from warframe.render import SYNTHESIS_CREDIT, render_synthesis
+from warframe.render import SYNTHESIS_SOURCE, render_synthesis
 from warframe.synthesis import SynthesisError, find, label, normalize, parse, search, suggest
 from warframe.translations import Translator
 
@@ -132,15 +132,25 @@ def test_suggest_close_names(targets, bilingual):
 
 # --- Rendu ---------------------------------------------------------------------------------------------------
 
+def places_of(embed) -> list[str]:
+    """Lignes de lieux, sans le lien vers la source."""
+    return embed.description.removesuffix(f"\n\n{SYNTHESIS_SOURCE}").splitlines()
+
+
 def test_render_both_languages(bilingual):
     embed = render_synthesis(bilingual, "Lancer", ("Cambria",))
     assert embed.title == "Lancier (Lancer)"
-    assert embed.description == "Cambria (Terre / Earth) · Espionnage · Grineer"
-    assert embed.footer.text == SYNTHESIS_CREDIT
+    assert places_of(embed) == ["Cambria (Terre / Earth) · Espionnage · Grineer"]
+
+
+def test_render_links_the_source(bilingual):
+    embed = render_synthesis(bilingual, "Lancer", ("Cambria",))
+    assert embed.description.endswith("\n\n[Source : wiki Warframe](https://wiki.warframe.com/w/Synthesis)")
+    assert embed.footer.text is None
 
 
 def test_render_sorted_by_planet_then_node(bilingual):
-    lines = render_synthesis(bilingual, "Lancer", ("Cambria", "Elion", "Caloris", "Ara")).description.splitlines()
+    lines = places_of(render_synthesis(bilingual, "Lancer", ("Cambria", "Elion", "Caloris", "Ara")))
     assert [line.split(" (")[0] for line in lines] == ["Ara", "Caloris", "Elion", "Cambria"]
 
 
@@ -153,12 +163,12 @@ def test_render_same_planet_name_once(bilingual):
 
 
 def test_render_unknown_node(bilingual):
-    assert render_synthesis(bilingual, "Lancer", ("Atlantide",)).description == "Atlantide"
+    assert places_of(render_synthesis(bilingual, "Lancer", ("Atlantide",))) == ["Atlantide"]
 
 
 def test_render_without_translations():
     embed = render_synthesis(Translator(), "Lancer", ("Cambria",))
-    assert (embed.title, embed.description) == ("Lancer", "Cambria")
+    assert (embed.title, places_of(embed)) == ("Lancer", ["Cambria"])
 
 
 def test_every_real_target_fits_in_an_embed(targets, bilingual):

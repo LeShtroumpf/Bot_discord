@@ -55,7 +55,7 @@ COLORS = {
     "alertes": 0xFFB300, "events": 0xEC407A, "cycles": 0x26A69A, "circuit": 0x7E57C2, "baro": 0x00897B,
     "synthese": 0x4FC3F7,
 }
-SYNTHESIS_CREDIT = "Source : wiki.warframe.com (CC BY-NC-SA 3.0)"
+SYNTHESIS_SOURCE = "[Source : wiki Warframe](https://wiki.warframe.com/w/Synthesis)"  # un pied de page ne peut pas contenir de lien
 
 
 @dataclass
@@ -279,8 +279,8 @@ def render_synthesis(tr: Translator, name: str, places: tuple[str, ...]) -> disc
         return synthesis.normalize(planet), synthesis.normalize(node)
 
     lines = [synthesis_location(tr, place) for place in sorted(places, key=by_planet)]
-    embed = discord.Embed(title=synthesis.label(tr, name), description="\n".join(lines), color=COLORS["synthese"])
-    return embed.set_footer(text=SYNTHESIS_CREDIT)
+    description = "\n".join(lines) + f"\n\n{SYNTHESIS_SOURCE}"
+    return discord.Embed(title=synthesis.label(tr, name), description=description, color=COLORS["synthese"])
 
 
 def render_alertes(ctx: Context) -> list[discord.Embed]:
