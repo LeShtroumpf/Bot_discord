@@ -18,8 +18,8 @@ from discord.ext import commands
 from client.event_logs import event_logs
 from commands.moderation.twitch_cmd import MODO_ROLES
 from utils.file_management import settings_file_management
-from warframe import CACHE_DIR, DATA_DIR, arbitrations, emojis, translations
-from warframe.render import TOPICS, Context, next_deadline, render_all
+from warframe import CACHE_DIR, DATA_DIR, arbitrations, emojis, synthesis, translations
+from warframe.render import TOPICS, Context, next_deadline, render_all, render_synthesis
 from warframe.worldstate import WorldstateError, fetch_worldstate
 
 SETTINGS_KEY = "warframe"
@@ -74,6 +74,8 @@ class Warframe(commands.Cog):
         self.published: dict[str, str] = {}   # sujet -> empreinte du dernier contenu publié
         self.changed_at: dict[str, tuple[str, dt.datetime]] = {}  # sujet -> (empreinte, heure du dernier changement)
         self.failing: set[str] = set()        # sources en panne déjà signalées (un seul log par panne)
+        self.targets: dict[str, tuple[str, ...]] = {}  # cibles de synthèse : nom anglais -> lieux
+        self.targets_at: dt.datetime | None = None
         self.next_reference_try: dict[str, dt.datetime] = {}
         self.next_fetch: dt.datetime | None = None  # pas de requête worldstate avant cette heure
         self.fetch_failures = 0               # échecs d'affilée du worldstate
@@ -145,6 +147,9 @@ class Warframe(commands.Cog):
         cached = await asyncio.to_thread(arbitrations.read_cache, CACHE_DIR)
         if cached:
             self.schedule, self.schedule_at = cached
+        cached = await asyncio.to_thread(synthesis.read_cache, CACHE_DIR)
+        if cached:
+            self.targets, self.targets_at = cached
 
     def context(self, now: dt.datetime) -> Context:
         stale = self.worldstate_at is not None and now - self.worldstate_at > STALE_AFTER
@@ -190,9 +195,11 @@ class Warframe(commands.Cog):
         await self.report("worldstate", None)
 
     async def refresh_reference(self, now: dt.datetime):
-        """Traductions (24 h) et planning des arbitrages (7 j), avec un nouvel essai au plus toutes les 10 min."""
+        """Traductions (24 h), planning des arbitrages et cibles de synthèse (7 j), avec un nouvel essai au plus
+        toutes les 10 min."""
         jobs = [("traductions", self.translations_at, translations.MAX_AGE, self.refresh_translations),
-                ("planning", self.schedule_at, arbitrations.MAX_AGE, self.refresh_schedule)]
+                ("planning", self.schedule_at, arbitrations.MAX_AGE, self.refresh_schedule),
+                ("cibles", self.targets_at, synthesis.MAX_AGE, self.refresh_targets)]
         for name, loaded_at, max_age, refresh in jobs:
             if loaded_at and now - loaded_at < max_age:
                 continue
@@ -202,7 +209,7 @@ class Warframe(commands.Cog):
             try:
                 await refresh(now)
                 await self.report(name, None)
-            except (translations.TranslationError, arbitrations.ScheduleError, OSError) as error:
+            except (translations.TranslationError, arbitrations.ScheduleError, synthesis.SynthesisError, OSError) as error:
                 await self.report(name, error)
 
     async def refresh_translations(self, now: dt.datetime):
@@ -213,6 +220,10 @@ class Warframe(commands.Cog):
     async def refresh_schedule(self, now: dt.datetime):
         self.schedule = await arbitrations.download_schedule(self.session, CACHE_DIR)
         self.schedule_at = now
+
+    async def refresh_targets(self, now: dt.datetime):
+        self.targets = await synthesis.download(self.session, CACHE_DIR)
+        self.targets_at = now
 
     def record(self, duration: float):
         stats = self.stats
@@ -287,9 +298,10 @@ class Warframe(commands.Cog):
     # --- Commandes --------------------------------------------------------------------------------------
 
     @app_commands.command(name="warframe", description="Affiche les infos du monde de Warframe")
-    @app_commands.describe(sujet="Le sujet à afficher")
+    @app_commands.describe(sujet="Le sujet à afficher", cible="La cible de synthèse à chercher, en français ou en anglais")
     @app_commands.choices(sujet=[app_commands.Choice(name=label, value=topic) for topic, label in TOPICS.items()])
-    async def warframe(self, interaction: discord.Interaction, sujet: app_commands.Choice[str]):
+    async def warframe(self, interaction: discord.Interaction, sujet: app_commands.Choice[str] | None = None,
+                       cible: str | None = None):
         config = read_config()
         if not config["command_channel"]:
             await interaction.response.send_message("Le module Warframe n'est pas encore configuré.", ephemeral=True)
@@ -298,12 +310,36 @@ class Warframe(commands.Cog):
             await interaction.response.send_message(f"Mauvais salon, utilise <#{config['command_channel']}>.",
                                                     ephemeral=True)
             return
+        if (sujet is None) == (cible is None):
+            await interaction.response.send_message("Choisis un `sujet` ou une `cible`, mais pas les deux.", ephemeral=True)
+            return
+        if cible is not None:
+            await self.answer_target(interaction, cible)
+            return
         embeds = self.rendered.get(sujet.value)
         if not embeds:
             await interaction.response.send_message("Les données Warframe arrivent, réessaie dans quelques secondes.",
                                                     ephemeral=True)
             return
         await interaction.response.send_message(embeds=embeds)
+
+    @warframe.autocomplete("cible")
+    async def target_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return [app_commands.Choice(name=synthesis.label(self.translator, name), value=name)
+                for name in synthesis.search(self.targets, self.translator, current)]
+
+    async def answer_target(self, interaction: discord.Interaction, query: str):
+        if not self.targets:
+            await interaction.response.send_message("Les données de synthèse ne sont pas dispo pour l'instant, réessaie plus tard.",
+                                                    ephemeral=True)
+            return
+        name = synthesis.find(self.targets, self.translator, query)
+        if name is None:
+            close = synthesis.suggest(self.targets, self.translator, query)
+            hint = f" Tu voulais dire : {', '.join(close)} ?" if close else ""
+            await interaction.response.send_message(f"Connais pas cette cible.{hint}", ephemeral=True)
+            return
+        await interaction.response.send_message(embed=render_synthesis(self.translator, name, self.targets[name]), ephemeral=True)
 
     @app_commands.command(name="warframe_setup", description="Configure les salons Warframe")
     @app_commands.describe(salon_info="Salon où les infos sont mises à jour en continu",
