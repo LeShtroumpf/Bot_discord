@@ -5,7 +5,7 @@ import pytest
 from commands import warframe as cog_module
 from commands.warframe import Warframe
 from warframe import emojis
-from warframe.emojis import EMOJI_DIR, TIERS, emoji_name, load_images, plan, sync_tier_emojis
+from warframe.emojis import EMOJI_DIR, FACTIONS, STEMS, TIERS, emoji_name, load_images, plan, sync_emojis
 
 PNG = b"\x89PNG\r\n\x1a\n"
 
@@ -23,9 +23,9 @@ def write_images(directory, **images):
         (directory / f"tier{tier}.png").write_bytes(data)
 
 
-def test_repo_has_an_image_per_tier():
+def test_repo_has_an_image_per_tier_and_faction():
     images = load_images(EMOJI_DIR)
-    assert set(images) == set(TIERS)
+    assert set(images) == set(STEMS)
     assert all(data.startswith(PNG) for data in images.values())
 
 
@@ -67,7 +67,7 @@ async def test_sync_creates_then_deletes(tmp_path):
         return fake_emoji(name, 2)
 
     client.create_application_emoji = AsyncMock(side_effect=create)
-    result = await sync_tier_emojis(client, tmp_path)
+    result = await sync_emojis(client, tmp_path)
     assert result == {"S": f"<:{emoji_name('S', b's')}:1>", "SP": f"<:{emoji_name('SP', b'sp')}:2>"}
     assert created == [emoji_name("SP", b"sp")]
     stale.delete.assert_awaited_once()
@@ -76,24 +76,42 @@ async def test_sync_creates_then_deletes(tmp_path):
 @pytest.mark.asyncio
 async def test_sync_without_images_does_nothing(tmp_path):
     client = MagicMock(fetch_application_emojis=AsyncMock())
-    assert await sync_tier_emojis(client, tmp_path) == {}
+    assert await sync_emojis(client, tmp_path) == {}
     client.fetch_application_emojis.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_cog_uses_managed_emojis():
     cog = Warframe(MagicMock(logs_channel_id="1"))
-    with patch.object(emojis, "sync_tier_emojis", AsyncMock(return_value={"S": "<:tierS_aaaaaaaa:1>"})):
+    with patch.object(emojis, "sync_emojis", AsyncMock(return_value={"S": "<:tierS_aaaaaaaa:1>"})):
         await cog.sync_emojis()
     assert cog.tier_emojis["S"] == "<:tierS_aaaaaaaa:1>"
     assert cog.tier_emojis["A"] == "🟩"  # les autres tiers gardent leur emoji par défaut
+
+
+def test_faction_emojis_are_managed():
+    stale = fake_emoji("factionCorpus_00000000", 1)
+    result = plan([stale], {"FC_CORPUS": b"new"})
+    assert result.delete == [stale]
+    assert result.create["FC_CORPUS"][0] == emoji_name("FC_CORPUS", b"new")
+    assert all(len(emoji_name(key, b"a")) <= 32 for key in FACTIONS)
+
+
+@pytest.mark.asyncio
+async def test_cog_splits_tier_and_faction_emojis():
+    cog = Warframe(MagicMock(logs_channel_id="1"))
+    managed = {"S": "<:tierS_aaaaaaaa:1>", "FC_CORPUS": "<:factionCorpus_aaaaaaaa:2>"}
+    with patch.object(emojis, "sync_emojis", AsyncMock(return_value=managed)):
+        await cog.sync_emojis()
+    assert cog.faction_emojis == {"FC_CORPUS": "<:factionCorpus_aaaaaaaa:2>"}
+    assert "FC_CORPUS" not in cog.tier_emojis
 
 
 @pytest.mark.asyncio
 async def test_cog_keeps_defaults_when_sync_fails():
     cog = Warframe(MagicMock(logs_channel_id="1"))
     failing = AsyncMock(side_effect=OSError("disque"))
-    with patch.object(emojis, "sync_tier_emojis", failing), \
+    with patch.object(emojis, "sync_emojis", failing), \
             patch.object(cog_module.event_logs, "on_error_log", new=AsyncMock()) as logs:
         await cog.sync_emojis()
     assert cog.tier_emojis["S"] == "🟦"
@@ -107,7 +125,7 @@ def test_bar_color_matches_emoji_letter():
 
     PIL = pytest.importorskip("PIL.Image")
     from warframe.arbitrations import TIER_COLORS
-    for tier, data in load_images(EMOJI_DIR).items():
+    for tier, data in ((key, image) for key, image in load_images(EMOJI_DIR).items() if key in TIERS):
         pixels = [p[:3] for p in PIL.open(BytesIO(data)).convert("RGBA").getdata() if p[3] > 250]
         r, g, b = Counter(pixels).most_common(1)[0][0]
         assert TIER_COLORS[tier] == (r << 16) + (g << 8) + b, tier

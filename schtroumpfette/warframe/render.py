@@ -67,6 +67,7 @@ class Context:
     schedule: Schedule = field(default_factory=Schedule)
     tiers: dict[str, Tier] = field(default_factory=dict)
     tier_emojis: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_EMOJIS))
+    faction_emojis: dict[str, str] = field(default_factory=dict)
 
 
 # --- Outils ---------------------------------------------------------------------------------------------
@@ -226,23 +227,37 @@ def invasion_progress(invasion: dict) -> float:
     return max(0.0, min(100.0, (1 + invasion.get("Count", 0) / goal) * scale))
 
 
+def invasion_sort_key(tr: Translator, invasion: dict) -> tuple[str, str]:
+    """Planète puis nœud : l'ordre de l'API change d'une requête à l'autre, ce qui provoquerait des éditions inutiles."""
+    node, _, planet = tr.node(invasion.get("Node")).rpartition(" (")
+    return planet, node
+
+
+def invasion_value(ctx: Context, invasion: dict) -> str:
+    tr = ctx.tr
+    attacker, defender = tr.faction(invasion.get("Faction")), tr.faction(invasion.get("DefenderFaction"))
+    attacker_reward, defender_reward = rewards(tr, invasion.get("AttackerReward")), rewards(tr, invasion.get("DefenderReward"))
+    progress = invasion_progress(invasion)
+    attacker_line = f"{ctx.faction_emojis.get(invasion.get('Faction'), '⚔️')} **{attacker}** : {attacker_reward}"
+    defender_line = f"{ctx.faction_emojis.get(invasion.get('DefenderFaction'), '🛡️')} **{defender}** : {defender_reward}"
+    if invasion.get("Faction") != "FC_INFESTATION":
+        return f"{attacker_line}\n{defender_line}\nProgression : {attacker} {progress:.0f} % · {defender} {100 - progress:.0f} %"
+    # Contre les Infestés, la jauge part de 100 % côté Infestés et descend vers 0 : seul l'avancement du défenseur parle.
+    lines = [attacker_line] if attacker_reward != "—" else []
+    return "\n".join([*lines, defender_line, f"Avancement : {100 - progress:.0f} % · contre les Infestés"])
+
+
 def render_invasions(ctx: Context) -> list[discord.Embed]:
     if ctx.worldstate is None:
         return worldstate_missing("invasions", COLORS["invasions"], ctx)
     embed = header(discord.Embed(color=COLORS["invasions"]), "Invasions", "invasions")
     fields = []
-    for invasion in ctx.worldstate.get("Invasions", []):
-        if invasion.get("Completed"):
-            continue
-        attacker, defender = ctx.tr.faction(invasion.get("Faction")), ctx.tr.faction(invasion.get("DefenderFaction"))
-        progress = invasion_progress(invasion)
+    running = [invasion for invasion in ctx.worldstate.get("Invasions", []) if not invasion.get("Completed")]
+    for invasion in sorted(running, key=lambda invasion: invasion_sort_key(ctx.tr, invasion)):
         name = ctx.tr.node(invasion.get("Node"))
         if ctx.tr.known_text(invasion.get("LocTag")):
             name += f" — {ctx.tr.known_text(invasion.get('LocTag'))}"
-        value = (f"⚔️ **{attacker}** : {rewards(ctx.tr, invasion.get('AttackerReward'))}\n"
-                 f"🛡️ **{defender}** : {rewards(ctx.tr, invasion.get('DefenderReward'))}\n"
-                 f"Progression : {attacker} {progress:.0f} % · {defender} {100 - progress:.0f} %")
-        fields.append((name, value))
+        fields.append((name, invasion_value(ctx, invasion)))
     if not fields:
         embed.description = "Aucune invasion en cours."
     return [finish(add_fields(embed, fields), ctx)]

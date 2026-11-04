@@ -67,6 +67,7 @@ class Warframe(commands.Cog):
         self.schedule_at: dt.datetime | None = None
         self.tiers = arbitrations.load_tiers(DATA_DIR / "arbitration_tiers.json")
         self.tier_emojis = arbitrations.load_tier_emojis(DATA_DIR / "arbitration_tiers.json")
+        self.faction_emojis: dict[str, str] = {}  # faction du worldstate -> emoji ; vide = ⚔️ / 🛡️ dans les invasions
         self.worldstate: dict | None = None
         self.worldstate_at: dt.datetime | None = None
         self.rendered: dict[str, list[discord.Embed]] = {}
@@ -126,15 +127,16 @@ class Warframe(commands.Cog):
             self.wakeup.clear()
 
     async def sync_emojis(self):
-        """Emojis de tier : créés / retrouvés comme emojis d'application à partir de warframe/data/emojis/.
-        En cas d'échec, on garde les emojis du fichier de tiers (carrés de couleur par défaut)."""
+        """Emojis de tier et de faction : créés / retrouvés comme emojis d'application à partir de warframe/data/emojis/.
+        En cas d'échec, on garde les emojis du fichier de tiers (carrés de couleur par défaut) et ⚔️ / 🛡️."""
         try:
-            managed = await emojis.sync_tier_emojis(self.bot)
+            managed = await emojis.sync_emojis(self.bot)
         except (discord.DiscordException, OSError, ValueError) as error:
             await self.report("emojis", error)
             return
-        self.tier_emojis = {**self.tier_emojis, **managed}
-        self.published.clear()  # republier l'arbitrage avec les nouveaux emojis
+        self.tier_emojis = {**self.tier_emojis, **{key: managed[key] for key in emojis.TIERS if key in managed}}
+        self.faction_emojis = {key: managed[key] for key in emojis.FACTIONS if key in managed}
+        self.published.clear()  # republier l'arbitrage et les invasions avec les nouveaux emojis
 
     async def load_caches(self):
         cached = await asyncio.to_thread(translations.read_cache, CACHE_DIR)
@@ -147,7 +149,8 @@ class Warframe(commands.Cog):
     def context(self, now: dt.datetime) -> Context:
         stale = self.worldstate_at is not None and now - self.worldstate_at > STALE_AFTER
         return Context(now=now, tr=self.translator, worldstate=self.worldstate, worldstate_at=self.worldstate_at,
-                       stale=stale, schedule=self.schedule, tiers=self.tiers, tier_emojis=self.tier_emojis)
+                       stale=stale, schedule=self.schedule, tiers=self.tiers, tier_emojis=self.tier_emojis,
+                       faction_emojis=self.faction_emojis)
 
     def delay(self, now: dt.datetime) -> float:
         """Temps avant le prochain tour : échéance à afficher ou requête à faire, selon ce qui vient en premier."""
