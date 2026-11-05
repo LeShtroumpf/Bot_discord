@@ -59,151 +59,70 @@ class TwitchMessage:
 
 
 class LogsMessage:
-    def create_embed(self, data, type: str):
-        if type in ['edit', 'delete']:  # message management
-            try:
-                user = data['user']
-                message_before = data['message_before']
-                channel = data["channel"]
-                if type == 'edit':
-                    message_after = data['message_after']
-                    embed_logs = discord.Embed(
-                        color=int("ff7d00", 16),
-                        description=f"{user.mention} a modifié son message dans {channel.mention}.",
-                        timestamp=datetime.now()
-                    )
-                    embed_logs.add_field(
-                        name="Après:",
-                        value=f"{message_after}",
-                        inline=False
-                    )
-                if type == 'delete':
-                    embed_logs = discord.Embed(
-                        color=int("ff0000", 16),
-                        description=f"{user.mention} a supprimé son message dans {channel.mention}.",
-                        timestamp=datetime.now()
-                    )
-                embed_logs.set_author(
-                    icon_url=f"{user.avatar}",
-                    name=f"{user}"
-                )
-                embed_logs.add_field(
-                    name="Avant:\n",
-                    value=f"{message_before}",
-                    inline=False
-                )
+    """Embeds du salon de logs : une méthode par type de log."""
+    FIELD_MAX = 1024
+    NO_TEXT = "(pas de texte)"
+    UNKNOWN_TEXT = "(ancien texte inconnu)"
 
-                return embed_logs
-            except Exception as e:
-                Exception(f"error with type edit or delete: {e}")
+    def _embed(self, color: int, description: str, user=None) -> discord.Embed:
+        embed = discord.Embed(color=color, description=description, timestamp=datetime.now())
+        if user is not None:
+            embed.set_author(name=str(user), icon_url=user.display_avatar.url)  # avatar par défaut si pas de photo
+        return embed
 
-        elif type in ['join', 'leave']:  # member join or leave
-            try:
-                user = data['user']
-                if type == 'join':
-                    embed_logs = discord.Embed(
-                        color=int("00ff10", 16),
-                        description=f"{user.mention} a rejoints le serveur.",
-                        timestamp=datetime.now()
-                    )
-                    date_creation_account = datetime.fromisoformat(str(user.created_at))
-                    age_account = relativedelta(datetime.now(timezone.utc), date_creation_account)
-                    embed_logs.add_field(
-                        name="Date de création de compte:",
-                        value=f"{age_account.years} année, {age_account.months} mois, {age_account.days} jours"
-                    )
-                elif type == 'leave':
-                    embed_logs = discord.Embed(
-                        color=int("ff0000", 16),
-                        description=f"{user.mention} a quitté le serveur.",
-                        timestamp=datetime.now()
-                    )
+    def _field_text(self, text: str | None) -> str:
+        """Texte d'un message pour un champ d'embed : jamais vide, jamais trop long. None = texte inconnu."""
+        if text is None:
+            return self.UNKNOWN_TEXT
+        if len(text) > self.FIELD_MAX:
+            return text[:self.FIELD_MAX - 1] + "…"
+        return text or self.NO_TEXT
 
-                embed_logs.set_author(
-                    icon_url=f"{user.avatar}",
-                    name=f"{user}"
-                )
-                embed_logs.set_thumbnail(url=user.avatar)
-                return embed_logs
-            except Exception as e:
-                raise Exception(f"error with join or leave type: {e}")
+    def edit(self, user, channel_id: int, before: str | None, after: str) -> discord.Embed:
+        embed = self._embed(0xff7d00, f"{user.mention} a modifié son message dans <#{channel_id}>.", user)
+        embed.add_field(name="Après:", value=self._field_text(after), inline=False)
+        embed.add_field(name="Avant:", value=self._field_text(before), inline=False)
+        return embed
 
-        elif type in ['add', 'remove']:  # role management
-            try:
-                user = data["user"]
-                role = data["role"]
-                if type == 'add':
-                    embed_logs = discord.Embed(
-                        color=int("002aff", 16),
-                        description=f"{user.mention} a obtenu le rôle {role.name}",
-                        timestamp=datetime.now()
-                    )
-                    embed_logs.set_author(
-                        icon_url=f"{user.avatar}",
-                        name=f"{user}"
-                    )
-                    return embed_logs
-                if type == 'remove':
-                    embed_logs = discord.Embed(
-                        color=int("ff0000", 16),
-                        description=f"{user.mention} a perdu le rôle {role.name}",
-                        timestamp=datetime.now()
-                    )
-                    embed_logs.set_author(
-                        icon_url=f"{user.avatar}",
-                        name=f"{user}"
-                    )
-                    return embed_logs
-            except Exception as e:
-                raise Exception(f"error with add or remove type: {e}")
+    def delete(self, user, channel_id: int, text: str) -> discord.Embed:
+        embed = self._embed(0xff0000, f"{user.mention} a supprimé son message dans <#{channel_id}>.", user)
+        embed.add_field(name="Avant:", value=self._field_text(text), inline=False)
+        return embed
 
-        elif type == "voice":  # voice management
-            try:
-                after = data["after"]
-                before = data["before"]
-                user = data["user"]
-                if after.channel is None:
-                    embed_logs = discord.Embed(
-                        color=int("ff0000", 16),
-                        description=f"{user.mention} a quitté le vocal {before.channel.mention}",
-                        timestamp=datetime.now()
-                    )
-                elif before.channel is None:
-                    embed_logs = discord.Embed(
-                        color=int("002aff", 16),
-                        description=f"{user.mention} a rejoint le vocal {after.channel.mention}",
-                        timestamp=datetime.now()
-                    )
-                else:
-                    embed_logs = discord.Embed(
-                        color=int("ff8333", 16),
-                        description=f"{user.mention} a switch de vocal {before.channel.mention} -> {after.channel.mention}",
-                        timestamp=datetime.now()
-                    )
-                embed_logs.set_author(
-                    icon_url=f"{user.avatar}",
-                    name=f"{user}"
-                )
-                return embed_logs
-            except Exception as e:
-                raise Exception(f"error with join_voice or leave_voice or move_voice type: {e}")
+    def delete_unknown(self, channel_id: int) -> discord.Embed:
+        """Message absent du cache : Discord ne donne ni l'auteur ni le texte."""
+        return self._embed(0xff0000, f"Un message a été supprimé dans <#{channel_id}> (auteur et texte inconnus).")
 
-        elif type == 'error':
-            try:
-                error = data["error"]
-                origine = data["origine"]
-                embed_logs = discord.Embed(
-                    color=int("000000", 16),
-                    description=f"Error with last event: {origine}",
-                    timestamp=datetime.now()
-                )
-                embed_logs.add_field(
-                    name="Error content:",
-                    value=error
-                )
-                return embed_logs
-            except Exception as e:
-                raise Exception(f"error with error: {e}")
+    def join(self, user) -> discord.Embed:
+        embed = self._embed(0x00ff10, f"{user.mention} a rejoints le serveur.", user)
+        age = relativedelta(datetime.now(timezone.utc), user.created_at)
+        embed.add_field(name="Date de création de compte:", value=f"{age.years} année, {age.months} mois, {age.days} jours")
+        return embed.set_thumbnail(url=user.display_avatar.url)
+
+    def leave(self, user) -> discord.Embed:
+        embed = self._embed(0xff0000, f"{user.mention} a quitté le serveur.", user)
+        return embed.set_thumbnail(url=user.display_avatar.url)
+
+    def role_added(self, user, role) -> discord.Embed:
+        return self._embed(0x002aff, f"{user.mention} a obtenu le rôle {role.name}", user)
+
+    def role_removed(self, user, role) -> discord.Embed:
+        return self._embed(0xff0000, f"{user.mention} a perdu le rôle {role.name}", user)
+
+    def voice(self, user, before, after) -> discord.Embed:
+        if after.channel is None:
+            return self._embed(0xff0000, f"{user.mention} a quitté le vocal {before.channel.mention}", user)
+        if before.channel is None:
+            return self._embed(0x002aff, f"{user.mention} a rejoint le vocal {after.channel.mention}", user)
+        return self._embed(0xff8333, f"{user.mention} a switch de vocal {before.channel.mention} -> {after.channel.mention}", user)
+
+    def error(self, origine: str, text: str, repeats: int = 0) -> discord.Embed:
+        description = f"Error with last event: {origine}"
+        if repeats:
+            description += f" (répétée {repeats} fois)"
+        embed = self._embed(0x000000, description)
+        embed.add_field(name="Error content:", value=self._field_text(text))
+        return embed
 
 
 GeoGuessrChallenge = GeoGuessrChallenge()

@@ -1,5 +1,4 @@
-import asyncio  # noqa
-import json  # noqa
+import functools
 
 import discord
 from discord import app_commands
@@ -9,6 +8,19 @@ from .twitch import twitch
 from .event_action import EventAction
 from .event_logs import event_logs
 from utils.file_management import settings_file_management
+
+
+def log_errors(origine: str):
+    """Une exception dans un event ou une tâche part dans le salon de logs, avec son origine."""
+    def decorator(handler):
+        @functools.wraps(handler)
+        async def wrapper(self, *args, **kwargs):
+            try:
+                await handler(self, *args, **kwargs)
+            except Exception as error:
+                await event_logs.on_error_log(self, error, origine=origine, channel=self.logs_channel)
+        return wrapper
+    return decorator
 
 
 class EventListener(commands.Bot):
@@ -24,73 +36,59 @@ class EventListener(commands.Bot):
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
 
+    @property
+    def logs_channel(self) -> discord.abc.GuildChannel | None:
+        return self.get_channel(int(self.logs_channel_id or 0))
+
     async def on_ready(self):
         synced = await self.tree.sync()
         print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
         await self.on_post_online_stream.start()
 
+    @log_errors("on_raw_message_edit")
     async def on_raw_message_edit(self, payload):
         """Called when a message is edited."""
         if payload.message.author.bot:
             return  # modifications des bots (dont les messages Warframe mis à jour en continu) : pas de log
-        logs_channel = self.get_channel(int(self.logs_channel_id))
-        await event_logs.on_message_edit_log(self, payload=payload, channel=logs_channel)
+        await event_logs.on_message_edit_log(self, payload=payload, channel=self.logs_channel)
 
+    @log_errors("on_raw_message_delete")
     async def on_raw_message_delete(self, payload):
         """Called when a message is deleted."""
-        logs_channel = self.get_channel(int(self.logs_channel_id))
-        await event_logs.on_message_delete_log(self, payload=payload, channel=logs_channel)
+        await event_logs.on_message_delete_log(self, payload=payload, channel=self.logs_channel)
 
+    @log_errors("on_reaction_add")
     async def on_raw_reaction_add(self, payload):
         """Called when a reaction is added to a message."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await self.event_actions.on_reaction_add_action(self, payload)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_reaction_add", channel=logs_channel)
+        await self.event_actions.on_reaction_add_action(self, payload)
 
+    @log_errors("on_reaction_remove")
     async def on_raw_reaction_remove(self, payload):
         """Called when a reaction is removed from a message."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await self.event_actions.on_reaction_remove_action(self, payload)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_reaction_remove", channel=logs_channel)
+        await self.event_actions.on_reaction_remove_action(self, payload)
 
+    @log_errors("on_member_join")
     async def on_member_join(self, member):
         """Called when a member joins the server."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await self.event_actions.on_member_join_action(self, member)
-            await event_logs.on_member_join_log(self, member, logs_channel)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_member_join", channel=logs_channel)
+        await self.event_actions.on_member_join_action(self, member)
+        await event_logs.on_member_join_log(self, member, channel=self.logs_channel)
 
+    @log_errors("on_raw_member_remove")
     async def on_raw_member_remove(self, payload):
         """Called when a member leaves the server."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await event_logs.on_raw_member_remove_log(self, payload, logs_channel)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_raw_member_remove", channel=logs_channel)
+        await event_logs.on_raw_member_remove_log(self, payload, channel=self.logs_channel)
 
+    @log_errors("on_member_update")
     async def on_member_update(self, before, after):
         """Called when a member is updated (roles, nickname, etc.)."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await event_logs.on_member_update_log(self, before, after, logs_channel)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_member_update", channel=logs_channel)
+        await event_logs.on_member_update_log(self, before, after, channel=self.logs_channel)
 
+    @log_errors("on_voice_state_update")
     async def on_voice_state_update(self, member, before, after):
         """Called when a member joins, leaves, or switches voice channels."""
-        try:
-            logs_channel = self.get_channel(int(self.logs_channel_id))
-            await self.event_actions.on_voice_state_update_action(self, member, before, after)
-            await event_logs.on_voice_state_update_log(self, member, before, after, logs_channel)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_voice_state_update", channel=logs_channel)
+        await self.event_actions.on_voice_state_update_action(self, member, before, after)
+        await event_logs.on_voice_state_update_log(self, member, before, after, channel=self.logs_channel)
 
     async def on_message(self, message):
         if not message.content.startswith("$"):
@@ -130,20 +128,17 @@ class EventListener(commands.Bot):
         pass
 
     async def on_command_error(self, ctx, error):
-        logs_channel = self.get_channel(int(self.logs_channel_id))
         if isinstance(error, commands.errors.CheckFailure):
             await ctx.send("Tu n'as pas le droit d'utiliser "
                            "cette commande petit chenapan! :wink:")
-        await event_logs.on_error_log(self, error, origine="on_commande_error", channel=logs_channel)
+        await event_logs.on_error_log(self, error, origine="on_commande_error", channel=self.logs_channel)
 
     @tasks.loop(minutes=1)
+    @log_errors("on_post_online_stream")
     async def on_post_online_stream(self):
-        try:
-            channel = self.get_channel(int(self.stream_channel))
-            if channel:
-                await twitch.is_online_streamer(channel)
-        except Exception as error:
-            await event_logs.on_error_log(self, error, origine="on_post_online_stream",)
+        channel = self.get_channel(int(self.stream_channel))
+        if channel:
+            await twitch.is_online_streamer(channel)
 
     @on_post_online_stream.before_loop
     async def before_on_post_online_stream(self):
@@ -166,12 +161,11 @@ class EventListener(commands.Bot):
         if isinstance(error, app_commands.CommandInvokeError):
             error = error.original
         command = f"/{interaction.command.name}" if interaction.command else "slash command"
-        logs_channel = self.get_channel(int(self.logs_channel_id))
         await event_logs.on_error_log(
             self,
             f"{interaction.user} : {type(error).__name__}: {error}",
             origine=command,
-            channel=logs_channel,
+            channel=self.logs_channel,
         )
 
     async def setup_hook(self):
