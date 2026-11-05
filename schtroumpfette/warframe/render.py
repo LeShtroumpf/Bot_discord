@@ -369,17 +369,12 @@ def render_cycles(ctx: Context) -> list[discord.Embed]:
 
 
 def render_circuit(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
-        return worldstate_missing("circuit", COLORS["circuit"], ctx)
     embed = header(discord.Embed(color=COLORS["circuit"]), "Circuit (Duviri)", "circuit")
-    choices = (ctx.worldstate.get("duviriCycle") or {}).get("choices", [])
-    if not choices:
-        embed.description = "Rotation inconnue pour le moment."
-        return [finish(embed, ctx)]
     embed.description = f"Nouvelle rotation {ts(cycles.circuit_rotation_end(ctx.now))}"
-    labels = {"EXC_NORMAL": "Normal — Warframes", "EXC_HARD": "Route de l'Acier — Adaptateurs Incarnon Genesis"}
-    fields = [(labels.get(c.get("categoryKey"), c.get("category", "?")), ", ".join(c.get("choices", [])) or "—") for c in choices]
-    return [finish(add_fields(embed, fields), ctx)]
+    warframes, incarnon = cycles.circuit_choices(ctx.now)
+    fields = [("Circuit", ", ".join(warframes)), ("Circuit — Route de l'Acier", ", ".join(incarnon))]
+    # Rotation calculée : pas de données périmées possibles.
+    return [finish(add_fields(embed, fields), ctx, needs_worldstate=False)]
 
 
 def render_baro(ctx: Context) -> list[discord.Embed]:
@@ -443,8 +438,7 @@ def next_deadline(ctx: Context) -> dt.datetime | None:
     bounty_end = cycles.cetus_bounty_end(ctx.worldstate)
     if bounty_end:
         candidates.append(cycles.cetus(bounty_end, ctx.now).ends_at)
-    if ctx.worldstate:
-        candidates.append(cycles.circuit_rotation_end(ctx.now))
+    candidates.append(cycles.circuit_rotation_end(ctx.now))
     for key in ("fissures", "alerts", "events"):
         candidates += [ws_date(entry.get("expiry")) for entry in (ctx.worldstate or {}).get(key, [])]
     for trader in (ctx.worldstate or {}).get("voidTraders", []):

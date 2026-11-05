@@ -123,19 +123,19 @@ def test_baro_inventory_without_prices(now):
     assert embed.fields[0].value == "Truc — 0 ducats, 0 crédits"
 
 
-def test_circuit_uses_the_weekly_rotation_not_the_mood(now):
-    worldstate = {"duviriCycle": {"expiry": ws_date(now + dt.timedelta(hours=1)), "choices": [
-        {"category": "normal", "categoryKey": "EXC_NORMAL", "choices": ["Ivara", "Inaros"]},
-        {"category": "hard", "categoryKey": "EXC_HARD", "choices": ["Braton"]}]}}
-    embed = render_circuit(Context(now=now, tr=Translator(), worldstate=worldstate, worldstate_at=now))[0]
+def test_circuit_is_computed_without_worldstate():
+    now = dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)
+    embed = render_circuit(Context(now=now, tr=Translator()))[0]
     assert str(int(circuit_rotation_end(now).timestamp())) in embed.description
-    assert [f.name for f in embed.fields] == ["Normal — Warframes", "Route de l'Acier — Adaptateurs Incarnon Genesis"]
-    assert embed.fields[0].value == "Ivara, Inaros"
+    assert [f.name for f in embed.fields] == ["Circuit", "Circuit — Route de l'Acier"]
+    assert embed.fields[0].value == "Ivara, Inaros, Titania"
+    assert embed.footer.text is None
 
 
-def test_circuit_without_choices(now):
-    embed = render_circuit(Context(now=now, tr=Translator(), worldstate={}, worldstate_at=now))[0]
-    assert embed.description == "Rotation inconnue pour le moment."
+def test_circuit_is_never_stale():
+    now = dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)
+    embed = render_circuit(Context(now=now, tr=Translator(), worldstate={}, worldstate_at=now - dt.timedelta(hours=1), stale=True))[0]
+    assert embed.footer.text is None
 
 
 def test_events_shows_score_node_and_rewards(now):

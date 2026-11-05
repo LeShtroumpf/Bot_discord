@@ -1,7 +1,9 @@
 """Cycles des zones ouvertes : Cetus (Plaines d'Eidolon), Vallée Orbis, Puits Cambion."""
 import datetime as dt
+import json
 from dataclasses import dataclass
 
+from . import DATA_DIR
 from .worldstate import ws_date
 
 # Cetus et Cambion suivent le cycle des primes d'Ostron : 150 min, dont les 50 dernières de nuit (Vome).
@@ -12,6 +14,11 @@ CETUS_NIGHT = dt.timedelta(minutes=50)
 VALLIS_REFERENCE = dt.datetime.fromtimestamp(1541837628, tz=dt.UTC)
 VALLIS_CYCLE = dt.timedelta(seconds=1600)
 VALLIS_WARM = dt.timedelta(seconds=400)
+
+# Circuit : rotation hebdomadaire fixe. Tables reprises de browse.wf (warframestat ne donne pas la date de rotation et tombe souvent).
+CIRCUIT = json.loads((DATA_DIR / "circuit_rotation.json").read_text(encoding="utf-8"))
+CIRCUIT_EPOCH = dt.datetime.fromtimestamp(CIRCUIT["epoch"], tz=dt.UTC)
+WEEK = dt.timedelta(days=7)
 
 
 @dataclass(frozen=True)
@@ -48,9 +55,14 @@ def cambion(bounty_end: dt.datetime, now: dt.datetime) -> Cycle:
 
 
 def circuit_rotation_end(now: dt.datetime) -> dt.datetime:
-    """Prochain lundi à 00:00 UTC. L'API ne donne que la fin de l'humeur de Duviri (2 h), pas celle de la rotation."""
-    midnight = now.astimezone(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    return midnight + dt.timedelta(days=7 - midnight.weekday())
+    """Fin de la rotation en cours : le lundi suivant à 00:00 UTC."""
+    return CIRCUIT_EPOCH + WEEK * ((now - CIRCUIT_EPOCH) // WEEK + 1)
+
+
+def circuit_choices(now: dt.datetime) -> tuple[list[str], list[str]]:
+    """(Warframes, armes Incarnon) de la semaine contenant now."""
+    week = (now - CIRCUIT_EPOCH) // WEEK
+    return CIRCUIT["warframes"][week % len(CIRCUIT["warframes"])], CIRCUIT["incarnon"][week % len(CIRCUIT["incarnon"])]
 
 
 def vallis(now: dt.datetime) -> Cycle:
