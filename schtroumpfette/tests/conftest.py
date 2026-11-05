@@ -35,13 +35,13 @@ def interaction():
 
 @pytest.fixture
 def worldstate():
-    """Worldstate réel enregistré (réduit aux clés utilisées)."""
+    """Réponse réelle de warframestat.us (/pc/fr/), réduite aux clés utilisées."""
     return json.loads((WARFRAME_DATA / "worldstate.json").read_text(encoding="utf-8"))
 
 
 @pytest.fixture
 def now(worldstate):
-    return dt.datetime.fromtimestamp(worldstate["Time"], tz=dt.UTC)
+    return dt.datetime.fromisoformat(worldstate["timestamp"])
 
 
 @pytest.fixture

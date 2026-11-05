@@ -91,20 +91,20 @@ async def test_cog_uses_managed_emojis():
 
 def test_faction_emojis_are_managed():
     stale = fake_emoji("factionCorpus_00000000", 1)
-    result = plan([stale], {"FC_CORPUS": b"new"})
+    result = plan([stale], {"Corpus": b"new"})
     assert result.delete == [stale]
-    assert result.create["FC_CORPUS"][0] == emoji_name("FC_CORPUS", b"new")
+    assert result.create["Corpus"][0] == emoji_name("Corpus", b"new")
     assert all(len(emoji_name(key, b"a")) <= 32 for key in FACTIONS)
 
 
 @pytest.mark.asyncio
 async def test_cog_splits_tier_and_faction_emojis():
     cog = Warframe(MagicMock(logs_channel_id="1"))
-    managed = {"S": "<:tierS_aaaaaaaa:1>", "FC_CORPUS": "<:factionCorpus_aaaaaaaa:2>"}
+    managed = {"S": "<:tierS_aaaaaaaa:1>", "Corpus": "<:factionCorpus_aaaaaaaa:2>"}
     with patch.object(emojis, "sync_emojis", AsyncMock(return_value=managed)):
         await cog.sync_emojis()
-    assert cog.faction_emojis == {"FC_CORPUS": "<:factionCorpus_aaaaaaaa:2>"}
-    assert "FC_CORPUS" not in cog.tier_emojis
+    assert cog.faction_emojis == {"Corpus": "<:factionCorpus_aaaaaaaa:2>"}
+    assert "Corpus" not in cog.tier_emojis
 
 
 @pytest.mark.asyncio

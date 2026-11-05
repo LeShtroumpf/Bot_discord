@@ -26,6 +26,13 @@ def test_cambion_follows_cetus():
     assert cycles.cambion(END, END - dt.timedelta(minutes=10)).state == "Vome"
 
 
+def test_circuit_rotation_ends_next_monday():
+    monday = dt.datetime(2026, 11, 9, tzinfo=dt.UTC)
+    assert cycles.circuit_rotation_end(dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)) == monday
+    assert cycles.circuit_rotation_end(monday - dt.timedelta(seconds=1)) == monday
+    assert cycles.circuit_rotation_end(monday) == monday + dt.timedelta(days=7)  # juste après le changement
+
+
 def test_vallis():
     ref = cycles.VALLIS_REFERENCE
     warm = cycles.vallis(ref + dt.timedelta(seconds=10))
@@ -45,4 +52,4 @@ def test_vallis_matches_warframestat():
 def test_bounty_end_from_worldstate(worldstate):
     assert cycles.cetus_bounty_end(worldstate) is not None
     assert cycles.cetus_bounty_end(None) is None
-    assert cycles.cetus_bounty_end({"SyndicateMissions": []}) is None
+    assert cycles.cetus_bounty_end({"syndicateMissions": []}) is None
