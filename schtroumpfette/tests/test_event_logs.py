@@ -56,6 +56,37 @@ async def test_unchanged_text_is_ignored(logs):
 
 
 @pytest.mark.asyncio
+async def test_link_preview_on_an_unedited_message_is_ignored(logs):
+    channel = logs_channel()
+    payload = edit_payload(False, None, "https://exemple.fr")
+    payload.message.edited_at = None
+    await logs.on_message_edit_log(MagicMock(), payload=payload, channel=channel)
+    channel.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_join_is_logged_even_if_the_welcome_dm_fails():
+    listener = MagicMock()
+    listener.event_actions.on_member_join_action = AsyncMock(side_effect=RuntimeError("MP fermés"))
+    with patch.object(event_logs, "on_member_join_log", new=AsyncMock()) as log, \
+            patch.object(event_logs, "on_error_log", new=AsyncMock()) as error:
+        await EventListener.on_member_join(listener, MagicMock())
+    log.assert_awaited_once()
+    assert error.await_args.kwargs["origine"] == "on_member_join"
+
+
+@pytest.mark.asyncio
+async def test_voice_is_logged_even_if_the_action_fails():
+    listener = MagicMock()
+    listener.event_actions.on_voice_state_update_action = AsyncMock(side_effect=RuntimeError("boum"))
+    with patch.object(event_logs, "on_voice_state_update_log", new=AsyncMock()) as log, \
+            patch.object(event_logs, "on_error_log", new=AsyncMock()) as error:
+        await EventListener.on_voice_state_update(listener, MagicMock(), MagicMock(), MagicMock())
+    log.assert_awaited_once()
+    error.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_delete_of_a_cached_message_names_the_author(logs):
     channel = logs_channel()
     payload = MagicMock(channel_id=7, cached_message=MagicMock(content="texte", author=MagicMock(mention="<@42>")))

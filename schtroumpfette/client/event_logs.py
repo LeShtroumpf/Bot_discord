@@ -67,10 +67,12 @@ class EventLogs:
 
     @log_failures
     async def on_message_edit_log(self, bot: commands.Bot, payload: discord.RawMessageUpdateEvent, *, channel: discord.TextChannel):
+        if payload.message.edited_at is None:
+            return  # jamais édité par son auteur : mise à jour de Discord (ex. aperçu de lien ajouté)
         after = payload.message.content
         before = payload.cached_message.content if payload.cached_message else None
         if before == after:
-            return  # pas de changement de texte (ex. aperçu de lien ajouté)
+            return  # pas de changement de texte
         await self.send(channel, logs_message.edit(payload.message.author, payload.channel_id, before, after))
 
     @log_failures

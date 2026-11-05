@@ -71,8 +71,8 @@ class EventListener(commands.Bot):
     @log_errors("on_member_join")
     async def on_member_join(self, member):
         """Called when a member joins the server."""
+        await event_logs.on_member_join_log(self, member, channel=self.logs_channel)  # avant l'action : MP fermés = erreur
         await self.event_actions.on_member_join_action(self, member)
-        await event_logs.on_member_join_log(self, member, channel=self.logs_channel)
 
     @log_errors("on_raw_member_remove")
     async def on_raw_member_remove(self, payload):
@@ -87,8 +87,8 @@ class EventListener(commands.Bot):
     @log_errors("on_voice_state_update")
     async def on_voice_state_update(self, member, before, after):
         """Called when a member joins, leaves, or switches voice channels."""
-        await self.event_actions.on_voice_state_update_action(self, member, before, after)
         await event_logs.on_voice_state_update_log(self, member, before, after, channel=self.logs_channel)
+        await self.event_actions.on_voice_state_update_action(self, member, before, after)
 
     async def on_message(self, message):
         if not message.content.startswith("$"):
