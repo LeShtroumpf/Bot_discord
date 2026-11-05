@@ -22,6 +22,7 @@ TOPICS = {
 }
 UPCOMING_WINDOW = dt.timedelta(hours=3)
 NOTEWORTHY_WINDOW = dt.timedelta(hours=24)
+STEEL_PATH_EVENT_RATIO = 1.5  # ressource d'event en Steel Path : 50 → 75 (quantité absente du worldstate)
 
 FIELD_MAX = 1024
 FIELDS_MAX = 25
@@ -136,6 +137,20 @@ def rewards(tr: Translator, reward: dict | None) -> str:
     if reward.get("credits"):
         parts.append(f"{number(reward['credits'])} crédits")
     return ", ".join(parts) or "—"
+
+
+def alert_rewards(tr: Translator, reward: dict | None, event_items: set[str]) -> str:
+    """Récompenses d'une alerte. Si elle donne la ressource d'un event, seule cette ressource compte :
+    quantité normale et Steel Path (absente du worldstate, d'où le calcul), sans les crédits."""
+    counted = (reward or {}).get("countedItems", [])
+    event_rewards = [item for item in counted if item.get("ItemType") in event_items]
+    if not event_rewards:
+        return rewards(tr, reward)
+    parts = []
+    for item in event_rewards:
+        count = item.get("ItemCount", 1)
+        parts.append(f"{number(count)} (sp {number(int(count * STEEL_PATH_EVENT_RATIO))}) × {tr.item(item['ItemType'])}")
+    return ", ".join(parts)
 
 
 def active(entries: list[dict], now: dt.datetime) -> list[dict]:
@@ -290,11 +305,13 @@ def render_alertes(ctx: Context) -> list[discord.Embed]:
         return worldstate_missing("alertes", COLORS["alertes"], ctx)
     embed = header(discord.Embed(color=COLORS["alertes"]), "Alertes", "alertes")
     fields = []
+    event_items = {goal["ItemType"] for goal in active(ctx.worldstate.get("Goals", []), ctx.now) if goal.get("ItemType")}
     for alert in active(ctx.worldstate.get("Alerts", []), ctx.now):
         info = alert.get("MissionInfo", {})
         name = f"{ctx.tr.node(info.get('location'))} — {ctx.tr.mission(info.get('missionType'))}"
         value = (f"{ctx.tr.faction(info.get('faction'))} niv. {info.get('minEnemyLevel', '?')}-{info.get('maxEnemyLevel', '?')}"
-                 f" · fin {ts(ws_date(alert.get('Expiry')))}\nRécompenses : {rewards(ctx.tr, info.get('missionReward'))}")
+                 f" · fin {ts(ws_date(alert.get('Expiry')))}"
+                 f"\nRécompenses : {alert_rewards(ctx.tr, info.get('missionReward'), event_items)}")
         fields.append((name, value))
     if not fields:
         embed.description = "Aucune alerte en cours."
