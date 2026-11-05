@@ -2,9 +2,17 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from client import twitch as twitch_client
 from utils.file_management import settings_file_management
 
 MODO_ROLES = ("Les Champions du Dimanche", "Les colombus")
+UNKNOWN_INPUT = "Je ne reconnais pas ce streamer. Donne son pseudo ou son lien Twitch."
+
+
+def followed_url(login: str) -> str | None:
+    """URL enregistrée pour ce pseudo, quelle que soit sa casse."""
+    followed = settings_file_management.get_entry(main_key='streamer_followed')
+    return next((url for url in followed if twitch_client.login_from_url(url) == login), None)
 
 
 class ModoTwitch(commands.Cog):
@@ -18,16 +26,18 @@ class ModoTwitch(commands.Cog):
     )
     @app_commands.checks.has_any_role(*MODO_ROLES)
     async def add_streamer(self, interaction: discord.Interaction, streamer_url: str):
-        streamer_url = streamer_url.strip().rstrip('/')
-        name = streamer_url.split('/')[-1]
-        if streamer_url in settings_file_management.get_entry(main_key='streamer_followed'):
-            await interaction.response.send_message(f"**{name}** est déjà suivi.", ephemeral=True)
+        login = twitch_client.parse_streamer(streamer_url)
+        if login is None:
+            await interaction.response.send_message(UNKNOWN_INPUT, ephemeral=True)
+            return
+        if followed_url(login):
+            await interaction.response.send_message(f"**{login}** est déjà suivi.", ephemeral=True)
             return
         settings_file_management.update_entry(
             main_key='streamer_followed',
-            new_data={streamer_url: False},
+            new_data={twitch_client.streamer_url(login): False},
         )
-        await interaction.response.send_message(f"**{name}** est maintenant suivi.", ephemeral=True)
+        await interaction.response.send_message(f"**{login}** est maintenant suivi.", ephemeral=True)
 
     @app_commands.command(
         name="remove_streamer",
@@ -35,16 +45,16 @@ class ModoTwitch(commands.Cog):
     )
     @app_commands.checks.has_any_role(*MODO_ROLES)
     async def remove_streamer(self, interaction: discord.Interaction, streamer_url: str):
-        streamer_url = streamer_url.strip().rstrip('/')
-        name = streamer_url.split('/')[-1]
-        if streamer_url not in settings_file_management.get_entry(main_key='streamer_followed'):
-            await interaction.response.send_message(f"**{name}** n'est pas suivi.", ephemeral=True)
+        login = twitch_client.parse_streamer(streamer_url)
+        if login is None:
+            await interaction.response.send_message(UNKNOWN_INPUT, ephemeral=True)
             return
-        settings_file_management.remove_entry(
-            main_key='streamer_followed',
-            key=streamer_url,
-        )
-        await interaction.response.send_message(f"**{name}** n'est plus suivi.", ephemeral=True)
+        url = followed_url(login)
+        if url is None:
+            await interaction.response.send_message(f"**{login}** n'est pas suivi.", ephemeral=True)
+            return
+        settings_file_management.remove_entry(main_key='streamer_followed', key=url)
+        await interaction.response.send_message(f"**{login}** n'est plus suivi.", ephemeral=True)
 
     @app_commands.command(
         name="get_streamer",
