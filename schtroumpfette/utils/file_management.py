@@ -13,8 +13,7 @@ class SettingsFileManagement:
             return
             # find the main key in file
         try:
-            if data[main_key]:
-                data[main_key].update(new_data)
+            data[main_key].update(new_data)
 
             with open('settings.json', 'w') as f:
                 json.dump(data, f, indent=4)

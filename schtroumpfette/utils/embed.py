@@ -25,12 +25,11 @@ class GeoGuessrChallenge:
 
 class TwitchMessage:
 
-    async def message_online(self, data, stream_url, channel, profil_img, viewer_tag):
-        data = data['data'][0]
-        user_login = data['user_login']
-        game_name = data['game_name']
-        title = data['title']
-        preview_image = data['thumbnail_url'].replace('{width}x{height}', '1080x566') + "?t=" + str(int(time.time()))
+    async def message_online(self, stream, stream_url, channel, profil_img, viewer_tag):
+        user_login = stream['user_login']
+        game_name = stream['game_name'] or "Non renseigné"
+        title = stream['title'] or "Sans titre"
+        preview_image = stream['thumbnail_url'].replace('{width}x{height}', '1080x566') + "?t=" + str(int(time.time()))
         thumbnail_url = profil_img
         if viewer_tag:
             message = f"Hey <@&1347519191321804881> ! {user_login} est en live. N'hésites pas a aller lui dire bonjour"

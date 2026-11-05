@@ -44,7 +44,6 @@ class EventListener(commands.Bot):
         synced = await self.tree.sync()
         print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
-        await self.on_post_online_stream.start()
 
     @log_errors("on_raw_message_edit")
     async def on_raw_message_edit(self, payload):
@@ -136,9 +135,7 @@ class EventListener(commands.Bot):
     @tasks.loop(minutes=1)
     @log_errors("on_post_online_stream")
     async def on_post_online_stream(self):
-        channel = self.get_channel(int(self.stream_channel))
-        if channel:
-            await twitch.is_online_streamer(channel)
+        await twitch.check(self.get_channel(int(self.stream_channel or 0)))
 
     @on_post_online_stream.before_loop
     async def before_on_post_online_stream(self):
@@ -171,6 +168,7 @@ class EventListener(commands.Bot):
     async def setup_hook(self):
         self.tree.on_error = self.on_app_command_error
         self.gc_task.start()
+        self.on_post_online_stream.start()
 
     @tasks.loop(hours=2)
     async def gc_task(self):
