@@ -7,7 +7,7 @@ import discord
 
 from warframe.arbitrations import Tier
 from warframe.render import (TOPICS, Context, add_fields, invasion_progress, join_lines, next_deadline, render_all,
-                             render_baro, render_fissures, render_invasions)
+                             render_alertes, render_baro, render_fissures, render_invasions)
 from warframe.arbitrations import DEFAULT_EMOJIS
 from warframe.translations import Translator
 
@@ -227,3 +227,38 @@ def test_arbitrage_blank_lines_between_blocks(translator, schedule, tiers, now):
     assert embed.fields[0].value.endswith("\n\u200b") and embed.fields[1].value.endswith("\n\u200b")
     assert embed.fields[2].value.endswith("\n\u200b")                  # entre prochains et notables
     assert not embed.fields[3].value.endswith("\u200b")
+
+
+EVENT_RESOURCE = "/Lotus/Types/Gameplay/Events/RoadToTauEvent/RoadToTauEventResource"
+
+
+def alert(now, item, count) -> dict:
+    return {"Expiry": ws_date(now + dt.timedelta(hours=1)),
+            "MissionInfo": {"missionReward": {"credits": 17000, "countedItems": [{"ItemType": item, "ItemCount": count}]}}}
+
+
+def alerts_value(now, *alerts, goals=()) -> str:
+    tr = MagicMock()
+    tr.item.side_effect = lambda key: key.rsplit("/", 1)[-1]
+    ctx = Context(now=now, tr=tr, worldstate={"Alerts": list(alerts), "Goals": list(goals)}, worldstate_at=now, schedule=None, tiers={})
+    return render_alertes(ctx)[0].fields[0].value
+
+
+def event_goal(now, expiry=dt.timedelta(days=1)) -> dict:
+    return {"Expiry": ws_date(now + expiry), "ItemType": EVENT_RESOURCE}
+
+
+def test_alert_event_resource_shows_steel_path_without_credits(now):
+    value = alerts_value(now, alert(now, EVENT_RESOURCE, 50), goals=[event_goal(now)])
+    assert "Récompenses : 50 (sp 75) × RoadToTauEventResource" in value
+    assert "crédits" not in value
+
+
+def test_alert_other_rewards_keep_a_single_quantity(now):
+    value = alerts_value(now, alert(now, "/Lotus/Types/Items/MiscItems/Forma", 3), goals=[event_goal(now)])
+    assert "Récompenses : 3× Forma, 17 000 crédits" in value
+
+
+def test_alert_resource_of_a_finished_event_has_no_steel_path(now):
+    value = alerts_value(now, alert(now, EVENT_RESOURCE, 50), goals=[event_goal(now, dt.timedelta(days=-1))])
+    assert "Récompenses : 50× RoadToTauEventResource, 17 000 crédits" in value
