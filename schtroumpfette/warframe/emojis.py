@@ -13,7 +13,7 @@ from . import DATA_DIR
 
 EMOJI_DIR = DATA_DIR / "emojis"
 TIERS = ("S", "A", "B", "C", "D", "SP", "F")
-FACTIONS = {"FC_CORPUS": "factionCorpus", "FC_GRINEER": "factionGrineer"}  # faction du worldstate -> nom de l'image
+FACTIONS = {"Corpus": "factionCorpus", "Grineer": "factionGrineer"}  # factionKey de l'API -> nom de l'image
 STEMS = {**{tier: f"tier{tier}" for tier in TIERS}, **FACTIONS}            # clé -> nom de l'image, sans extension
 MAX_SIZE = 256 * 1024  # limite Discord pour un emoji
 MANAGED_NAME = re.compile(r"^(tier(S|A|B|C|D|SP|F)|faction(Corpus|Grineer))_[0-9a-f]{8}$")

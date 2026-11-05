@@ -273,7 +273,7 @@ async def test_tick_worldstate_down(cog, logs, settings_file, schedule, translat
     assert "worldstate injoignable" in logs.call_args.args[1]
     assert "<t:" in cog.rendered["cycles"][0].fields[1].value  # la Vallée Orbis continue d'être calculée
     cog.next_fetch = None
-    with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"Time": 1})):
+    with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"timestamp": "2026-11-05T08:00:00.000Z"})):
         await cog.tick()
     assert logs.await_count == 2 and "de nouveau joignable" in logs.call_args.args[1]
 
@@ -281,7 +281,7 @@ async def test_tick_worldstate_down(cog, logs, settings_file, schedule, translat
 @pytest.mark.asyncio
 async def test_worldstate_fetch_is_throttled(cog, logs):
     now = dt.datetime.now(dt.UTC)
-    fetch = AsyncMock(return_value={"Time": 1})
+    fetch = AsyncMock(return_value={"timestamp": "2026-11-05T08:00:00.000Z"})
     with patch.object(cog_module, "fetch_worldstate", fetch):
         await cog.refresh_worldstate(now)
         await cog.refresh_worldstate(now + dt.timedelta(seconds=1))  # réveil sur une échéance : pas de requête
@@ -301,7 +301,7 @@ async def test_worldstate_backoff_grows_then_resets(cog, logs):
             waits.append((cog.next_fetch - now).total_seconds() / 60)
             now = cog.next_fetch
     assert waits == [1, 2, 5, 10, 10]
-    with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"Time": 1})):
+    with patch.object(cog_module, "fetch_worldstate", AsyncMock(return_value={"timestamp": "2026-11-05T08:00:00.000Z"})):
         await cog.refresh_worldstate(now)
     assert cog.fetch_failures == 0
     assert cog.next_fetch - now == dt.timedelta(seconds=cog_module.POLL_INTERVAL)
@@ -370,7 +370,7 @@ async def test_targets_failure_keeps_data_and_logs_once(cog, logs, targets):
 
 def test_delay_bounds(cog, worldstate, schedule):
     cog.worldstate, cog.schedule = worldstate, schedule
-    now = dt.datetime.fromtimestamp(worldstate["Time"], tz=dt.UTC)
+    now = dt.datetime.fromisoformat(worldstate["timestamp"])
     assert 1 <= cog.delay(now) <= cog_module.POLL_INTERVAL
     hour_end = schedule.current(now).end
     assert cog.delay(hour_end - dt.timedelta(seconds=5)) <= 6  # réveil à l'heure pile

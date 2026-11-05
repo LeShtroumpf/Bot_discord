@@ -1,10 +1,13 @@
-"""Récupération du worldstate officiel de Warframe (PC)."""
+"""Récupération de l'état du jeu (PC) via warframestat.us, en français.
+
+L'API officielle (api.warframe.com) refuse les serveurs OVH (403). Le français est sur le chemin /pc/fr/ : ?language=fr est ignoré."""
 import datetime as dt
 from email.utils import parsedate_to_datetime
 
 import aiohttp
 
-WORLDSTATE_URL = "https://api.warframe.com/cdn/worldState.php"
+WORLDSTATE_URL = "https://api.warframestat.us/pc/fr/"
+HEADERS = {"User-Agent": "Schtroumpfette-Discord-Bot"}
 TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
@@ -33,7 +36,7 @@ def parse_retry_after(value: str | None, now: dt.datetime) -> dt.timedelta | Non
 
 async def fetch_worldstate(session: aiohttp.ClientSession) -> dict:
     try:
-        async with session.get(WORLDSTATE_URL, timeout=TIMEOUT) as response:
+        async with session.get(WORLDSTATE_URL, headers=HEADERS, timeout=TIMEOUT) as response:
             response.raise_for_status()
             data = await response.json(content_type=None)
     except aiohttp.ClientResponseError as error:
@@ -41,14 +44,14 @@ async def fetch_worldstate(session: aiohttp.ClientSession) -> dict:
         raise WorldstateError(f"{type(error).__name__}: {error}", retry_after) from error
     except (aiohttp.ClientError, TimeoutError, ValueError) as error:
         raise WorldstateError(f"{type(error).__name__}: {error}") from error
-    if not isinstance(data, dict) or "Time" not in data:
-        raise WorldstateError("réponse inattendue (pas de champ Time)")
+    if not isinstance(data, dict) or "timestamp" not in data:
+        raise WorldstateError("réponse inattendue (pas de champ timestamp)")
     return data
 
 
 def ws_date(value) -> dt.datetime | None:
-    """Convertit une date du worldstate ({"$date": {"$numberLong": "…"}}) en datetime UTC."""
+    """Convertit une date de l'API (ISO 8601) en datetime. None si absente ou illisible (l'API envoie parfois « +275760-… »)."""
     try:
-        return dt.datetime.fromtimestamp(int(value["$date"]["$numberLong"]) / 1000, tz=dt.UTC)
-    except (KeyError, TypeError, ValueError):
+        return dt.datetime.fromisoformat(value)
+    except (TypeError, ValueError):
         return None

@@ -26,6 +26,33 @@ def test_cambion_follows_cetus():
     assert cycles.cambion(END, END - dt.timedelta(minutes=10)).state == "Vome"
 
 
+def test_circuit_rotation_ends_next_monday():
+    monday = dt.datetime(2026, 11, 9, tzinfo=dt.UTC)
+    assert cycles.circuit_rotation_end(dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)) == monday
+    assert cycles.circuit_rotation_end(monday - dt.timedelta(seconds=1)) == monday
+    assert cycles.circuit_rotation_end(monday) == monday + dt.timedelta(days=7)  # juste après le changement
+
+
+def test_circuit_changes_on_monday():
+    monday = dt.datetime(2026, 11, 9, tzinfo=dt.UTC)
+    assert cycles.circuit_choices(monday - dt.timedelta(seconds=1))[0] == ["Ivara", "Inaros", "Titania"]
+    assert cycles.circuit_choices(monday)[0] == ["Nidus", "Octavia", "Harrow"]
+
+
+def test_circuit_tables_loop():
+    """Les deux tables n'ont pas la même longueur : chacune boucle à son propre rythme."""
+    now = dt.datetime(2026, 11, 5, tzinfo=dt.UTC)
+    frames, weapons = len(cycles.CIRCUIT["warframes"]), len(cycles.CIRCUIT["incarnon"])
+    assert cycles.circuit_choices(now + cycles.WEEK * frames)[0] == cycles.circuit_choices(now)[0]
+    assert cycles.circuit_choices(now + cycles.WEEK * weapons)[1] == cycles.circuit_choices(now)[1]
+
+
+def test_circuit_matches_the_api(worldstate, now):
+    """Réponse réelle de warframestat : les tables de browse.wf donnent bien la semaine en cours."""
+    normal, hard = worldstate["duviriCycle"]["choices"]
+    assert cycles.circuit_choices(now) == (normal["choices"], hard["choices"])
+
+
 def test_vallis():
     ref = cycles.VALLIS_REFERENCE
     warm = cycles.vallis(ref + dt.timedelta(seconds=10))
@@ -45,4 +72,4 @@ def test_vallis_matches_warframestat():
 def test_bounty_end_from_worldstate(worldstate):
     assert cycles.cetus_bounty_end(worldstate) is not None
     assert cycles.cetus_bounty_end(None) is None
-    assert cycles.cetus_bounty_end({"SyndicateMissions": []}) is None
+    assert cycles.cetus_bounty_end({"syndicateMissions": []}) is None

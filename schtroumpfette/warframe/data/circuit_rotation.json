@@ -1,0 +1,126 @@
+{
+  "source": "Tables de rotation de la page /live de browse.wf (typestripped/live.js), noms français de dict.fr.json",
+  "epoch": 1734307200,
+  "warframes": [
+    [
+      "Nidus",
+      "Octavia",
+      "Harrow"
+    ],
+    [
+      "Gara",
+      "Khora",
+      "Revenant"
+    ],
+    [
+      "Garuda",
+      "Baruuk",
+      "Hildryn"
+    ],
+    [
+      "Excalibur",
+      "Trinity",
+      "Ember"
+    ],
+    [
+      "Loki",
+      "Mag",
+      "Rhino"
+    ],
+    [
+      "Ash",
+      "Frost",
+      "Nyx"
+    ],
+    [
+      "Saryn",
+      "Vauban",
+      "Nova"
+    ],
+    [
+      "Nekros",
+      "Valkyr",
+      "Oberon"
+    ],
+    [
+      "Hydroid",
+      "Mirage",
+      "Limbo"
+    ],
+    [
+      "Mesa",
+      "Chroma",
+      "Atlas"
+    ],
+    [
+      "Ivara",
+      "Inaros",
+      "Titania"
+    ]
+  ],
+  "incarnon": [
+    [
+      "Boar",
+      "Gammacor",
+      "Angstrum",
+      "Gorgon",
+      "Anku"
+    ],
+    [
+      "Bo",
+      "Latron",
+      "Furis",
+      "Furax",
+      "Strun"
+    ],
+    [
+      "Lex",
+      "Magistar",
+      "Boltor",
+      "Bronco",
+      "Dague en Céramique"
+    ],
+    [
+      "Torid",
+      "Doubles Toxocystes",
+      "Doubles Ichors",
+      "Miter",
+      "Atomos"
+    ],
+    [
+      "Ack & Brunt",
+      "Soma",
+      "Vasto",
+      "Nami Solo",
+      "Burston"
+    ],
+    [
+      "Zylok",
+      "Sibear",
+      "Dread",
+      "Despair",
+      "Hate"
+    ],
+    [
+      "Dera",
+      "Sybaris",
+      "Cestra",
+      "Sicarus",
+      "Okina"
+    ],
+    [
+      "Vectis",
+      "Stug",
+      "Ballistica",
+      "Destreza",
+      "Obex"
+    ],
+    [
+      "Braton",
+      "Lato",
+      "Skana",
+      "Paris",
+      "Kunai"
+    ]
+  ]
+}

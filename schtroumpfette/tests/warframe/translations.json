@@ -668,6 +668,24 @@
    "Proxima du Voile",
    "MT_RAILJACK",
    "FC_CORPUS"
+  ],
+  "ClanNode3": [
+   "Tikal",
+   "Terre",
+   "MT_EXCAVATE",
+   "FC_INFESTATION"
+  ],
+  "ClanNode9": [
+   "Wahiba",
+   "Mars",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "SolNode39": [
+   "Everest",
+   "Terre",
+   "MT_EXCAVATE",
+   "FC_GRINEER"
   ]
  },
  "missions": {
