@@ -334,8 +334,9 @@ def render_events(ctx: Context) -> list[discord.Embed]:
     for event in active(ctx.worldstate.get("events", []), ctx.now):
         name = event.get("description") or event.get("tag") or "Event"
         value = f"Fin {ts(ws_date(event.get('expiry')))}"
-        if event.get("maximumScore", 0) > 1 and not event.get("isPersonal"):
-            value += f" · Progression {number(event.get('currentScore', 0))} / {number(event['maximumScore'])}"
+        maximum = event.get("maximumScore") or 0  # l'API peut renvoyer null
+        if maximum > 1 and not event.get("isPersonal"):
+            value += f" · Progression {number(event.get('currentScore') or 0)} / {number(maximum)}"
         if event.get("node"):
             value += f"\nLieu : {event['node']}"
         if event.get("rewards"):
