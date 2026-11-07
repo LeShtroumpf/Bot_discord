@@ -154,6 +154,19 @@ def test_personal_event_hides_the_score(now):
     assert "Progression" not in field.value
 
 
+def test_event_with_null_scores_hides_the_score(now):
+    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Purge", "maximumScore": None, "currentScore": None}
+    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
+    assert field.name == "Purge"
+    assert "Progression" not in field.value
+
+
+def test_event_with_null_current_score_starts_at_zero(now):
+    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Opération", "maximumScore": 1000, "currentScore": None}
+    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
+    assert "Progression 0 / 1 000" in field.value
+
+
 def test_no_event(now):
     embed = render_events(Context(now=now, tr=Translator(), worldstate={"events": []}, worldstate_at=now))[0]
     assert embed.description == "Aucun event en cours."
