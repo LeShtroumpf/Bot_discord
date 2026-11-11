@@ -1,0 +1,20 @@
+{
+ "uniqueName": "/Lotus/Powersuits/Rhino/RhinoPrime",
+ "name": "Rhino Prime",
+ "description": "Propulsez les anciens Pouvoirs percutants de Rhino au niveau supérieur avec des polarités de mod altérées pour un contrôle encore plus aisé dans le feu de l'action.",
+ "passiveDescription": "Émet une onde de choc infligeant |DAMAGE| points de Dégâts en atterrissant depuis une grande hauteur.",
+ "abilities": [
+  {
+   "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/RhinoChargeAbility",
+   "name": "Rhino Charge",
+   "description": "Rhino charge une cible, étourdissant les ennemis sur son passage et encornant sa victime.",
+   "imageName": "RhinoDash.png"
+  },
+  {
+   "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/IronSkinAbility",
+   "name": "Iron Skin",
+   "description": "Rhino renforce sa peau afin de s'isoler de tout dégât et de gagner Garde Renforcée.",
+   "imageName": "RhinoIronSkin.png"
+  }
+ ]
+}

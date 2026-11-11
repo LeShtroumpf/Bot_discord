@@ -47,3 +47,15 @@ async def test_failed_announce_is_reported_and_on_ready_goes_on(monkeypatch):
         await EventListener.on_ready(bot)
     assert report.await_args.args[2] == "startup"
     assert bot.announced is True
+
+
+@pytest.mark.asyncio
+async def test_cephalon_cog_is_loaded_with_the_others(settings_file):
+    import main
+    assert "commands.cephalon" in main.cogs
+    bot = MagicMock()
+    bot.add_cog = AsyncMock()
+    from commands import cephalon
+    await cephalon.setup(bot)
+    assert type(bot.add_cog.await_args.args[0]).__name__ == "Cephalon"
+    assert bot.add_cog.await_args.args[0].cephalon.name == "cephalon"

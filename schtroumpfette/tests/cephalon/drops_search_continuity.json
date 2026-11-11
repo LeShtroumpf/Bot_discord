@@ -1,0 +1,242 @@
+[
+ {
+  "place": "Mercury/Lares (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Venus/Tessera (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Earth/Lith (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Mars/Spear (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Uranus/Miranda (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Uranus/Bianca (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Uranus/Stephano (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Neptune/Proteus (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Pluto/Outer Terminus (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Ceres/Varro (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Ceres/Casta (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Ceres/Egeria (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Eris/Kala-Azar (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Eris/Ixodes (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Sedna/Hydron (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Phobos/Drunlo (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Phobos/Gulliver (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 7.69
+ },
+ {
+  "place": "Phobos/Opik (Rush), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Lua/StöFler (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Kuva Fortress/Nabuk (Defense), Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.26
+ },
+ {
+  "place": "Duviri/Endless: Tier 4 (Normal)",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 1.49
+ },
+ {
+  "place": "Duviri/Endless: Tier 6 (Normal)",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 1.03
+ },
+ {
+  "place": "Recover The Orokin Archive, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Family Reunion, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Hot Mess, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Sunkiller, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Table For Two, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Another Betrayer, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Time's Up, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "The Aftermath, Rot C",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 2.01
+ },
+ {
+  "place": "Necramech (Tier 2)",
+  "item": "Necramech Continuity",
+  "rarity": "Uncommon",
+  "chance": 1.66
+ },
+ {
+  "place": "Elite Shield Lancer",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 0.14
+ },
+ {
+  "place": "Juno Glaxion Moa",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 0.03
+ },
+ {
+  "place": "General Sargas Ruk",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 1.01
+ },
+ {
+  "place": "Narmer Glaxion Moa",
+  "item": "Continuity",
+  "rarity": "Rare",
+  "chance": 0.03
+ },
+ {
+  "place": "Deimos/Cambion Drift (Level 40 - 50 Isolation Vault), Rot B",
+  "item": "Necramech Continuity",
+  "rarity": "Rare",
+  "chance": 7.5
+ },
+ {
+  "place": "Deimos/Cambion Drift (Level 40 - 50 Arcana Isolation Vault), Rot B",
+  "item": "Necramech Continuity",
+  "rarity": "Rare",
+  "chance": 9.38
+ },
+ {
+  "place": "Deimos/Cambion Drift (Level 40 - 50 Arcana Isolation Vault), Rot B",
+  "item": "Necramech Continuity",
+  "rarity": "Rare",
+  "chance": 7.5
+ },
+ {
+  "place": "Deimos/Cambion Drift (Level 40 - 50 Arcana Isolation Vault), Rot B",
+  "item": "Necramech Continuity",
+  "rarity": "Uncommon",
+  "chance": 15
+ },
+ {
+  "place": "Kahl's Garrison (Chipper), Fort",
+  "item": "Archon Continuity",
+  "rarity": "Common",
+  "chance": 100
+ }
+]

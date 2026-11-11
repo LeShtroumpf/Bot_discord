@@ -1,0 +1,339 @@
+[
+ {
+  "uniqueName": "/Lotus/Upgrades/Mods/Warframe/Kahl/KahlAvatarAbilityDurationMod",
+  "name": "Archon Continuity",
+  "polarity": "madurai",
+  "rarity": "Legendary",
+  "baseDrain": 6,
+  "fusionLimit": 10,
+  "compatName": "WARFRAME",
+  "type": "Warframe Mod",
+  "levelStats": [
+   {
+    "stats": [
+     "+5% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+10% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+15% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+20% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+25% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+30% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+35% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+40% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+45% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+50% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   },
+   {
+    "stats": [
+     "+55% Ability Duration",
+     "Abilities that inflict a <DT_POISON_COLOR>Toxin status effect will also apply a <DT_CORROSIVE_COLOR>Corrosive status effect."
+    ]
+   }
+  ],
+  "imageName": "KahlAvatarAbilityDurationMod.jpg",
+  "category": "Mods",
+  "isAugment": true,
+  "tradable": true,
+  "wikiaUrl": "https://wiki.warframe.com/w/Archon_Continuity",
+  "transmutable": false,
+  "isPrime": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Mods/Warframe/AvatarAbilityDurationMod",
+  "name": "Continuity",
+  "polarity": "madurai",
+  "rarity": "Rare",
+  "baseDrain": 2,
+  "fusionLimit": 5,
+  "compatName": "WARFRAME",
+  "type": "Warframe Mod",
+  "levelStats": [
+   {
+    "stats": [
+     "+5% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+10% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+15% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+20% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+25% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+30% Ability Duration"
+    ]
+   }
+  ],
+  "imageName": "AbilityDurationMod.jpg",
+  "category": "Mods",
+  "isAugment": true,
+  "drops": [
+   {
+    "location": "Juno Glaxion Moa",
+    "type": "Continuity",
+    "chance": 0.03,
+    "rarity": "Rare"
+   },
+   {
+    "location": "Narmer Glaxion Moa",
+    "type": "Continuity",
+    "chance": 0.03,
+    "rarity": "Rare"
+   }
+  ],
+  "tradable": true,
+  "wikiaUrl": "https://wiki.warframe.com/w/Continuity",
+  "transmutable": true,
+  "isPrime": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Mods/Warframe/Beginner/AvatarAbilityDurationModBeginner",
+  "name": "Continuity",
+  "polarity": "madurai",
+  "rarity": "Rare",
+  "baseDrain": 2,
+  "fusionLimit": 3,
+  "compatName": "WARFRAME",
+  "type": "Warframe Mod",
+  "levelStats": [
+   {
+    "stats": [
+     "+3% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+6% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+9% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+12% Ability Duration"
+    ]
+   }
+  ],
+  "imageName": "AbilityDurationMod.jpg",
+  "category": "Mods",
+  "isAugment": true,
+  "drops": [
+   {
+    "location": "Juno Glaxion Moa",
+    "type": "Continuity",
+    "chance": 0.03,
+    "rarity": "Rare"
+   },
+   {
+    "location": "Narmer Glaxion Moa",
+    "type": "Continuity",
+    "chance": 0.03,
+    "rarity": "Rare"
+   }
+  ],
+  "tradable": true,
+  "wikiaUrl": "https://wiki.warframe.com/w/Flawed_Continuity",
+  "transmutable": false,
+  "isPrime": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Mods/Necromech/NecromechAbilityDurationMod",
+  "name": "Necramech Continuity",
+  "polarity": "madurai",
+  "rarity": "Uncommon",
+  "baseDrain": 4,
+  "fusionLimit": 5,
+  "compatName": "Necramech",
+  "type": "Necramech Mod",
+  "levelStats": [
+   {
+    "stats": [
+     "+5% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+10% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+15% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+20% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+25% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+30% Ability Duration"
+    ]
+   }
+  ],
+  "imageName": "NecramechAbilityDurationMod.jpg",
+  "category": "Mods",
+  "drops": [
+   {
+    "location": "Necramech (Tier 2)",
+    "type": "Necramech Continuity",
+    "chance": 1.66,
+    "rarity": "Uncommon"
+   },
+   {
+    "location": "Deimos/Cambion Drift (Level 40 - 50 Arcana Isolation Vault), Rotation B",
+    "type": "Necramech Continuity",
+    "chance": 15,
+    "rarity": "Uncommon"
+   }
+  ],
+  "tradable": true,
+  "wikiaUrl": "https://wiki.warframe.com/w/Necramech_Continuity",
+  "transmutable": false,
+  "isPrime": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Mods/Warframe/Expert/AvatarAbilityDurationModExpert",
+  "name": "Primed Continuity",
+  "polarity": "madurai",
+  "rarity": "Legendary",
+  "baseDrain": 4,
+  "fusionLimit": 10,
+  "compatName": "WARFRAME",
+  "type": "Warframe Mod",
+  "levelStats": [
+   {
+    "stats": [
+     "+5% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+10% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+15% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+20% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+25% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+30% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+35% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+40% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+45% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+50% Ability Duration"
+    ]
+   },
+   {
+    "stats": [
+     "+55% Ability Duration"
+    ]
+   }
+  ],
+  "imageName": "AbilityDurationMod.jpg",
+  "category": "Mods",
+  "isAugment": true,
+  "tradable": true,
+  "wikiaUrl": "https://wiki.warframe.com/w/Primed_Continuity",
+  "transmutable": false,
+  "isPrime": true
+ }
+]
