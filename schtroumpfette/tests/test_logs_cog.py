@@ -72,6 +72,26 @@ def test_read_settings_without_optional_sections(cog, monkeypatch):
     monkeypatch.setattr(cog_module.settings_file_management, "get_entry", get_entry)
     cog.read_settings()
     assert cog.cache.excluded == set() and cog.permanent_voice == set()
+    assert (cog.step_timeout, cog.cache.history_timeout) == (60, 15)  # délais par défaut
+
+
+@pytest.mark.parametrize("config, expected", [
+    ({"step_timeout": 90, "history_timeout": 2.5}, (90, 2.5)),
+    ({"step_timeout": 0, "history_timeout": -3}, (60, 15)),
+    ({"step_timeout": "30", "history_timeout": True}, (60, 15)),
+    ({}, (60, 15)),
+], ids=["valeurs", "non positives", "pas des nombres", "clés absentes"])
+def test_read_settings_timeouts(cog, monkeypatch, config, expected):
+    monkeypatch.setattr(cog_module.settings_file_management, "get_entry", lambda main_key: config if main_key == "logs" else {})
+    cog.read_settings()
+    assert (cog.step_timeout, cog.cache.history_timeout) == expected
+
+
+def test_example_settings_have_the_default_timeouts():
+    import json
+    from pathlib import Path
+    example = json.loads((Path(__file__).resolve().parents[1] / "settings.example.json").read_text(encoding="utf-8"))
+    assert example["logs"] == {"history_timeout": cog_module.HISTORY_TIMEOUT, "step_timeout": cog_module.STEP_TIMEOUT}
 
 
 def test_temp_voice(cog):
@@ -125,7 +145,7 @@ async def test_load_reports_each_failing_step_and_goes_on(cog, report, monkeypat
 @pytest.mark.asyncio
 async def test_blocked_step_is_abandoned_and_the_next_ones_run(cog, report, monkeypatch, capsys):
     monkeypatch.setattr(cog, "read_settings", lambda: None)
-    monkeypatch.setattr(cog_module, "STEP_TIMEOUT", 0.01)
+    cog.step_timeout = 0.01
     cog.bot.guilds = [MagicMock()]
 
     async def never_answers(guild):
@@ -137,6 +157,20 @@ async def test_blocked_step_is_abandoned_and_the_next_ones_run(cog, report, monk
     assert report.await_args.args[1:] == ("étape bloquée plus de 0.01 s, abandonnée", "logs_invites")
     cog.audit.load_baseline.assert_awaited_once()
     assert "[cache] 4 messages chargés depuis 2 salons" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_cache_load_has_no_global_timeout(cog, report, monkeypatch, capsys):
+    monkeypatch.setattr(cog, "read_settings", lambda: None)
+    cog.step_timeout = 0.01
+
+    async def slow_but_fine(guilds):
+        await asyncio.sleep(0.05)  # plus long que step_timeout : seul le délai par salon compte
+        return (5, 3, [])
+    cog.cache.load = slow_but_fine
+    await cog.load()
+    report.assert_not_awaited()
+    assert "[cache] 5 messages chargés depuis 3 salons" in capsys.readouterr().out
 
 
 @pytest.mark.asyncio

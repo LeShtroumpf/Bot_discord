@@ -147,3 +147,21 @@ def test_created_at_comes_from_the_message_id():
     message_id = discord.utils.time_snowflake(T0)
     entry = CachedMessage(author=MagicMock(), channel_id=1, content="", message_id=message_id)
     assert entry.created_at == T0
+
+
+@pytest.mark.asyncio
+async def test_slow_channel_is_skipped_and_the_others_are_loaded():
+    import asyncio
+    cache = MessageCache()
+    cache.history_timeout = 0.01
+    slow = channel(50)
+
+    def never_answers(limit):
+        async def iterate():
+            await asyncio.Event().wait()
+            yield  # pragma: no cover
+        return iterate()
+    slow.history = never_answers
+    added, channels, failures = await cache.load([guild([slow, channel(51, [message(1, 51)])])])
+    assert (added, channels) == (1, 1)
+    assert failures == ["<#50> (délai de 0.01 s dépassé)"]
