@@ -18,8 +18,10 @@ class EventListener(commands.Bot):
             description=description,
             intents=intents,
             max_messages=50,
+            # Tous les membres en cache au démarrage : sans ça, pas d'on_member_update (rôles, surnoms) pour un membre
+            # hors cache. (L'ancien `self.chunk_guilds_at_startup = False` posé après coup n'avait aucun effet.)
+            chunk_guilds_at_startup=True,
         )
-        self.chunk_guilds_at_startup = False
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
