@@ -15,7 +15,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from client.event_logs import event_logs
+from client.errors import report_error
 from commands.moderation.twitch_cmd import MODO_ROLES
 from utils.file_management import settings_file_management
 from warframe import CACHE_DIR, DATA_DIR, arbitrations, emojis, synthesis, translations
@@ -97,8 +97,7 @@ class Warframe(commands.Cog):
     # --- Logs -------------------------------------------------------------------------------------------
 
     async def log(self, error, origine: str):
-        channel = self.bot.get_channel(int(self.bot.logs_channel_id)) if getattr(self.bot, "logs_channel_id", None) else None
-        await event_logs.on_error_log(self.bot, error, origine=origine, channel=channel)
+        await report_error(self.bot, error, origine)
 
     async def report(self, source: str, error: Exception | None):
         """Signale une panne une seule fois, puis son rétablissement."""

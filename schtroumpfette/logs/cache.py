@@ -18,6 +18,11 @@ class CachedMessage:
     channel_id: int
     content: str
     attachments: tuple[str, ...] = ()
+    message_id: int = 0
+
+    @property
+    def created_at(self):
+        return discord.utils.snowflake_time(self.message_id)
 
     @classmethod
     def from_message(cls, message: discord.Message) -> "CachedMessage":
@@ -26,6 +31,7 @@ class CachedMessage:
             channel_id=message.channel.id,
             content=message.content,
             attachments=tuple(a.filename for a in message.attachments),
+            message_id=message.id,
         )
 
 

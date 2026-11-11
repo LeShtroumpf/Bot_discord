@@ -112,7 +112,7 @@ async def test_cog_keeps_defaults_when_sync_fails():
     cog = Warframe(MagicMock(logs_channel_id="1"))
     failing = AsyncMock(side_effect=OSError("disque"))
     with patch.object(emojis, "sync_emojis", failing), \
-            patch.object(cog_module.event_logs, "on_error_log", new=AsyncMock()) as logs:
+            patch.object(cog_module, "report_error", new=AsyncMock()) as logs:
         await cog.sync_emojis()
     assert cog.tier_emojis["S"] == "🟦"
     assert "emojis injoignable" in logs.call_args.args[1]

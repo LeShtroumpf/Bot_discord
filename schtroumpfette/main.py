@@ -15,6 +15,8 @@ intents.members = True  # Pour les events membres (limité)
 intents.guilds = True
 intents.voice_states = True  # Pour les vocaux
 intents.reactions = True  # Pour les réactions
+intents.invites = True  # Logs des invitations
+intents.moderation = True  # Bans / débans et entrées du journal d'audit (logs)
 intents.presences = False  # Ne track pas les statuts
 intents.typing = False  # Ne track pas "en train d'écrire"
 
@@ -24,7 +26,7 @@ bot = client.event.EventListener(
     description=description,
     intents=intents
 )
-cogs = ['commands.everyone', 'commands.moderation.modo', 'commands.moderation.twitch_cmd', 'commands.warframe']
+cogs = ['commands.everyone', 'commands.moderation.modo', 'commands.moderation.twitch_cmd', 'commands.warframe', 'commands.logs']
 
 
 async def main():

@@ -1,13 +1,10 @@
-import asyncio
 import datetime as dt
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import discord
 import pytest
 
-from client.event import EventListener
-from client.event_logs import event_logs
-from client.message_cache import HISTORY_PER_CHANNEL, MessageCache
+from logs.cache import HISTORY_PER_CHANNEL, CachedMessage, MessageCache
 
 T0 = dt.datetime(2026, 11, 11, 16, 52, tzinfo=dt.UTC)
 
@@ -146,63 +143,7 @@ async def test_load_does_not_overwrite_a_live_message():
     assert cache.get(1).content == "modifié en direct"
 
 
-def listener(settings_warframe=None, logs_channel_id="5"):
-    bot = MagicMock(logs_channel_id=logs_channel_id, guilds=[], message_cache_task=None)
-    bot.message_cache_excluded = lambda: EventListener.message_cache_excluded(bot)
-    bot.load_message_cache = lambda: EventListener.load_message_cache(bot)
-    return bot
-
-
-def test_excluded_channels_are_logs_and_warframe_info(monkeypatch):
-    monkeypatch.setattr("client.event.settings_file_management.get_entry", lambda main_key: {"info_channel": "7"})
-    assert EventListener.message_cache_excluded(listener()) == {5, 7}
-
-
-def test_excluded_without_warframe_section(monkeypatch):
-    def missing(main_key):
-        raise KeyError(main_key)
-    monkeypatch.setattr("client.event.settings_file_management.get_entry", missing)
-    assert EventListener.message_cache_excluded(listener()) == {5}
-
-
-@pytest.mark.asyncio
-async def test_load_failures_are_reported_once(monkeypatch):
-    cache = MessageCache()
-    monkeypatch.setattr("client.event.message_cache", cache)
-    monkeypatch.setattr("client.event.settings_file_management.get_entry", lambda main_key: {})
-    bot = listener()
-    bot.guilds = [guild([channel(1, error=RuntimeError("a")), channel(2, error=RuntimeError("b"))])]
-    with patch.object(event_logs, "on_error_log", new=AsyncMock()) as error:
-        await EventListener.load_message_cache(bot)
-    error.assert_awaited_once()
-    assert "2 salon(s) ignoré(s)" in error.await_args.args[1]
-    assert error.await_args.kwargs["origine"] == "message_cache"
-
-
-@pytest.mark.asyncio
-async def test_on_ready_reloads_but_never_twice_at_once(monkeypatch):
-    bot = listener()
-    started = []
-
-    async def fake_load():
-        started.append(True)
-        await asyncio.sleep(0.01)
-    bot.load_message_cache = fake_load
-
-    EventListener.start_message_cache_load(bot)
-    EventListener.start_message_cache_load(bot)  # chargement en cours : rien
-    await bot.message_cache_task
-    EventListener.start_message_cache_load(bot)  # reconnexion complète : on recharge
-    await bot.message_cache_task
-    assert len(started) == 2
-
-
-@pytest.mark.asyncio
-async def test_on_message_feeds_the_cache(monkeypatch):
-    cache = MessageCache()
-    monkeypatch.setattr("client.event.message_cache", cache)
-    bot = MagicMock(voice_clients=[])
-    msg = message(1)
-    msg.content = "coucou"
-    await EventListener.on_message(bot, msg)
-    assert cache.get(1).content == "coucou"
+def test_created_at_comes_from_the_message_id():
+    message_id = discord.utils.time_snowflake(T0)
+    entry = CachedMessage(author=MagicMock(), channel_id=1, content="", message_id=message_id)
+    assert entry.created_at == T0
