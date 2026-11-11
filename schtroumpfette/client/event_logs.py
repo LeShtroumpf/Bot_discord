@@ -7,6 +7,8 @@ from discord.ext import commands
 
 from utils.embed import logs_message
 
+from .message_cache import CachedMessage
+
 ERROR_WINDOW = dt.timedelta(minutes=10)  # une même erreur n'est pas renvoyée dans le salon avant ce délai
 
 
@@ -66,22 +68,29 @@ class EventLogs:
         await self.send(channel, logs_message.join(member))
 
     @log_failures
-    async def on_message_edit_log(self, bot: commands.Bot, payload: discord.RawMessageUpdateEvent, *, channel: discord.TextChannel):
+    async def on_message_edit_log(self, bot: commands.Bot, payload: discord.RawMessageUpdateEvent, entry: CachedMessage | None = None,
+                                  *, channel: discord.TextChannel):
+        """entry : le message dans le cache maison, en repli quand discord.py ne l'a plus en cache."""
         if payload.message.edited_at is None:
             return  # jamais édité par son auteur : mise à jour de Discord (ex. aperçu de lien ajouté)
         after = payload.message.content
-        before = payload.cached_message.content if payload.cached_message else None
+        if payload.cached_message:
+            before = payload.cached_message.content
+        else:
+            before = entry.content if entry else None
         if before == after:
             return  # pas de changement de texte
         await self.send(channel, logs_message.edit(payload.message.author, payload.channel_id, before, after))
 
     @log_failures
-    async def on_message_delete_log(self, bot: commands.Bot, payload: discord.RawMessageDeleteEvent, *, channel: discord.TextChannel):
-        message = payload.cached_message
-        if message:
-            await self.send(channel, logs_message.delete(message.author, payload.channel_id, message.content))
-        else:
+    async def on_message_delete_log(self, bot: commands.Bot, payload: discord.RawMessageDeleteEvent, entry: CachedMessage | None = None,
+                                    *, channel: discord.TextChannel):
+        """entry : le message dans le cache maison, en repli quand discord.py ne l'a plus en cache."""
+        message = CachedMessage.from_message(payload.cached_message) if payload.cached_message else entry
+        if message is None:
             await self.send(channel, logs_message.delete_unknown(payload.channel_id))
+        elif not message.author.bot:
+            await self.send(channel, logs_message.delete(message.author, payload.channel_id, message.content, message.attachments))
 
     @log_failures
     async def on_raw_member_remove_log(self, bot: commands.Bot, payload: discord.RawMemberRemoveEvent, *, channel: discord.TextChannel):
