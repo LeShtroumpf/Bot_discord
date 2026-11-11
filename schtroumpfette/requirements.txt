@@ -1,5 +1,6 @@
 # Dépendances du bot (installées dans l'image Docker)
 discord.py[voice]==2.7.1  # [voice] : PyNaCl + davey (chiffrement vocal DAVE)
+anthropic==2.8.0  # Cephalon : API Claude
 elevenlabs==2.75.0
 python-dateutil==4.0.0
 python-dotenv==1.2.4

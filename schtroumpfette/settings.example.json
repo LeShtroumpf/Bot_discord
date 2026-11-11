@@ -54,5 +54,10 @@
     "logs": {
         "history_timeout": 15,
         "step_timeout": 60
+    },
+    "cephalon": {
+        "model": "claude-haiku-5-5",
+        "max_tokens": 2000,
+        "effort": "low"
     }
 }
