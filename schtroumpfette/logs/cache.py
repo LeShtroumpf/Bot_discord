@@ -3,6 +3,7 @@
 Le cache de discord.py est petit (max_messages) et vide après un redémarrage : ce cache garde l'essentiel
 des MAX_MESSAGES derniers messages, et se complète avec l'historique récent de chaque salon à chaque on_ready.
 """
+import asyncio
 from collections import OrderedDict
 from dataclasses import dataclass
 
@@ -10,6 +11,7 @@ import discord
 
 MAX_MESSAGES = 2000
 HISTORY_PER_CHANNEL = 10
+HISTORY_TIMEOUT = 15  # secondes par salon (settings.json : logs.history_timeout)
 
 
 @dataclass
@@ -46,6 +48,7 @@ class MessageCache:
         self.max_messages = max_messages
         self.messages: OrderedDict[int, CachedMessage] = OrderedDict()
         self.excluded: set[int] = set()
+        self.history_timeout: float = HISTORY_TIMEOUT
 
     def __len__(self) -> int:
         return len(self.messages)
@@ -76,8 +79,12 @@ class MessageCache:
     async def load(self, guilds, *, limit: int = HISTORY_PER_CHANNEL) -> tuple[int, int, list[str]]:
         """Complète le cache avec les `limit` derniers messages de chaque salon texte et vocal.
 
-        Retourne (messages ajoutés, salons lus, échecs). Un salon sans permission est ignoré sans échec.
+        Retourne (messages ajoutés, salons lus, échecs). Un salon sans permission est ignoré sans échec ; un salon qui
+        ne répond pas en history_timeout s est ignoré et compté en échec, les autres sont chargés.
         """
+        async def read(channel):
+            return [message async for message in channel.history(limit=limit)]
+
         history: list[discord.Message] = []
         channels, failures = 0, []
         for guild in guilds:
@@ -88,8 +95,11 @@ class MessageCache:
                 if not (permissions.view_channel and permissions.read_message_history):
                     continue
                 try:
-                    history += [message async for message in channel.history(limit=limit)]
+                    history += await asyncio.wait_for(read(channel), self.history_timeout)
                 except discord.Forbidden:
+                    continue
+                except TimeoutError:
+                    failures.append(f"{channel.mention} (délai de {self.history_timeout:g} s dépassé)")
                     continue
                 except Exception as error:
                     failures.append(f"{channel.mention} ({type(error).__name__}: {error})")

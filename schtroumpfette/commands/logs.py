@@ -10,7 +10,7 @@ from discord.ext import commands
 
 from client.errors import log_errors, report_error
 from logs.audit import AuditTracker
-from logs.cache import message_cache, CachedMessage
+from logs.cache import HISTORY_TIMEOUT, message_cache, CachedMessage
 from logs.invites import InviteTracker
 from logs.render import render
 from utils.file_management import settings_file_management
@@ -18,12 +18,19 @@ from utils.file_management import settings_file_management
 Action = discord.AuditLogAction
 MISSING_AUDIT = "Permission « Voir les logs du serveur » manquante : logs sans modo"
 MISSING_INVITES = "Permission « Gérer le serveur » manquante : invitation des arrivées inconnue"
-STEP_TIMEOUT = 60  # secondes : une étape du chargement qui ne répond pas ne bloque pas les suivantes
+STEP_TIMEOUT = 60  # secondes (settings.json : logs.step_timeout) : une étape bloquée ne bloque pas les suivantes
 
 
 def ids(values) -> set[int]:
     """IDs de salons stockés en chaînes ; valeur vide ou non numérique (modèle pas rempli) ignorée."""
     return {int(value) for value in values if str(value or "").isdigit()}
+
+
+def positive(value, default: float) -> float:
+    """Délai lu dans settings.json : nombre positif, sinon la valeur par défaut (section ou clé absente comprise)."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+        return value
+    return default
 
 
 def read_setting(key: str) -> dict:
@@ -43,16 +50,20 @@ class Logs(commands.Cog):
         self.invites = InviteTracker()
         self.permanent_voice: set[int] = set()
         self.load_task: asyncio.Task | None = None
+        self.step_timeout: float = STEP_TIMEOUT
 
     async def cog_load(self):
         self.read_settings()
 
     def read_settings(self):
-        """Salons exclus du cache (logs, info Warframe) et vocaux permanents (lobbys + statiques)."""
+        """Salons exclus du cache (logs, info Warframe), vocaux permanents (lobbys + statiques) et délais du chargement."""
         logs_channel = (read_setting("dict_chan")).get("logs_channel")
         warframe_channel = read_setting("warframe").get("info_channel")
         self.cache.excluded = ids((logs_channel, warframe_channel))
         self.permanent_voice = ids([*read_setting("voice_allow_list_channel").values(), *read_setting("static_voice_channel").values()])
+        config = read_setting("logs")
+        self.step_timeout = positive(config.get("step_timeout"), STEP_TIMEOUT)
+        self.cache.history_timeout = positive(config.get("history_timeout"), HISTORY_TIMEOUT)
 
     def is_temp_voice(self, channel) -> bool:
         """Vocal temporaire : ni lobby ni permanent (créé et supprimé par le bot, ses logs feraient doublon)."""
@@ -83,7 +94,8 @@ class Logs(commands.Cog):
         for guild in self.bot.guilds:
             await self.load_step(self.invites.load(guild), "logs_invites", MISSING_INVITES)
             await self.load_step(self.audit.load_baseline(guild), "logs_audit", MISSING_AUDIT)
-        result = await self.load_step(self.cache.load(self.bot.guilds), "message_cache")
+        # Pas de délai global sur le cache : chaque salon a le sien (history_timeout), les autres sont chargés quand même
+        result = await self.load_step(self.cache.load(self.bot.guilds), "message_cache", limited=False)
         if result is None:
             return
         added, channels, failures = result
@@ -92,15 +104,15 @@ class Logs(commands.Cog):
             text = f"Chargement du cache : {len(failures)} salon(s) ignoré(s) : {', '.join(failures)}"
             await report_error(self.bot, text, "message_cache")
 
-    async def load_step(self, coro, origine: str, forbidden: str | None = None):
-        """Une étape du chargement, au plus STEP_TIMEOUT s : son échec est signalé sans bloquer les suivantes.
-
-        Retourne le résultat de l'étape, ou None si elle a échoué.
+    async def load_step(self, coro, origine: str, forbidden: str | None = None, *, limited: bool = True):
+        """Une étape du chargement, au plus step_timeout s (limited=False : sans limite) : son échec est signalé sans
+        bloquer les suivantes. Retourne le résultat de l'étape, ou None si elle a échoué.
         """
+        limit = self.step_timeout if limited else None
         try:
-            return await asyncio.wait_for(coro, STEP_TIMEOUT)
+            return await asyncio.wait_for(coro, limit)
         except TimeoutError:
-            await report_error(self.bot, f"étape bloquée plus de {STEP_TIMEOUT} s, abandonnée", origine)
+            await report_error(self.bot, f"étape bloquée plus de {limit:g} s, abandonnée", origine)
         except discord.Forbidden as error:
             await report_error(self.bot, forbidden or error, origine)
         except Exception as error:

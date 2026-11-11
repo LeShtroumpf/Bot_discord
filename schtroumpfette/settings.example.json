@@ -50,5 +50,9 @@
             "circuit": "",
             "baro": ""
         }
+    },
+    "logs": {
+        "history_timeout": 15,
+        "step_timeout": 60
     }
 }
