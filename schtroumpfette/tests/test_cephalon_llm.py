@@ -115,3 +115,21 @@ async def test_api_outage_stops_the_question(claude, fake_api, api_routes, faili
     with pytest.raises(WarframeApiError):
         await llm.ask(client, fake_api, "Continuity ?", CONFIG)
     assert len(client.requests) == 1  # aucun appel à Claude après la panne
+
+
+@pytest.mark.asyncio
+async def test_given_usage_is_filled_even_when_an_outage_stops_the_loop(claude, fake_api, api_routes, failing_response):
+    api_routes[("/drops/search/Continuity", None)] = failing_response("timeout")
+    first = claude.reply("tool_use", claude.tool("get_mod", "Continuity", "toolu_a"), input_tokens=300, output_tokens=40)
+    second = claude.reply("tool_use", claude.tool("get_drops", "Continuity", "toolu_b"), input_tokens=700, output_tokens=60)
+    usage = llm.Usage()
+    with pytest.raises(WarframeApiError):
+        await llm.ask(claude.client(first, second), fake_api, "Continuity ?", CONFIG, usage)
+    assert (usage.input, usage.output) == (1000, 100)  # les deux tours déjà facturés
+
+
+@pytest.mark.asyncio
+async def test_given_usage_is_the_answer_usage(claude, fake_api):
+    usage = llm.Usage()
+    answer = await llm.ask(claude.client(claude.reply("end_turn", claude.text("Oui."))), fake_api, "?", CONFIG, usage)
+    assert answer.usage is usage and usage.input == 100

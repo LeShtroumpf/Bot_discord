@@ -58,6 +58,10 @@
     "cephalon": {
         "model": "claude-haiku-5-5",
         "max_tokens": 2000,
-        "effort": "low"
+        "effort": "low",
+        "cooldown": 30,
+        "daily_questions": 20,
+        "monthly_budget": 4,
+        "usd_to_eur": 0.9
     }
 }

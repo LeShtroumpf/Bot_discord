@@ -35,13 +35,25 @@ def sources_field(sources: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def answer(question: str, text: str, sources: list[tuple[str, str]]) -> discord.Embed:
+def remaining_text(remaining: int) -> str:
+    """Questions que le joueur peut encore poser aujourd'hui."""
+    if remaining <= 0:
+        return "Dernière question du jour"
+    return "1 question restante aujourd'hui" if remaining == 1 else f"{remaining} questions restantes aujourd'hui"
+
+
+def answer(question: str, text: str, sources: list[tuple[str, str]], remaining: int | None = None) -> discord.Embed:
     embed = discord.Embed(description=body(question, text), color=ANSWER_COLOR)
     embed.set_author(name=NAME)
+    footer = []
     links = sources_field(sources)
     if links:
         embed.add_field(name="Sources", value=links, inline=False)
-        embed.set_footer(text=FOOTER)
+        footer.append(FOOTER)
+    if remaining is not None:
+        footer.append(remaining_text(remaining))
+    if footer:
+        embed.set_footer(text=" · ".join(footer))
     return embed
 
 

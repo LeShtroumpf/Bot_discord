@@ -9,6 +9,7 @@ from urllib.parse import quote
 import aiohttp
 import pytest
 
+from cephalon.limits import Limits
 from cephalon.warframe_api import WarframeApi
 from warframe import DATA_DIR, arbitrations, synthesis
 from warframe.translations import Translator
@@ -214,8 +215,35 @@ class FakeClaude:
             raise reply
         return reply
 
+    async def close(self):
+        pass
+
 
 @pytest.fixture
 def claude():
     """Fabriques du faux Claude : claude.client(*réponses), claude.reply(stop_reason, *blocs), claude.text, claude.tool."""
     return SimpleNamespace(client=FakeClaude, reply=claude_reply, text=claude_text, tool=claude_tool)
+
+
+class FakeClock:
+    """Horloge monotone réglable : clock() donne l'instant, clock.advance(secondes) l'avance."""
+
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+@pytest.fixture
+def clock():
+    return FakeClock()
+
+
+@pytest.fixture
+def limits(tmp_path, clock):
+    """Limites de /cephalon sur un dossier temporaire : jamais les vrais compteurs."""
+    return Limits(tmp_path / "state", clock=clock)

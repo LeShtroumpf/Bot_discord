@@ -52,9 +52,11 @@ def add_sources(known: list[tuple[str, str]], new: list[tuple[str, str]]) -> Non
             known.append((name, url))
 
 
-async def ask(client, api: WarframeApi, question: str, config: Config) -> Answer:
-    """Pose la question à Claude. Les erreurs de l'API Anthropic et les pannes de warframestat remontent."""
-    answer = Answer(status=ROUNDS)
+async def ask(client, api: WarframeApi, question: str, config: Config, usage: Usage | None = None) -> Answer:
+    """Pose la question à Claude. Les erreurs de l'API Anthropic et les pannes de warframestat remontent.
+
+    `usage` est rempli tour après tour : si une panne interrompt la boucle, l'appelant garde les tokens déjà facturés."""
+    answer = Answer(status=ROUNDS, usage=usage if usage is not None else Usage())
     messages = [{"role": "user", "content": question}]
     for _ in range(MAX_TOOL_ROUNDS):
         response = await client.messages.create(

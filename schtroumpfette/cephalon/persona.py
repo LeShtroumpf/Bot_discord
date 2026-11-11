@@ -59,6 +59,20 @@ de sources ni lien : le bot affiche lui-même les pages du wiki consultées sous
 
 ROUNDS_MESSAGE = "Mes archives ne m'ont pas permis de conclure, Tenno. Reformule ta question, je ferai mieux."
 
+# Refus des limites (cephalon/limits.py) : éphémères, avant tout appel à Claude.
+COOLDOWN_MESSAGE = "Doucement, Tenno : je reprends mon souffle. Repose ta question dans {delay}."
+QUOTA_MESSAGE = "Tu as épuisé tes {count} consultations du jour, Tenno. Mes archives te rouvrent à minuit."
+BUDGET_MESSAGE = "Mes archives sont fermées jusqu'au 1er du mois, Tenno : le budget de consultation est épuisé."
+
+
+def cooldown_message(seconds: int) -> str:
+    return COOLDOWN_MESSAGE.format(delay="1 seconde" if seconds <= 1 else f"{seconds} secondes")
+
+
+def quota_message(count: int) -> str:
+    return QUOTA_MESSAGE.format(count=count)
+
+
 # Pannes (API Anthropic ou warframestat) : la panne vient d'elle, il faut réessayer plus tard.
 ERROR_MESSAGES = (
     "Mes circuits sont momentanément indisponibles, Tenno. Reviens me voir un peu plus tard.",
