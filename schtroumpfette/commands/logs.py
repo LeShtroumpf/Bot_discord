@@ -233,7 +233,7 @@ class Logs(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if before.channel is not None and after.channel is not None and before.channel.id == after.channel.id:
             return  # micro, casque, stream… : pas un changement de salon
-        await self.send(render.voice(member, before, after))
+        await self.send(render.voice(member, before, after, self.is_temp_voice))
 
     # --- Serveur ----------------------------------------------------------------------------------------
 

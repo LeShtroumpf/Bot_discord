@@ -330,6 +330,16 @@ async def test_user_update(cog, channel):
 
 
 @pytest.mark.asyncio
+async def test_voice_temp_channel_has_no_mention(cog, channel):
+    cog.permanent_voice = {1}
+    lobby = MagicMock(spec=discord.VoiceChannel, id=1, mention="<#1>")
+    temp = MagicMock(spec=discord.VoiceChannel, id=2, mention="<#2>")
+    lobby.name, temp.name = "Lobby", "Salon de Toto"
+    await cog.on_voice_state_update(user(), MagicMock(channel=lobby), MagicMock(channel=temp))
+    assert sent(channel) == ["<@42> a switch de vocal **🔊 Lobby** (<#1>) -> **🔊 Salon de Toto**"]
+
+
+@pytest.mark.asyncio
 async def test_voice_same_channel_is_ignored(cog, channel):
     same = MagicMock(id=1)
     await cog.on_voice_state_update(user(), MagicMock(channel=same), MagicMock(channel=same))
@@ -359,9 +369,9 @@ async def test_channel_and_role_logs_name_the_moderator(cog, channel):
     await cog.on_guild_role_create(role)
     await cog.on_guild_role_delete(role)
     assert sent(channel) == [
-        "Salon <#5> (texte) créé par <@99>.",
+        "Salon **général** (<#5>, texte) créé par <@99>.",
         "Salon **général** (texte) supprimé.",
-        "Rôle <@&6> créé.",
+        "Rôle **Modo** (<@&6>) créé.",
         "Rôle **Modo** supprimé par <@99>.",
     ]
 
