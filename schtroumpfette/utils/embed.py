@@ -83,9 +83,11 @@ class LogsMessage:
         embed.add_field(name="Avant:", value=self._field_text(before), inline=False)
         return embed
 
-    def delete(self, user, channel_id: int, text: str) -> discord.Embed:
+    def delete(self, user, channel_id: int, text: str, attachments: tuple[str, ...] = ()) -> discord.Embed:
         embed = self._embed(0xff0000, f"{user.mention} a supprimé son message dans <#{channel_id}>.", user)
         embed.add_field(name="Avant:", value=self._field_text(text), inline=False)
+        if attachments:
+            embed.add_field(name="Pièces jointes:", value=self._field_text("\n".join(f"📎 {name}" for name in attachments)), inline=False)
         return embed
 
     def delete_unknown(self, channel_id: int) -> discord.Embed:

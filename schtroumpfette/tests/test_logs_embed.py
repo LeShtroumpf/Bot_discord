@@ -69,3 +69,14 @@ def test_error_embed():
     assert embed.description == "Error with last event: origine"
     assert len(embed.fields[0].value) == 1024
     assert logs_message.error("origine", "boum", repeats=12).description.endswith("(répétée 12 fois)")
+
+
+def test_delete_lists_attachments_only_when_there_are_some():
+    assert [f.name for f in logs_message.delete(user_without_photo(), 7, "texte").fields] == ["Avant:"]
+    embed = logs_message.delete(user_without_photo(), 7, "", ("a.png", "b.mp4"))
+    assert [(f.name, f.value) for f in embed.fields] == [("Avant:", "(pas de texte)"), ("Pièces jointes:", "📎 a.png\n📎 b.mp4")]
+
+
+def test_delete_truncates_a_long_attachment_list():
+    embed = logs_message.delete(user_without_photo(), 7, "texte", tuple(f"fichier_{i}.png" for i in range(200)))
+    assert len(embed.fields[1].value) == logs_message.FIELD_MAX

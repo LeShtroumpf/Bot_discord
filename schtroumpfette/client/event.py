@@ -1,3 +1,4 @@
+import asyncio
 import functools
 
 import discord
@@ -7,6 +8,7 @@ from discord.ext import commands, tasks
 from .twitch import twitch
 from .event_action import EventAction
 from .event_logs import event_logs
+from .message_cache import message_cache
 from utils.file_management import settings_file_management
 
 
@@ -35,6 +37,7 @@ class EventListener(commands.Bot):
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
+        self.message_cache_task: asyncio.Task | None = None
 
     @property
     def logs_channel(self) -> discord.abc.GuildChannel | None:
@@ -44,18 +47,48 @@ class EventListener(commands.Bot):
         synced = await self.tree.sync()
         print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
+        self.start_message_cache_load()
+
+    def start_message_cache_load(self):
+        """À chaque on_ready (démarrage, reconnexion complète sans rejeu des events) : on complète le cache, un chargement à la fois."""
+        if self.message_cache_task is None or self.message_cache_task.done():
+            self.message_cache_task = asyncio.create_task(self.load_message_cache())
+
+    def message_cache_excluded(self) -> set[int]:
+        """Salon de logs et salon d'info Warframe : que des messages du bot."""
+        try:
+            warframe = settings_file_management.get_entry(main_key="warframe") or {}
+        except KeyError:
+            warframe = {}  # module Warframe jamais configuré
+        return {int(channel_id) for channel_id in (self.logs_channel_id, warframe.get("info_channel")) if channel_id}
+
+    @log_errors("message_cache")
+    async def load_message_cache(self):
+        message_cache.excluded = self.message_cache_excluded()
+        added, channels, failures = await message_cache.load(self.guilds)
+        print(f"[cache] {added} messages chargés depuis {channels} salons", flush=True)
+        if failures:
+            await event_logs.on_error_log(
+                self,
+                f"Chargement du cache : {len(failures)} salon(s) ignoré(s) : {', '.join(failures)}",
+                origine="message_cache",
+                channel=self.logs_channel,
+            )
 
     @log_errors("on_raw_message_edit")
     async def on_raw_message_edit(self, payload):
         """Called when a message is edited."""
         if payload.message.author.bot:
             return  # modifications des bots (dont les messages Warframe mis à jour en continu) : pas de log
-        await event_logs.on_message_edit_log(self, payload=payload, channel=self.logs_channel)
+        entry = message_cache.get(payload.message_id)
+        await event_logs.on_message_edit_log(self, payload, entry, channel=self.logs_channel)
+        message_cache.update_content(payload.message_id, payload.message.content)
 
     @log_errors("on_raw_message_delete")
     async def on_raw_message_delete(self, payload):
         """Called when a message is deleted."""
-        await event_logs.on_message_delete_log(self, payload=payload, channel=self.logs_channel)
+        entry = message_cache.pop(payload.message_id)
+        await event_logs.on_message_delete_log(self, payload, entry, channel=self.logs_channel)
 
     @log_errors("on_reaction_add")
     async def on_raw_reaction_add(self, payload):
@@ -89,7 +122,9 @@ class EventListener(commands.Bot):
         await event_logs.on_voice_state_update_log(self, member, before, after, channel=self.logs_channel)
         await self.event_actions.on_voice_state_update_action(self, member, before, after)
 
+    @log_errors("on_message")
     async def on_message(self, message):
+        message_cache.add(message)
         if not message.content.startswith("$"):
             if self.voice_clients and self.voice_clients[0].channel.id == message.channel.id:
                 await self.event_actions.on_message_tts_action(self, message)
@@ -176,11 +211,6 @@ class EventListener(commands.Bot):
         import gc
         collected = gc.collect()
         print(f"[GC] Objets collectés : {collected}")
-
-        # Nettoie le cache des messages
-        if hasattr(self, '_connection'):
-            if hasattr(self._connection, '_messages'):
-                self._connection._messages.clear()
 
     @gc_task.before_loop
     async def before_gc_task(self):

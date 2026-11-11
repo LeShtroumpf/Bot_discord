@@ -5,6 +5,7 @@ import pytest
 
 from client.event import EventListener, log_errors
 from client.event_logs import ERROR_WINDOW, EventLogs, event_logs
+from client.message_cache import CachedMessage, MessageCache
 
 
 def edit_payload(author_bot: bool, cached: str | None, content: str):
@@ -89,7 +90,7 @@ async def test_voice_is_logged_even_if_the_action_fails():
 @pytest.mark.asyncio
 async def test_delete_of_a_cached_message_names_the_author(logs):
     channel = logs_channel()
-    payload = MagicMock(channel_id=7, cached_message=MagicMock(content="texte", author=MagicMock(mention="<@42>")))
+    payload = MagicMock(channel_id=7, cached_message=MagicMock(content="texte", author=MagicMock(mention="<@42>", bot=False)))
     await logs.on_message_delete_log(MagicMock(), payload=payload, channel=channel)
     assert channel.send.await_args.kwargs["embed"].description == "<@42> a supprimé son message dans <#7>."
 
@@ -212,3 +213,84 @@ def test_logs_channel_without_config():
     listener = MagicMock(logs_channel_id="")
     listener.get_channel.return_value = None
     assert EventListener.logs_channel.fget(listener) is None
+
+
+def cached(content="vieux texte", bot=False, attachments=()):
+    return CachedMessage(author=MagicMock(mention="<@42>", bot=bot), channel_id=7, content=content, attachments=attachments)
+
+
+@pytest.mark.asyncio
+async def test_delete_falls_back_on_the_message_cache(logs):
+    channel = logs_channel()
+    payload = MagicMock(channel_id=7, cached_message=None)
+    await logs.on_message_delete_log(MagicMock(), payload, cached(attachments=("photo.png",)), channel=channel)
+    embed = channel.send.await_args.kwargs["embed"]
+    assert embed.description == "<@42> a supprimé son message dans <#7>."
+    assert [(f.name, f.value) for f in embed.fields] == [("Avant:", "vieux texte"), ("Pièces jointes:", "📎 photo.png")]
+
+
+@pytest.mark.asyncio
+async def test_discord_cache_wins_over_the_message_cache(logs):
+    channel = logs_channel()
+    message = MagicMock(content="texte discord", author=MagicMock(mention="<@1>", bot=False), attachments=[])
+    await logs.on_message_delete_log(MagicMock(), MagicMock(channel_id=7, cached_message=message), cached(), channel=channel)
+    embed = channel.send.await_args.kwargs["embed"]
+    assert embed.fields[0].value == "texte discord"
+    assert len(embed.fields) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("from_discord", [True, False])
+async def test_deleted_bot_message_is_not_logged(logs, from_discord):
+    channel = logs_channel()
+    bot_message = MagicMock(author=MagicMock(bot=True), attachments=[])
+    payload = MagicMock(channel_id=7, cached_message=bot_message if from_discord else None)
+    await logs.on_message_delete_log(MagicMock(), payload, None if from_discord else cached(bot=True), channel=channel)
+    channel.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_edit_takes_the_previous_text_from_the_message_cache(logs):
+    channel = logs_channel()
+    await logs.on_message_edit_log(MagicMock(), edit_payload(False, None, "nouveau"), cached("ancien"), channel=channel)
+    embed = channel.send.await_args.kwargs["embed"]
+    assert [(f.name, f.value) for f in embed.fields] == [("Après:", "nouveau"), ("Avant:", "ancien")]
+
+
+def listener_with_cache(monkeypatch, entry):
+    cache = MessageCache()
+    if entry is not None:
+        cache.messages[99] = entry
+    monkeypatch.setattr("client.event.message_cache", cache)
+    return MagicMock(logs_channel_id="1"), cache
+
+
+@pytest.mark.asyncio
+async def test_edit_updates_the_message_cache(monkeypatch):
+    listener, cache = listener_with_cache(monkeypatch, cached("v1"))
+    payload = edit_payload(False, None, "v2")
+    payload.message_id = 99
+    seen = []
+    log = AsyncMock(side_effect=lambda bot, payload, entry, channel: seen.append(entry.content))
+    with patch.object(event_logs, "on_message_edit_log", new=log):
+        await EventListener.on_raw_message_edit(listener, payload)
+    assert seen == ["v1"]  # le log voit l'ancien texte
+    assert cache.get(99).content == "v2"
+
+
+@pytest.mark.asyncio
+async def test_delete_removes_the_entry_and_passes_it_to_the_log(monkeypatch):
+    entry = cached()
+    listener, cache = listener_with_cache(monkeypatch, entry)
+    with patch.object(event_logs, "on_message_delete_log", new=AsyncMock()) as log:
+        await EventListener.on_raw_message_delete(listener, MagicMock(message_id=99))
+    assert log.await_args.args[2] is entry
+    assert cache.get(99) is None
+
+
+@pytest.mark.asyncio
+async def test_gc_task_keeps_the_discord_message_cache():
+    listener = MagicMock()
+    listener._connection._messages = ["message"]
+    await EventListener.gc_task.coro(listener)
+    assert listener._connection._messages == ["message"]
