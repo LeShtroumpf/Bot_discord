@@ -12,3 +12,6 @@ pytest.ini
 # Module Warframe : cache reconstruit au démarrage, icônes servies depuis GitHub (pas lues par le bot)
 warframe/cache/
 warframe/data/icons/
+
+# Config et état propres à chaque serveur : montés en volume (docker-compose.prod.yml), jamais dans l'image publiée
+settings.json
