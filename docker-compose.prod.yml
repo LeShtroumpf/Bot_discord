@@ -1,0 +1,12 @@
+# Production : image construite et publiée par la CI (.github/workflows/ci.yml), TAG = SHA du commit (écrit dans .env
+# par le déploiement). Seul l'état propre au serveur est monté : le code vient de l'image.
+# Dev local : docker-compose.yml (build + code monté).
+services:
+  bot:
+    image: ghcr.io/leshtroumpf/bot_discord:${TAG}
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./schtroumpfette/settings.json:/app/schtroumpfette/settings.json
+      - ./schtroumpfette/warframe/cache:/app/schtroumpfette/warframe/cache

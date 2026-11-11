@@ -1,6 +1,5 @@
 FROM python:3.12.2
 
-# RUN mkdir -p /schtroumpfette
 WORKDIR /app/schtroumpfette
 
 # ffmpeg
@@ -15,7 +14,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -U "pip>=26.2.2" && \
     pip install --no-cache-dir -U -r requirements.txt
 
-COPY . /app
+COPY . .
 
-RUN echo "hello to schtroumpfette"
+# Commit de l'image, annoncé au démarrage dans le salon de logs (vide en local = « version locale »)
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
+
 CMD ["python3", "-u", "main.py"]

@@ -1,0 +1,176 @@
+# CI/CD du bot, sur le modèle de fluxt :
+# - PR vers master : Tests (flake8 sur les .py modifiés + pytest), check obligatoire pour merger
+# - push sur master : Tests → Build (image ghcr.io, tag = SHA) → Deploy (SSH, environnement production)
+# - lancement manuel : idem, ou Deploy seul d'une image déjà publiée (entrée sha = retour arrière)
+# Les infos du serveur ne sont que dans les secrets de l'environnement production (dépôt public).
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "SHA complet d'une image déjà publiée à redéployer (vide = build et déploiement du commit courant)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/leshtroumpf/bot_discord
+
+jobs:
+  tests:
+    name: Tests
+    if: ${{ !inputs.sha }}
+    runs-on: ubuntu-latest
+    # Même base que l'image de prod (Dockerfile) : setup-python ne fournit pas toutes les versions de patch
+    container: python:3.12.2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # pour comparer avec la branche cible / le commit précédent
+
+      - name: Install dependencies
+        run: |
+          pip install --root-user-action=ignore -U "pip>=26.2.2"
+          pip install --root-user-action=ignore -r schtroumpfette/requirements-dev.txt
+
+      - name: Lint changed files (flake8)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Conteneur : le dépôt n'appartient pas à root, git le refuse sans ça (checkout ne l'autorise que pour lui)
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          case "$EVENT" in
+            pull_request) range="origin/$BASE_REF...HEAD" ;;
+            push) if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then range="HEAD~1 HEAD"; else range="$BEFORE $GITHUB_SHA"; fi ;;
+            *) echo "Lancement manuel : pas de fichiers modifiés à vérifier"; exit 0 ;;
+          esac
+          files=$(git diff --name-only --diff-filter=ACMR $range -- '*.py')
+          if [ -z "$files" ]; then echo "Aucun .py modifié"; exit 0; fi
+          echo "$files"
+          flake8 --config .flake8 $files
+
+      - name: Tests (pytest)
+        working-directory: schtroumpfette
+        run: python -m pytest -q -p no:cacheprovider
+
+  build:
+    name: Build
+    needs: tests
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && !inputs.sha }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: schtroumpfette
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: GIT_SHA=${{ github.sha }}
+          provenance: false
+
+      - name: Check the code imports in the image
+        run: |
+          docker run --rm "$IMAGE:$GITHUB_SHA" \
+            python -c "import client.event, commands.everyone, commands.moderation.modo, commands.moderation.twitch_cmd, commands.warframe, commands.logs"
+
+      - name: Push image
+        run: docker push "$IMAGE:$GITHUB_SHA"
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: >-
+      ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' &&
+      (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.sha)) }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      TAG: ${{ inputs.sha || github.sha }}
+      TARGET: ${{ secrets.TARGET_USER }}@${{ secrets.TARGET_HOST }}
+      TARGET_DIR: ${{ secrets.TARGET_DIR }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the tag
+        run: |
+          if ! [[ "$TAG" =~ ^[0-9a-f]{40}$ ]]; then echo "SHA invalide (40 caractères hexadécimaux attendus)"; exit 1; fi
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          TARGET_HOST: ${{ secrets.TARGET_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$TARGET_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy the compose file
+        run: scp docker-compose.prod.yml "$TARGET:$TARGET_DIR/"
+
+      - name: Log in to ghcr.io on the server
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GHCR_PAT" | ssh "$TARGET" "docker login ghcr.io -u $ACTOR --password-stdin"
+
+      - name: Deploy
+        run: |
+          ssh "$TARGET" "bash -s -- $(printf '%q ' "$TARGET_DIR" "$TAG")" <<'EOF'
+          set -euo pipefail
+          trap 'docker logout ghcr.io >/dev/null' EXIT
+          cd "$1"
+          test -f schtroumpfette/settings.json || { echo "settings.json absent : arrêt (sinon Docker monterait un dossier vide)"; exit 1; }
+          mkdir -p schtroumpfette/warframe/cache
+          sed -i '/^TAG=/d' .env && echo "TAG=$2" >> .env
+          docker compose -f docker-compose.prod.yml pull
+          cp schtroumpfette/settings.json schtroumpfette/settings.json.bak
+          docker compose -f docker-compose.prod.yml up -d
+          EOF
+
+      - name: Check the bot is running
+        run: |
+          sleep 30
+          ssh "$TARGET" "bash -s -- $(printf '%q ' "$TARGET_DIR")" <<'EOF'
+          set -euo pipefail
+          cd "$1"
+          id=$(docker compose -f docker-compose.prod.yml ps -q bot)
+          state=$(docker inspect -f '{{.State.Running}} {{.RestartCount}}' "$id")
+          echo "running restarts : $state"
+          if [ "$state" != "true 0" ]; then
+            docker compose -f docker-compose.prod.yml logs --tail 50 bot
+            exit 1
+          fi
+          EOF
+
+      - name: Remove old images
+        run: ssh "$TARGET" "docker image prune -f"

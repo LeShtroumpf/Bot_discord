@@ -1,3 +1,5 @@
+import os
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -5,6 +7,7 @@ from discord.ext import commands, tasks
 from .twitch import twitch
 from .event_action import EventAction
 from .errors import log_errors, report_error
+from utils.embed import startup_message
 from utils.file_management import settings_file_management
 
 
@@ -20,6 +23,7 @@ class EventListener(commands.Bot):
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
+        self.announced = False
 
     @property
     def logs_channel(self) -> discord.abc.GuildChannel | None:
@@ -29,6 +33,17 @@ class EventListener(commands.Bot):
         synced = await self.tree.sync()
         print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
+        if not self.announced:  # une annonce par lancement, pas à chaque reconnexion
+            self.announced = True
+            await self.announce_startup()
+
+    @log_errors("startup")
+    async def announce_startup(self):
+        """Version déployée dans le salon de logs (GIT_SHA posé par l'image, absent en local)."""
+        channel = self.logs_channel
+        if channel is None:
+            raise LookupError("salon de logs introuvable")
+        await channel.send(embed=startup_message.started(os.getenv("GIT_SHA")))
 
     @log_errors("on_reaction_add")
     async def on_raw_reaction_add(self, payload):

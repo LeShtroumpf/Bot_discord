@@ -56,6 +56,18 @@ class TwitchMessage:
         await channel.send(message, embed=embed_twitch)
 
 
+class StartupMessage:
+    """Annonce de démarrage dans le salon de logs : version déployée (SHA du commit, posé par l'image)."""
+    REPO_URL = "https://github.com/LeShtroumpf/Bot_discord"
+
+    def started(self, sha: str | None) -> discord.Embed:
+        if sha:
+            description = f"🚀 Schtroumpfette démarrée sur [`{sha[:7]}`]({self.REPO_URL}/commit/{sha})"
+        else:
+            description = "🚀 Schtroumpfette démarrée (version locale)"
+        return discord.Embed(color=0x00ff10, description=description, timestamp=datetime.now())
+
+
 class ErrorMessage:
     """Embed d'erreur du salon de logs (client/errors.py). Les logs d'activité sont dans logs/render.py."""
     FIELD_MAX = 1024
@@ -74,3 +86,4 @@ class ErrorMessage:
 GeoGuessrChallenge = GeoGuessrChallenge()
 TwitchMessage = TwitchMessage()
 error_message = ErrorMessage()
+startup_message = StartupMessage()
