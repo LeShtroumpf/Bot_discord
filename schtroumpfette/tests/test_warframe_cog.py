@@ -44,7 +44,7 @@ def cog(bot):
 
 @pytest.fixture
 def logs():
-    with patch.object(cog_module.event_logs, "on_error_log", new=AsyncMock()) as mock:
+    with patch.object(cog_module, "report_error", new=AsyncMock()) as mock:
         yield mock
 
 

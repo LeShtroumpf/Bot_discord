@@ -1,28 +1,11 @@
-import asyncio
-import functools
-
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
 from .twitch import twitch
 from .event_action import EventAction
-from .event_logs import event_logs
-from .message_cache import message_cache
+from .errors import log_errors, report_error
 from utils.file_management import settings_file_management
-
-
-def log_errors(origine: str):
-    """Une exception dans un event ou une tâche part dans le salon de logs, avec son origine."""
-    def decorator(handler):
-        @functools.wraps(handler)
-        async def wrapper(self, *args, **kwargs):
-            try:
-                await handler(self, *args, **kwargs)
-            except Exception as error:
-                await event_logs.on_error_log(self, error, origine=origine, channel=self.logs_channel)
-        return wrapper
-    return decorator
 
 
 class EventListener(commands.Bot):
@@ -37,7 +20,6 @@ class EventListener(commands.Bot):
         self.logs_channel_id = settings_file_management.get_entry(main_key="dict_chan")["logs_channel"]
         self.stream_channel = settings_file_management.get_entry(main_key="dict_chan")["stream_channel"]
         self.event_actions = EventAction()
-        self.message_cache_task: asyncio.Task | None = None
 
     @property
     def logs_channel(self) -> discord.abc.GuildChannel | None:
@@ -47,48 +29,6 @@ class EventListener(commands.Bot):
         synced = await self.tree.sync()
         print(f"Commandes synchronisées : {len(synced)}")
         await self.event_actions.on_ready(self)
-        self.start_message_cache_load()
-
-    def start_message_cache_load(self):
-        """À chaque on_ready (démarrage, reconnexion complète sans rejeu des events) : on complète le cache, un chargement à la fois."""
-        if self.message_cache_task is None or self.message_cache_task.done():
-            self.message_cache_task = asyncio.create_task(self.load_message_cache())
-
-    def message_cache_excluded(self) -> set[int]:
-        """Salon de logs et salon d'info Warframe : que des messages du bot."""
-        try:
-            warframe = settings_file_management.get_entry(main_key="warframe") or {}
-        except KeyError:
-            warframe = {}  # module Warframe jamais configuré
-        return {int(channel_id) for channel_id in (self.logs_channel_id, warframe.get("info_channel")) if channel_id}
-
-    @log_errors("message_cache")
-    async def load_message_cache(self):
-        message_cache.excluded = self.message_cache_excluded()
-        added, channels, failures = await message_cache.load(self.guilds)
-        print(f"[cache] {added} messages chargés depuis {channels} salons", flush=True)
-        if failures:
-            await event_logs.on_error_log(
-                self,
-                f"Chargement du cache : {len(failures)} salon(s) ignoré(s) : {', '.join(failures)}",
-                origine="message_cache",
-                channel=self.logs_channel,
-            )
-
-    @log_errors("on_raw_message_edit")
-    async def on_raw_message_edit(self, payload):
-        """Called when a message is edited."""
-        if payload.message.author.bot:
-            return  # modifications des bots (dont les messages Warframe mis à jour en continu) : pas de log
-        entry = message_cache.get(payload.message_id)
-        await event_logs.on_message_edit_log(self, payload, entry, channel=self.logs_channel)
-        message_cache.update_content(payload.message_id, payload.message.content)
-
-    @log_errors("on_raw_message_delete")
-    async def on_raw_message_delete(self, payload):
-        """Called when a message is deleted."""
-        entry = message_cache.pop(payload.message_id)
-        await event_logs.on_message_delete_log(self, payload, entry, channel=self.logs_channel)
 
     @log_errors("on_reaction_add")
     async def on_raw_reaction_add(self, payload):
@@ -102,29 +42,16 @@ class EventListener(commands.Bot):
 
     @log_errors("on_member_join")
     async def on_member_join(self, member):
-        """Called when a member joins the server."""
-        await event_logs.on_member_join_log(self, member, channel=self.logs_channel)  # avant l'action : MP fermés = erreur
+        """Message de bienvenue (le log d'arrivée est dans le cog des logs)."""
         await self.event_actions.on_member_join_action(self, member)
-
-    @log_errors("on_raw_member_remove")
-    async def on_raw_member_remove(self, payload):
-        """Called when a member leaves the server."""
-        await event_logs.on_raw_member_remove_log(self, payload, channel=self.logs_channel)
-
-    @log_errors("on_member_update")
-    async def on_member_update(self, before, after):
-        """Called when a member is updated (roles, nickname, etc.)."""
-        await event_logs.on_member_update_log(self, before, after, channel=self.logs_channel)
 
     @log_errors("on_voice_state_update")
     async def on_voice_state_update(self, member, before, after):
-        """Called when a member joins, leaves, or switches voice channels."""
-        await event_logs.on_voice_state_update_log(self, member, before, after, channel=self.logs_channel)
+        """Vocaux temporaires et départ du bot quand il reste seul (le log est dans le cog des logs)."""
         await self.event_actions.on_voice_state_update_action(self, member, before, after)
 
     @log_errors("on_message")
     async def on_message(self, message):
-        message_cache.add(message)
         if not message.content.startswith("$"):
             if self.voice_clients and self.voice_clients[0].channel.id == message.channel.id:
                 await self.event_actions.on_message_tts_action(self, message)
@@ -133,39 +60,11 @@ class EventListener(commands.Bot):
         else:
             await self.process_commands(message)
 
-    async def on_guild_channel_create(self, channel):
-        """Called when a channel is created."""
-        pass
-
-    async def on_guild_channel_delete(self, channel):
-        """Called when a channel is deleted."""
-        pass
-
-    async def on_guild_channel_update(self, before, after):
-        """Called when a channel is updated."""
-        pass
-
-    async def on_guild_role_create(self, role):
-        """Called when a role is created."""
-        pass
-
-    async def on_guild_role_delete(self, role):
-        """Called when a role is deleted."""
-        pass
-
-    async def on_guild_role_update(self, before, after):
-        """Called when a role is updated."""
-        pass
-
-    async def on_guild_update(self, before, after):
-        """Called when the server is updated."""
-        pass
-
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CheckFailure):
             await ctx.send("Tu n'as pas le droit d'utiliser "
                            "cette commande petit chenapan! :wink:")
-        await event_logs.on_error_log(self, error, origine="on_commande_error", channel=self.logs_channel)
+        await report_error(self, error, "on_commande_error")
 
     @tasks.loop(minutes=1)
     @log_errors("on_post_online_stream")
@@ -193,12 +92,7 @@ class EventListener(commands.Bot):
         if isinstance(error, app_commands.CommandInvokeError):
             error = error.original
         command = f"/{interaction.command.name}" if interaction.command else "slash command"
-        await event_logs.on_error_log(
-            self,
-            f"{interaction.user} : {type(error).__name__}: {error}",
-            origine=command,
-            channel=self.logs_channel,
-        )
+        await report_error(self, f"{interaction.user} : {type(error).__name__}: {error}", command)
 
     async def setup_hook(self):
         self.tree.on_error = self.on_app_command_error
