@@ -13,5 +13,8 @@ pytest.ini
 warframe/cache/
 warframe/data/icons/
 
+# Module Cephalon : compteurs d'usage propres à chaque serveur, montés en volume
+cephalon/state/
+
 # Config et état propres à chaque serveur : montés en volume (docker-compose.prod.yml), jamais dans l'image publiée
 settings.json

@@ -1,3 +1,5 @@
+import pytest
+
 from cephalon import persona, render
 
 SOURCES = [("Continuity", "https://wiki.warframe.com/w/Continuity"),
@@ -61,3 +63,17 @@ def test_system_prompt_is_static():
     """Texte fixe : il fait partie du préfixe mis en cache."""
     assert "Cephalon Schtroumpfette" in persona.SYSTEM_PROMPT and "Tenno" in persona.SYSTEM_PROMPT
     assert "{" not in persona.SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("remaining, expected", [
+    (17, "17 questions restantes aujourd'hui"), (1, "1 question restante aujourd'hui"), (0, "Dernière question du jour"),
+])
+def test_footer_shows_the_remaining_questions(remaining, expected):
+    assert render.answer("Q ?", "R.", SOURCES, remaining).footer.text == f"Données : warframestat.us · {expected}"
+    assert render.answer("Q ?", "R.", [], remaining).footer.text == expected
+
+
+def test_refusal_messages():
+    assert persona.cooldown_message(12).endswith("Repose ta question dans 12 secondes.")
+    assert persona.cooldown_message(1).endswith("Repose ta question dans 1 seconde.")
+    assert persona.quota_message(20).startswith("Tu as épuisé tes 20 consultations du jour, Tenno.")

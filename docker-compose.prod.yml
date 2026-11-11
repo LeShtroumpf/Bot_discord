@@ -10,3 +10,4 @@ services:
     volumes:
       - ./schtroumpfette/settings.json:/app/schtroumpfette/settings.json
       - ./schtroumpfette/warframe/cache:/app/schtroumpfette/warframe/cache
+      - ./schtroumpfette/cephalon/state:/app/schtroumpfette/cephalon/state

@@ -150,7 +150,7 @@ jobs:
           trap 'docker logout ghcr.io >/dev/null' EXIT
           cd "$1"
           test -f schtroumpfette/settings.json || { echo "settings.json absent : arrêt (sinon Docker monterait un dossier vide)"; exit 1; }
-          mkdir -p schtroumpfette/warframe/cache
+          mkdir -p schtroumpfette/warframe/cache schtroumpfette/cephalon/state
           sed -i '/^TAG=/d' .env && echo "TAG=$2" >> .env
           docker compose -f docker-compose.prod.yml pull
           cp schtroumpfette/settings.json schtroumpfette/settings.json.bak
