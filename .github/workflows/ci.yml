@@ -49,6 +49,8 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
         run: |
+          # Conteneur : le dépôt n'appartient pas à root, git le refuse sans ça (checkout ne l'autorise que pour lui)
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           case "$EVENT" in
             pull_request) range="origin/$BASE_REF...HEAD" ;;
             push) if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then range="HEAD~1 HEAD"; else range="$BEFORE $GITHUB_SHA"; fi ;;
