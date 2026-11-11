@@ -18,6 +18,7 @@ from utils.file_management import settings_file_management
 Action = discord.AuditLogAction
 MISSING_AUDIT = "Permission « Voir les logs du serveur » manquante : logs sans modo"
 MISSING_INVITES = "Permission « Gérer le serveur » manquante : invitation des arrivées inconnue"
+STEP_TIMEOUT = 60  # secondes : une étape du chargement qui ne répond pas ne bloque pas les suivantes
 
 
 def ids(values) -> set[int]:
@@ -76,25 +77,35 @@ class Logs(commands.Cog):
 
     @log_errors("logs_load")
     async def load(self):
+        # Membres : déjà tous chargés par discord.py au démarrage (chunk_guilds_at_startup, voir EventListener).
+        # Ne pas rappeler guild.chunk() : la seconde demande n'obtient jamais de réponse et bloquait tout le chargement.
         self.read_settings()
         for guild in self.bot.guilds:
-            await self.load_step(guild.chunk(), "logs_members")  # sinon pas d'on_member_update pour les membres hors cache
             await self.load_step(self.invites.load(guild), "logs_invites", MISSING_INVITES)
             await self.load_step(self.audit.load_baseline(guild), "logs_audit", MISSING_AUDIT)
-        added, channels, failures = await self.cache.load(self.bot.guilds)
+        result = await self.load_step(self.cache.load(self.bot.guilds), "message_cache")
+        if result is None:
+            return
+        added, channels, failures = result
         print(f"[cache] {added} messages chargés depuis {channels} salons", flush=True)
         if failures:
             text = f"Chargement du cache : {len(failures)} salon(s) ignoré(s) : {', '.join(failures)}"
             await report_error(self.bot, text, "message_cache")
 
     async def load_step(self, coro, origine: str, forbidden: str | None = None):
-        """Une étape du chargement : son échec est signalé sans bloquer les suivantes."""
+        """Une étape du chargement, au plus STEP_TIMEOUT s : son échec est signalé sans bloquer les suivantes.
+
+        Retourne le résultat de l'étape, ou None si elle a échoué.
+        """
         try:
-            await coro
+            return await asyncio.wait_for(coro, STEP_TIMEOUT)
+        except TimeoutError:
+            await report_error(self.bot, f"étape bloquée plus de {STEP_TIMEOUT} s, abandonnée", origine)
         except discord.Forbidden as error:
             await report_error(self.bot, forbidden or error, origine)
         except Exception as error:
             await report_error(self.bot, error, origine)
+        return None
 
     @commands.Cog.listener()
     async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry):
@@ -222,7 +233,7 @@ class Logs(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if before.channel is not None and after.channel is not None and before.channel.id == after.channel.id:
             return  # micro, casque, stream… : pas un changement de salon
-        await self.send(render.voice(member, before, after))
+        await self.send(render.voice(member, before, after, self.is_temp_voice))
 
     # --- Serveur ----------------------------------------------------------------------------------------
 

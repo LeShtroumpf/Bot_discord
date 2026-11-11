@@ -1,7 +1,8 @@
 """Embeds du salon de logs : une méthode par type de log, fonctions pures.
 
-Noms de salons : mention quand le salon existe forcément (création, vocal rejoint), nom en texte quand il peut
-avoir disparu au moment où on lit le log (suppression, vocal quitté) — Discord résout `<#id>` à l'affichage.
+Noms de salons et de rôles : toujours en texte, car Discord résout `<#id>` / `<@&id>` à l'affichage, et un salon
+ou un rôle supprimé après coup devient « # inconnu » / « @deleted-role ». La mention cliquable est ajoutée à côté
+quand l'objet existe au moment du log et n'est pas voué à disparaître (pas pour un vocal temporaire).
 """
 import io
 from dataclasses import dataclass
@@ -47,8 +48,15 @@ def duration_text(seconds: int | None) -> str:
     return " ".join(parts) or f"{seconds} secondes"
 
 
-def voice_name(channel) -> str:
-    return f"**🔊 {channel.name}**"
+def voice_name(channel, temporary: bool = False) -> str:
+    """Vocal : nom en texte, plus la mention s'il n'est pas temporaire."""
+    name = f"**🔊 {channel.name}**"
+    return name if temporary else f"{name} ({channel.mention})"
+
+
+def named(obj) -> str:
+    """Salon ou rôle qui existe : nom en texte (lisible même s'il est supprimé plus tard) et mention cliquable."""
+    return f"**{obj.name}** ({obj.mention})"
 
 
 class LogsRender:
@@ -170,23 +178,27 @@ class LogsRender:
     def display_name(self, user, before: str | None, after: str | None) -> discord.Embed:
         return self._renamed(user, "nom d'affichage", before, after)
 
-    def voice(self, user, before, after) -> discord.Embed:
+    def voice(self, user, before, after, is_temporary=lambda channel: False) -> discord.Embed:
+        """is_temporary(salon) : vocal temporaire (créé puis supprimé par le bot), affiché sans mention."""
+        def label(channel):
+            return voice_name(channel, is_temporary(channel))
         if after.channel is None:
-            return self._embed(RED, f"{user.mention} a quitté le vocal {voice_name(before.channel)}", user)
+            return self._embed(RED, f"{user.mention} a quitté le vocal {label(before.channel)}", user)
         if before.channel is None:
-            return self._embed(BLUE, f"{user.mention} a rejoint le vocal {after.channel.mention}", user)
-        return self._embed(SWITCH, f"{user.mention} a switch de vocal {voice_name(before.channel)} -> {after.channel.mention}", user)
+            return self._embed(BLUE, f"{user.mention} a rejoint le vocal {label(after.channel)}", user)
+        return self._embed(SWITCH, f"{user.mention} a switch de vocal {label(before.channel)} -> {label(after.channel)}", user)
 
     # --- Serveur -------------------------------------------------------------------------------------
 
     def channel_created(self, channel, moderator=None) -> discord.Embed:
-        return self._embed(GREEN, f"Salon {channel.mention} ({channel_type(channel)}) créé{self._by(moderator)}.", moderator)
+        description = f"Salon **{channel.name}** ({channel.mention}, {channel_type(channel)}) créé{self._by(moderator)}."
+        return self._embed(GREEN, description, moderator)
 
     def channel_deleted(self, channel, moderator=None) -> discord.Embed:
         return self._embed(RED, f"Salon **{channel.name}** ({channel_type(channel)}) supprimé{self._by(moderator)}.", moderator)
 
     def role_created(self, role, moderator=None) -> discord.Embed:
-        return self._embed(GREEN, f"Rôle {role.mention} créé{self._by(moderator)}.", moderator)
+        return self._embed(GREEN, f"Rôle {named(role)} créé{self._by(moderator)}.", moderator)
 
     def role_deleted(self, role, moderator=None) -> discord.Embed:
         return self._embed(RED, f"Rôle **{role.name}** supprimé{self._by(moderator)}.", moderator)
@@ -194,7 +206,7 @@ class LogsRender:
     def invite_created(self, invite) -> discord.Embed:
         inviter = invite.inviter
         who = inviter.mention if inviter is not None else "Quelqu'un"
-        channel = invite.channel.mention if invite.channel is not None else "le serveur"
+        channel = named(invite.channel) if invite.channel is not None else "le serveur"
         embed = self._embed(BLUE, f"{who} a créé une invitation pour {channel}.", inviter)
         embed.add_field(name="Code:", value=invite.code)
         embed.add_field(name="Validité:", value=duration_text(invite.max_age))

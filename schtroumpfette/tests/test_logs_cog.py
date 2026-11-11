@@ -109,16 +109,43 @@ async def test_on_ready_reloads_but_never_twice_at_once(cog):
 @pytest.mark.asyncio
 async def test_load_reports_each_failing_step_and_goes_on(cog, report, monkeypatch):
     monkeypatch.setattr(cog, "read_settings", lambda: None)
-    guild = MagicMock(chunk=AsyncMock(side_effect=RuntimeError("gateway")))
+    guild = MagicMock(chunk=AsyncMock())
     cog.bot.guilds = [guild]
     cog.invites.load = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "non"))
     cog.audit.load_baseline = AsyncMock()
     cog.cache.load = AsyncMock(return_value=(3, 2, ["<#5> (RuntimeError: a)"]))
     await cog.load()
     origins = [call.args[2] for call in report.await_args_list]
-    assert origins == ["logs_members", "logs_invites", "message_cache"]
-    assert report.await_args_list[1].args[1] == cog_module.MISSING_INVITES
+    assert origins == ["logs_invites", "message_cache"]
+    assert report.await_args_list[0].args[1] == cog_module.MISSING_INVITES
     cog.audit.load_baseline.assert_awaited_once_with(guild)
+    guild.chunk.assert_not_called()  # membres déjà chargés par discord.py, et une seconde demande ne répond jamais
+
+
+@pytest.mark.asyncio
+async def test_blocked_step_is_abandoned_and_the_next_ones_run(cog, report, monkeypatch, capsys):
+    monkeypatch.setattr(cog, "read_settings", lambda: None)
+    monkeypatch.setattr(cog_module, "STEP_TIMEOUT", 0.01)
+    cog.bot.guilds = [MagicMock()]
+
+    async def never_answers(guild):
+        await asyncio.Event().wait()
+    cog.invites.load = never_answers
+    cog.audit.load_baseline = AsyncMock()
+    cog.cache.load = AsyncMock(return_value=(4, 2, []))
+    await cog.load()
+    assert report.await_args.args[1:] == ("étape bloquée plus de 0.01 s, abandonnée", "logs_invites")
+    cog.audit.load_baseline.assert_awaited_once()
+    assert "[cache] 4 messages chargés depuis 2 salons" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_failed_cache_load_is_reported_once(cog, report, monkeypatch, capsys):
+    monkeypatch.setattr(cog, "read_settings", lambda: None)
+    cog.cache.load = AsyncMock(side_effect=RuntimeError("API en panne"))
+    await cog.load()
+    assert [call.args[2] for call in report.await_args_list] == ["message_cache"]
+    assert "[cache]" not in capsys.readouterr().out
 
 
 # --- Messages ----------------------------------------------------------------------------------------------
@@ -303,6 +330,16 @@ async def test_user_update(cog, channel):
 
 
 @pytest.mark.asyncio
+async def test_voice_temp_channel_has_no_mention(cog, channel):
+    cog.permanent_voice = {1}
+    lobby = MagicMock(spec=discord.VoiceChannel, id=1, mention="<#1>")
+    temp = MagicMock(spec=discord.VoiceChannel, id=2, mention="<#2>")
+    lobby.name, temp.name = "Lobby", "Salon de Toto"
+    await cog.on_voice_state_update(user(), MagicMock(channel=lobby), MagicMock(channel=temp))
+    assert sent(channel) == ["<@42> a switch de vocal **🔊 Lobby** (<#1>) -> **🔊 Salon de Toto**"]
+
+
+@pytest.mark.asyncio
 async def test_voice_same_channel_is_ignored(cog, channel):
     same = MagicMock(id=1)
     await cog.on_voice_state_update(user(), MagicMock(channel=same), MagicMock(channel=same))
@@ -332,9 +369,9 @@ async def test_channel_and_role_logs_name_the_moderator(cog, channel):
     await cog.on_guild_role_create(role)
     await cog.on_guild_role_delete(role)
     assert sent(channel) == [
-        "Salon <#5> (texte) créé par <@99>.",
+        "Salon **général** (<#5>, texte) créé par <@99>.",
         "Salon **général** (texte) supprimé.",
-        "Rôle <@&6> créé.",
+        "Rôle **Modo** (<@&6>) créé.",
         "Rôle **Modo** supprimé par <@99>.",
     ]
 

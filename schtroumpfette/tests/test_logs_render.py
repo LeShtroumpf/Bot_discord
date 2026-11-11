@@ -59,13 +59,16 @@ def test_delete_unknown_has_no_author():
     assert embed.author.name is None
 
 
-def test_voice_states_name_the_channel_that_may_be_gone():
-    a, b = MagicMock(mention="#a"), MagicMock(mention="#b")
-    a.name = "Salon de Toto"
+def test_voice_states_always_name_the_channel():
+    lobby, temp = MagicMock(mention="<#1>"), MagicMock(mention="<#2>")
+    lobby.name, temp.name = "Lobby", "Salon de Toto"
     user = user_without_photo()
-    assert "a rejoint le vocal #a" in logs_message.voice(user, voice_state(), voice_state(a)).description
-    assert "a quitté le vocal **🔊 Salon de Toto**" in logs_message.voice(user, voice_state(a), voice_state()).description
-    assert "a switch de vocal **🔊 Salon de Toto** -> #b" in logs_message.voice(user, voice_state(a), voice_state(b)).description
+
+    def voice(before, after):
+        return logs_message.voice(user, voice_state(before), voice_state(after), lambda channel: channel is temp).description
+    assert voice(None, lobby) == "<@1> a rejoint le vocal **🔊 Lobby** (<#1>)"
+    assert voice(lobby, temp) == "<@1> a switch de vocal **🔊 Lobby** (<#1>) -> **🔊 Salon de Toto**"  # temporaire : pas de mention
+    assert voice(temp, None) == "<@1> a quitté le vocal **🔊 Salon de Toto**"
 
 
 def test_delete_lists_attachments_only_when_there_are_some():
@@ -144,9 +147,9 @@ def test_channels_and_roles():
     channel.name = "Général"
     role = MagicMock(mention="<@&6>")
     role.name = "Modo"
-    assert logs_message.channel_created(channel, moderator()).description == "Salon <#5> (vocal) créé par <@99>."
+    assert logs_message.channel_created(channel, moderator()).description == "Salon **Général** (<#5>, vocal) créé par <@99>."
     assert logs_message.channel_deleted(channel).description == "Salon **Général** (vocal) supprimé."
-    assert logs_message.role_created(role, moderator()).description == "Rôle <@&6> créé par <@99>."
+    assert logs_message.role_created(role, moderator()).description == "Rôle **Modo** (<@&6>) créé par <@99>."
     assert logs_message.role_deleted(role, moderator()).description == "Rôle **Modo** supprimé par <@99>."
 
 
@@ -168,7 +171,7 @@ def test_invites():
     invite.channel.mention = "<#5>"
     invite.channel.name = "général"
     embed = logs_message.invite_created(invite)
-    assert embed.description == "<@99> a créé une invitation pour <#5>."
+    assert embed.description == "<@99> a créé une invitation pour **général** (<#5>)."
     assert {f.name: f.value for f in embed.fields} == {"Code:": "abc", "Validité:": "1 jour", "Utilisations max:": "illimitées"}
     assert logs_message.invite_deleted(invite, moderator()).description == "Invitation **abc** pour **#général** supprimée par <@99>."
     assert logs_message.invite_deleted(invite, exhausted=True).description == "Invitation **abc** épuisée."
