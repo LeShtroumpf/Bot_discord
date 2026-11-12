@@ -1,0 +1,94 @@
+"""Réglages du module : section `cephalon` de settings.json et constantes."""
+from dataclasses import dataclass
+
+from utils.file_management import settings_file_management
+
+SETTINGS_KEY = "cephalon"
+WARFRAME_KEY = "warframe"  # le salon autorisé est celui des commandes Warframe
+
+MAX_TOOL_ROUNDS = 5        # appels à Claude par question, au plus
+API_CACHE_TTL = 6 * 3600   # secondes : les données de warframestat ne changent qu'aux mises à jour du jeu
+API_CACHE_SIZE = 500       # réponses gardées en mémoire, au plus
+API_TIMEOUT = 10           # secondes par requête warframestat
+LLM_TIMEOUT = 60           # secondes par requête à l'API Anthropic
+LLM_RETRIES = 2            # nouveaux essais du SDK (429, 5xx, réseau)
+
+INDEX_MAX_AGE = 24 * 3600  # secondes : l'index local est reconstruit une fois par jour
+INDEX_RETRY = 600          # secondes avant un nouvel essai après un téléchargement en échec
+INDEX_TIMEOUT = 60         # secondes par liste complète de warframestat
+MAX_RESULTS = 10           # résultats renvoyés par une recherche ou un classement
+
+PAGE_MAX_BYTES = 5 * 1024 * 1024  # export du wiki plus gros : refusé
+SECTION_LIMIT = 8000              # caractères d'une section renvoyés à Claude, au plus
+MAX_PAGES = 3                     # pages renvoyées par search_pages, au plus
+
+IMAGE_MAX_BYTES = 20 * 1024 * 1024  # pièce jointe de /cephalon_build plus lourde : refusée sans téléchargement
+IMAGE_MAX_EDGE = 2576               # côté maximum traité par les modèles actuels (au-delà, l'API réduit elle-même)
+IMAGE_PNG_LIMIT = 3_500_000         # octets : au-delà, l'image réduite part en JPEG (limite de l'API : 10 Mo en base64)
+READER_MAX_TOKENS = 4000            # lecture d'une capture : réflexion + JSON
+READER_EFFORT = "low"
+
+EFFORTS = ("low", "medium", "high")
+
+
+@dataclass(frozen=True)
+class Config:
+    model: str = "claude-haiku-5-5"
+    max_tokens: int = 2000  # réflexion du modèle + réponse
+    effort: str = "low"     # profondeur de réflexion, donc coût
+    cooldown: float = 30           # secondes entre deux questions d'un même joueur
+    daily_questions: int = 20      # questions répondues par joueur et par jour
+    monthly_budget: float = 4      # euros par mois, tous joueurs confondus (coût estimé)
+    usd_to_eur: float = 0.9        # conversion du coût estimé, à ajuster au cours du moment
+    build_model: str = "claude-sonnet-5-5"         # analyse d'un build (/cephalon_build)
+    build_reader_model: str = "claude-sonnet-5-5"  # lecture de la capture (JSON imposé)
+    build_max_tokens: int = 6000   # réflexion + réponse de l'analyse
+    build_effort: str = "medium"
+    build_daily: int = 1           # builds répondus par joueur et par jour
+    build_cooldown: float = 120    # secondes entre deux builds d'un même joueur
+
+
+def read_section(key: str) -> dict:
+    try:
+        section = settings_file_management.get_entry(main_key=key)
+    except (KeyError, TypeError):
+        return {}
+    return section if isinstance(section, dict) else {}
+
+
+def positive(value, default, integer: bool = False):
+    """Une limite ne se coupe pas par accident : valeur absente, non numérique, nulle ou négative = défaut."""
+    if isinstance(value, bool) or not isinstance(value, int if integer else (int, float)) or value <= 0:
+        return default
+    return value
+
+
+def text(value, default: str) -> str:
+    return value.strip() if isinstance(value, str) and value.strip() else default
+
+
+def read_config() -> Config:
+    """Section lue à chaque question. Valeur absente ou invalide = valeur par défaut."""
+    section, default = read_section(SETTINGS_KEY), Config()
+    max_tokens, effort = section.get("max_tokens"), section.get("effort")
+    return Config(
+        model=text(section.get("model"), default.model),
+        max_tokens=max_tokens if type(max_tokens) is int and max_tokens > 0 else default.max_tokens,
+        effort=effort if effort in EFFORTS else default.effort,
+        cooldown=positive(section.get("cooldown"), default.cooldown),
+        daily_questions=positive(section.get("daily_questions"), default.daily_questions, integer=True),
+        monthly_budget=positive(section.get("monthly_budget"), default.monthly_budget),
+        usd_to_eur=positive(section.get("usd_to_eur"), default.usd_to_eur),
+        build_model=text(section.get("build_model"), default.build_model),
+        build_reader_model=text(section.get("build_reader_model"), default.build_reader_model),
+        build_max_tokens=positive(section.get("build_max_tokens"), default.build_max_tokens, integer=True),
+        build_effort=section.get("build_effort") if section.get("build_effort") in EFFORTS else default.build_effort,
+        build_daily=positive(section.get("build_daily"), default.build_daily, integer=True),
+        build_cooldown=positive(section.get("build_cooldown"), default.build_cooldown),
+    )
+
+
+def command_channel() -> int | None:
+    """Salon des commandes Warframe, ou None si le module Warframe n'est pas configuré."""
+    channel = str(read_section(WARFRAME_KEY).get("command_channel") or "")
+    return int(channel) if channel.isdigit() else None

@@ -1,0 +1,168 @@
+[
+ {
+  "uniqueName": "/Lotus/Types/Items/ShipDecos/RhinoPrimeBobbleHead",
+  "name": "Noggle Statue - Rhino Prime",
+  "description": "A small wobbly statue of Rhino Prime.",
+  "type": "Ship Decoration",
+  "imageName": "BobbleheadRhinoPrime.png",
+  "category": "Skins",
+  "tradable": false
+ },
+ {
+  "uniqueName": "/Lotus/Powersuits/Rhino/RhinoPrime",
+  "name": "Rhino Prime",
+  "description": "Takes Rhino's ground-shaking abilities to the next level with altered mod polarities that offer greater customization.",
+  "health": 270,
+  "shield": 455,
+  "armor": 290,
+  "power": 100,
+  "masteryReq": 0,
+  "sprintSpeed": 1,
+  "passiveDescription": "Emit a shockwave dealing |DAMAGE| damage after landing from a great height.",
+  "abilities": [
+   {
+    "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/RhinoChargeAbility",
+    "name": "Rhino Charge",
+    "description": "Rhino charges towards a target, clobbering any in his path and goring his victim.",
+    "imageName": "RhinoDash.png"
+   },
+   {
+    "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/IronSkinAbility",
+    "name": "Iron Skin",
+    "description": "Rhino hardens his skin, insulating himself from all damage and gaining Overguard.",
+    "imageName": "RhinoIronSkin.png"
+   },
+   {
+    "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/RhinoRoarAbility",
+    "name": "Roar",
+    "description": "Grants all nearby Warframes increased damage for a short duration.",
+    "imageName": "RhinoRadialBlast.png"
+   },
+   {
+    "uniqueName": "/Lotus/Powersuits/Rhino/Abilities/RhinoStompAbility",
+    "name": "Rhino Stomp",
+    "description": "Rhino stomps with force sufficient to disrupt time, tumbling enemies around him in stasis.",
+    "imageName": "RhinoStomp.png"
+   }
+  ],
+  "components": [
+   {
+    "uniqueName": "/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeBlueprint",
+    "name": "Blueprint",
+    "imageName": "blueprint.png",
+    "itemCount": 1,
+    "drops": [
+     {
+      "location": "Axi R1 Relic (Radiant)",
+      "type": "Rhino Prime Blueprint",
+      "chance": 10,
+      "rarity": "Uncommon",
+      "uniqueName": "/Lotus/Types/Game/Projections/T4VoidProjectionYBronze"
+     }
+    ]
+   },
+   {
+    "uniqueName": "/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeChassisComponent",
+    "name": "Chassis",
+    "imageName": "GenericWarframePrimeChassis.png",
+    "itemCount": 1,
+    "drops": [
+     {
+      "location": "Lith E1 Relic",
+      "type": "Rhino Prime Chassis Blueprint",
+      "chance": 11,
+      "rarity": "Uncommon",
+      "uniqueName": "/Lotus/Types/Game/Projections/T1VoidProjectionEmberRhinoVaultABronze"
+     }
+    ]
+   },
+   {
+    "uniqueName": "/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeHelmetComponent",
+    "name": "Neuroptics",
+    "imageName": "GenericWarframePrimeHelmet.png",
+    "itemCount": 1,
+    "drops": [
+     {
+      "location": "Lith B1 Relic",
+      "type": "Rhino Prime Neuroptics Blueprint",
+      "chance": 11,
+      "rarity": "Uncommon",
+      "uniqueName": "/Lotus/Types/Game/Projections/T1VoidProjectionYBronze"
+     }
+    ]
+   },
+   {
+    "uniqueName": "/Lotus/Types/Items/MiscItems/OrokinCell",
+    "name": "Orokin Cell",
+    "itemCount": 3,
+    "imageName": "ComponentCell.png",
+    "drops": []
+   },
+   {
+    "uniqueName": "/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeSystemsComponent",
+    "name": "Systems",
+    "imageName": "GenericWarframePrimeSystem.png",
+    "itemCount": 1,
+    "drops": [
+     {
+      "location": "Axi S3 Relic (Radiant)",
+      "type": "Rhino Prime Systems Blueprint",
+      "chance": 16.67,
+      "rarity": "Uncommon",
+      "uniqueName": "/Lotus/Types/Game/Projections/T4VoidProjectionRhinoNyxVaultABronze"
+     }
+    ]
+   }
+  ],
+  "type": "Warframe",
+  "imageName": "RhinoPrime.png",
+  "category": "Warframes",
+  "tradable": false,
+  "aura": "madurai",
+  "polarities": [
+   "vazarin",
+   "vazarin",
+   "naramon"
+  ],
+  "wikiaUrl": "https://wiki.warframe.com/w/Rhino%2FPrime",
+  "isPrime": true,
+  "vaulted": true
+ },
+ {
+  "uniqueName": "/Lotus/Types/StoreItems/AvatarImages/ImageRhinoPrimeBright",
+  "name": "Rhino Prime Glyph - Bright",
+  "description": "A glyph depicting Rhino Prime on a bright background.",
+  "type": "Glyph",
+  "imageName": "RhinoPrimeAvatarBright.png",
+  "category": "Glyphs",
+  "tradable": false
+ },
+ {
+  "uniqueName": "/Lotus/Types/StoreItems/AvatarImages/ImageRhinoPrimeDark",
+  "name": "Rhino Prime Glyph - Dark",
+  "description": "A glyph depicting Rhino Prime on a dark background.",
+  "type": "Glyph",
+  "imageName": "RhinoPrimeAvatarDark.png",
+  "category": "Glyphs",
+  "tradable": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Skins/Rhino/RhinoPrimeHelmet",
+  "name": "Rhino Prime Helmet",
+  "description": "The standard issue helmet for the Rhino Prime Warframe.",
+  "type": "Skin",
+  "imageName": "RhinoPrimeHelmet.png",
+  "category": "Skins",
+  "tradable": false
+ },
+ {
+  "uniqueName": "/Lotus/Upgrades/Skins/Rhino/RhinoPrimeSkin",
+  "name": "Rhino Prime Skin",
+  "excludeFromCodex": true,
+  "description": "The standard issue skin for the Rhino Prime Warframe.",
+  "type": "Skin",
+  "imageName": "RhinoPrime.png",
+  "category": "Skins",
+  "tradable": false
+ }
+]
