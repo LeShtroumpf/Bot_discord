@@ -1,4 +1,7 @@
+import asyncio
+import datetime as dt
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import anthropic
@@ -7,7 +10,8 @@ import pytest
 
 from cephalon import limits as limits_module
 from cephalon import persona, render
-from cephalon.config import Config, command_channel, read_config
+from cephalon.config import INDEX_MAX_AGE, INDEX_RETRY, Config, command_channel, read_config
+from cephalon.index import INDEX_FILE, LISTS, Index
 from commands import cephalon as cog_module
 from commands.cephalon import Cephalon
 
@@ -36,11 +40,21 @@ def report():
         yield mock
 
 
+KEEP_INDEX = Cephalon.keep_index  # la vraie tâche de fond, pour les tests qui la visent
+
+
+@pytest.fixture(autouse=True)
+def no_index_task(monkeypatch):
+    """cog_load ne lance pas la vraie tâche de l'index : elle téléchargerait les listes de l'API."""
+    monkeypatch.setattr(Cephalon, "keep_index", AsyncMock())
+
+
 @pytest.fixture
-def cog(fake_api, limits):
+def cog(fake_api, limits, tmp_path):
     cog = Cephalon(bot=MagicMock())
     cog.api = fake_api
     cog.limits = limits
+    cog.index_dir = tmp_path / "index"
     return cog
 
 
@@ -193,8 +207,11 @@ async def test_load_and_unload(limits):
     await cog.cog_unload()  # jamais chargé : rien à fermer
     await cog.cog_load()
     assert cog.api.session is cog.session and cog.load_error is None
+    assert cog.index_dir == cog_module.STATE_DIR and cog.index_task.get_name() == "cephalon_index"
+    await asyncio.sleep(0)
+    Cephalon.keep_index.assert_awaited_once()
     await cog.cog_unload()
-    assert cog.session.closed
+    assert cog.session.closed and cog.index_task.done()
 
 
 # --- Limites ------------------------------------------------------------------------------------------------
@@ -325,6 +342,139 @@ async def test_state_survives_a_restart(cog, asking, settings, claude, fake_api,
     await restarted.cephalon.callback(restarted, asking, question="Et encore ?")  # cooldown en mémoire : reparti de zéro
     assert asking.followup.send.await_args.kwargs["embed"].footer.text.endswith("18 questions restantes aujourd'hui")
     await restarted.cog_unload()
+
+
+# --- Index local --------------------------------------------------------------------------------------------
+
+NOW = dt.datetime(2026, 11, 12, 12, 0, tzinfo=dt.UTC)
+
+
+@pytest.fixture
+def at_noon(monkeypatch):
+    monkeypatch.setattr(cog_module, "utcnow", lambda: NOW)
+
+
+@pytest.fixture
+def lists_online(api_routes, index_lists, monkeypatch):
+    """Les six listes servies par l'API de test, sans les tailles minimales des vraies listes."""
+    monkeypatch.setattr("cephalon.index.MINIMUMS", {})
+    for name, (path, params) in LISTS.items():
+        api_routes[(path, params.get("language"))] = index_lists[name]
+
+
+async def run_index_task(cog, monkeypatch) -> list[float]:
+    """Lance la vraie tâche de fond jusqu'à sa troisième attente et renvoie les durées demandées."""
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) == 3:
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(cog_module.asyncio, "sleep", fake_sleep)
+    with pytest.raises(asyncio.CancelledError):
+        await KEEP_INDEX(cog)
+    return sleeps
+
+
+@pytest.mark.asyncio
+async def test_index_is_downloaded_then_kept_for_a_day(cog, report, lists_online, at_noon, api_session, monkeypatch, capsys):
+    sleeps = await run_index_task(cog, monkeypatch)
+    assert cog.api.index.summary() == "27 mods, 22 armes, 14 Warframes, 87 objets" and cog.api.index.built_at == NOW
+    assert sleeps == [INDEX_MAX_AGE] * 3     # à jour : prochaine construction dans un jour (l'horloge de test est figée)
+    assert len(api_session.calls) == 6       # une seule construction, six listes
+    assert (cog.index_dir / INDEX_FILE).exists()
+    assert "[cephalon] index : 27 mods, 22 armes, 14 Warframes, 87 objets (téléchargé en " in capsys.readouterr().out
+    report.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_recent_index_file_is_used_without_download(cog, index, report, at_noon, api_session, monkeypatch, capsys):
+    index.write(cog.index_dir)  # construit à 8 h : 4 heures d'âge
+    monkeypatch.setattr(cog, "refresh_index", AsyncMock(return_value=True))
+    sleeps = await run_index_task(cog, monkeypatch)
+    assert sleeps[0] == INDEX_MAX_AGE - 4 * 3600 and api_session.calls == []
+    assert cog.api.index.built_at == index.built_at
+    assert "[cephalon] index : 27 mods, 22 armes, 14 Warframes, 87 objets (lu du disque)" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_old_index_file_serves_until_the_new_one_is_built(cog, index_lists, report, lists_online, at_noon):
+    old = Index.build(index_lists, NOW - dt.timedelta(days=3))
+    old.write(cog.index_dir)
+    await cog.read_index()
+    assert cog.api.index.built_at == old.built_at
+    assert await cog.refresh_index() is True
+    assert cog.api.index.built_at == NOW and Index.read(cog.index_dir).built_at == NOW
+
+
+@pytest.mark.asyncio
+async def test_outage_keeps_the_old_index_and_is_reported_once(cog, index, report, at_noon, api_routes, failing_response, monkeypatch):
+    cog.api.index = index
+    api_routes[("/mods", None)] = failing_response("status")
+    monkeypatch.setattr("cephalon.index.MINIMUMS", {})
+    assert await cog.refresh_index() is False and await cog.refresh_index() is False
+    assert cog.api.index is index
+    report.assert_awaited_once()
+    assert report.await_args.args[1].startswith("index non mis à jour : /mods") and report.await_args.args[2] == "cephalon : index"
+
+
+@pytest.mark.asyncio
+async def test_outage_is_retried_then_recovery_is_reported(cog, report, lists_online, at_noon, api_routes, index_lists,
+                                                           failing_response, monkeypatch):
+    api_routes[("/weapons", None)] = failing_response("timeout")
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) == 1:
+            api_routes[("/weapons", None)] = index_lists["weapons"]  # l'API revient
+        if len(sleeps) == 2:
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(cog_module.asyncio, "sleep", fake_sleep)
+    with pytest.raises(asyncio.CancelledError):
+        await KEEP_INDEX(cog)
+    assert sleeps == [INDEX_RETRY, INDEX_MAX_AGE]
+    assert [call.args[1] for call in report.await_args_list] == [
+        "index non mis à jour : /weapons : TimeoutError", "index de nouveau à jour"]
+    assert cog.index_failing is False and cog.api.index is not None
+
+
+@pytest.mark.asyncio
+async def test_short_list_is_an_outage(cog, report, lists_online, at_noon, api_routes, monkeypatch):
+    monkeypatch.setattr("cephalon.index.MINIMUMS", {"warframes": 50})
+    assert await cog.refresh_index() is False and cog.api.index is None
+    assert report.await_args.args[1] == "index non mis à jour : liste warframes incomplète (14)"
+
+
+@pytest.mark.asyncio
+async def test_unreadable_index_file_is_reported_and_ignored(cog, report):
+    cog.index_dir.mkdir()
+    (cog.index_dir / INDEX_FILE).write_text("{ pas du json", encoding="utf-8")
+    await cog.read_index()
+    assert cog.api.index is None
+    assert "index illisible" in str(report.await_args.args[1]) and report.await_args.args[2] == "cephalon : index"
+
+
+@pytest.mark.asyncio
+async def test_index_that_cannot_be_written_stays_in_memory(cog, report, lists_online, at_noon, monkeypatch):
+    monkeypatch.setattr(Index, "write", MagicMock(side_effect=OSError("disque plein")))
+    assert await cog.refresh_index() is True and cog.api.index is not None
+    report.assert_awaited_once_with(cog.bot, "index non écrit sur disque : disque plein", "cephalon : index")
+
+
+@pytest.mark.asyncio
+async def test_question_uses_the_index(cog, asking, settings, claude, index, report):
+    cog.api.index = index
+    cog.claude = claude.client(
+        claude.reply("tool_use", SimpleNamespace(type="tool_use", id="toolu_1", name="rank_warframes",
+                                                 input={"stat": "armor", "order": "desc", "kind": None})),
+        claude.reply("end_turn", claude.text("Valkyr Prime, avec 1000 d'armure de base.")))
+    await cog.cephalon.callback(cog, asking, question="Quelle Warframe a le plus d'armure ?")
+    embed = sent_embed(asking)
+    assert "[Valkyr Prime](https://wiki.warframe.com/w/Valkyr%2FPrime)" in embed.fields[0].value
+    assert '"armor":1000' in cog.claude.requests[1]["messages"][2]["content"][0]["content"]
 
 
 # --- Configuration ------------------------------------------------------------------------------------------

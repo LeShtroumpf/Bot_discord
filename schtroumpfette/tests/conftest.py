@@ -9,6 +9,7 @@ from urllib.parse import quote
 import aiohttp
 import pytest
 
+from cephalon.index import Index
 from cephalon.limits import Limits
 from cephalon.warframe_api import WarframeApi
 from warframe import DATA_DIR, arbitrations, synthesis
@@ -247,3 +248,18 @@ def clock():
 def limits(tmp_path, clock):
     """Limites de /cephalon sur un dossier temporaire : jamais les vrais compteurs."""
     return Limits(tmp_path / "state", clock=clock)
+
+
+INDEX_BUILT_AT = dt.datetime(2026, 11, 12, 8, 0, tzinfo=dt.UTC)
+
+
+@pytest.fixture
+def index_lists():
+    """Extraits réels réduits des six listes complètes de warframestat."""
+    return cephalon_json("index_lists")
+
+
+@pytest.fixture
+def index(index_lists):
+    """Index local construit sur ces extraits (sans les tailles minimales des vraies listes)."""
+    return Index.build(index_lists, INDEX_BUILT_AT, minimums={})

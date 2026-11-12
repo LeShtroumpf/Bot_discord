@@ -5,6 +5,7 @@ Module indépendant : le retirer de `cogs` (main.py) suffit à le couper.
 import asyncio
 import datetime as dt
 import os
+import time
 
 import aiohttp
 import anthropic
@@ -13,12 +14,14 @@ from discord import app_commands
 from discord.ext import commands
 
 from cephalon import STATE_DIR, limits, llm, persona, render
-from cephalon.config import LLM_RETRIES, LLM_TIMEOUT, Config, command_channel, read_config
+from cephalon.config import INDEX_MAX_AGE, INDEX_RETRY, LLM_RETRIES, LLM_TIMEOUT, Config, command_channel, read_config
+from cephalon.index import Index, IndexError_
 from cephalon.warframe_api import WarframeApi, WarframeApiError
 from client.errors import report_error
 
 API_KEY = "ANTHROPIC_API_KEY"
 BUDGET_ORIGIN = "cephalon : budget"
+INDEX_ORIGIN = "cephalon : index"
 
 
 def utcnow() -> dt.datetime:
@@ -54,6 +57,9 @@ class Cephalon(commands.Cog):
         self.claude: anthropic.AsyncAnthropic | None = None  # créé à la première question
         self.limits = limits.Limits(STATE_DIR)
         self.load_error: Exception | None = None  # état illisible au chargement : signalé à la première question
+        self.index_dir = STATE_DIR
+        self.index_task: asyncio.Task | None = None
+        self.index_failing = False                # panne de l'index déjà signalée (un seul log par panne)
 
     async def cog_load(self):
         self.session = aiohttp.ClientSession()
@@ -62,12 +68,65 @@ class Cephalon(commands.Cog):
             await asyncio.to_thread(self.limits.load)
         except limits.StateError as error:  # compteurs à zéro ; le salon de logs n'est pas encore joignable
             self.load_error = error
+        self.index_task = asyncio.create_task(self.keep_index(), name="cephalon_index")
 
     async def cog_unload(self):
+        if self.index_task:
+            self.index_task.cancel()
         if self.session:
             await self.session.close()
         if self.claude:
             await self.claude.close()
+
+    # --- Index local --------------------------------------------------------------------------------------
+
+    async def keep_index(self):
+        """Tâche de fond : relit l'index du disque, le reconstruit s'il a plus d'un jour, puis une fois par jour.
+
+        Le bot répond sans attendre : tant que l'index n'est pas prêt, les fiches passent par l'API en direct."""
+        await self.read_index()
+        while True:
+            index = self.api.index
+            age = index.age(utcnow()) if index else INDEX_MAX_AGE
+            if age < INDEX_MAX_AGE:
+                await asyncio.sleep(INDEX_MAX_AGE - age)
+            elif not await self.refresh_index():
+                await asyncio.sleep(INDEX_RETRY)
+
+    async def read_index(self) -> None:
+        try:
+            index = await asyncio.to_thread(Index.read, self.index_dir)
+        except IndexError_ as error:  # fichier ignoré : l'index sera téléchargé
+            await report_error(self.bot, error, INDEX_ORIGIN)
+            return
+        if index:
+            self.api.index = index
+            print(f"[cephalon] index : {index.summary()} (lu du disque)", flush=True)
+
+    async def refresh_index(self) -> bool:
+        """Télécharge les listes et reconstruit l'index. En cas d'échec, l'index précédent reste en service."""
+        started = time.perf_counter()
+        try:
+            lists = await self.api.download_lists()
+            index = await asyncio.to_thread(Index.build, lists, utcnow())
+        except (WarframeApiError, IndexError_) as error:
+            if not self.index_failing:
+                self.index_failing = True
+                await report_error(self.bot, f"index non mis à jour : {error}", INDEX_ORIGIN)
+            return False
+        self.api.index = index
+        seconds = f"{time.perf_counter() - started:.1f}".replace(".", ",")
+        print(f"[cephalon] index : {index.summary()} (téléchargé en {seconds} s)", flush=True)
+        if self.index_failing:
+            self.index_failing = False
+            await report_error(self.bot, "index de nouveau à jour", INDEX_ORIGIN)
+        try:
+            await asyncio.to_thread(index.write, self.index_dir)
+        except OSError as error:  # l'index reste en mémoire
+            await report_error(self.bot, f"index non écrit sur disque : {error}", INDEX_ORIGIN)
+        return True
+
+    # --- Questions ----------------------------------------------------------------------------------------
 
     def claude_client(self) -> anthropic.AsyncAnthropic:
         """Clé absente : le bot démarre quand même, c'est la question qui échoue."""
