@@ -108,6 +108,7 @@ class WarframeApi:
         self.clock = clock
         self.cache: dict[tuple, tuple[float, object]] = {}  # (chemin, paramètres) -> (expiration, réponse)
         self.index: Index | None = None  # index local (cephalon/index.py), posé par le cog quand il est prêt
+        self.pages = None                # pages choisies du wiki (cephalon/pages.py), posées par le cog
 
     async def get(self, path: str, expected: type, timeout: aiohttp.ClientTimeout, **params: str):
         """Réponse JSON du type attendu. 404 = None. Erreur ou réponse d'une autre forme : WarframeApiError."""

@@ -263,3 +263,78 @@ def index_lists():
 def index(index_lists):
     """Index local construit sur ces extraits (sans les tailles minimales des vraies listes)."""
     return Index.build(index_lists, INDEX_BUILT_AT, minimums={})
+
+
+# --- Pages du wiki (cephalon/pages.py) ----------------------------------------------------------------------
+
+EXPORT_HEAD = ('<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11" xml:lang="en">'
+               "<siteinfo><sitename>WARFRAME Wiki</sitename><base>{base}</base></siteinfo>")
+
+
+def wiki_export(*pages, base: str = "https://wiki.warframe.com/") -> str:
+    """Export Special:Export : pages (titre, wikitexte) ou (titre, wikitexte, True) pour une redirection."""
+    body = []
+    for title, text, *redirect in pages:
+        mark = f'<redirect title="{title}" />' if redirect and redirect[0] else ""
+        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        body.append(f"<page><title>{title}</title><ns>0</ns>{mark}<revision><id>1</id>"
+                    f'<text bytes="{len(text)}" xml:space="preserve">{text}</text></revision></page>')
+    return EXPORT_HEAD.format(base=base) + "".join(body) + "</mediawiki>"
+
+
+ARGON_CRYSTAL = """{{Infobox resource
+|name = Argon Crystal
+|image = ArgonCrystal.png
+}}
+'''Argon Crystals''' are rare [[resource]]s found on the [[Void]].<ref>Patch 9</ref> They '''decay''' after a day.
+
+== Acquisition ==
+Argon Crystals drop from {{Res|Argon Crystal}} containers in the [[Void]] and from [[Orokin Vault]]s.
+* Best farmed on [[Ani]] (Void, Survival).
+* Use [[Smeeta Kavat]] for double resources.
+
+=== Drop table ===
+{| class="wikitable"
+! Source !! Chance
+|-
+| Containers || 5%
+|-
+| style="color:red" | Enemies || 2%
+|}
+
+== Notes ==
+* Argon Crystals decay at the daily reset.<!-- vérifier -->
+[[Category:Resources]]
+[[fr:Cristal d'Argon]]
+"""
+
+DAMAGE = """{{Main|Damage/Overview}}
+'''Damage''' is dealt by weapons and abilities.
+
+== Damage Types ==
+There are {{D|Heat}}, {{D|Cold}} and other types.
+
+== Status Effect ==
+Each status effect has a [[Status Effect|proc]] chance.
+
+=== Heat ===
+{{Proc|Heat}} deals damage over time and strips 50% [[armor]].
+"""
+
+
+@pytest.fixture
+def wiki_dir(tmp_path):
+    """Dossier de dépôt des exports, avec un fichier d'une page et un fichier de deux pages."""
+    directory = tmp_path / "pages"
+    directory.mkdir()
+    (directory / "argon.xml").write_text(wiki_export(("Argon Crystal", ARGON_CRYSTAL)), encoding="utf-8")
+    (directory / "mechanics.xml").write_text(
+        wiki_export(("Damage", DAMAGE), ("Status Effect", "== Overview ==\nA status effect applies a debuff.\n")),
+        encoding="utf-8")
+    return directory
+
+
+@pytest.fixture
+def real_export():
+    """Extrait réduit d'un vrai export du wiki (Status Effect, Disruption), CC BY-NC-SA 3.0."""
+    return (CEPHALON_DATA / "pages" / "wiki_export.xml").read_bytes()

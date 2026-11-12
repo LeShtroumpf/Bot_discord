@@ -16,12 +16,16 @@ from discord.ext import commands
 from cephalon import STATE_DIR, limits, llm, persona, render
 from cephalon.config import INDEX_MAX_AGE, INDEX_RETRY, LLM_RETRIES, LLM_TIMEOUT, Config, command_channel, read_config
 from cephalon.index import Index, IndexError_
+from cephalon.pages import Pages, PagesError, Report
 from cephalon.warframe_api import WarframeApi, WarframeApiError
 from client.errors import report_error
+from commands.moderation.twitch_cmd import MODO_ROLES
 
 API_KEY = "ANTHROPIC_API_KEY"
 BUDGET_ORIGIN = "cephalon : budget"
 INDEX_ORIGIN = "cephalon : index"
+PAGES_ORIGIN = "cephalon : pages"
+PAGES_DIR = "pages"  # dossier de dépôt des exports du wiki, dans le dossier d'état
 
 
 def utcnow() -> dt.datetime:
@@ -60,6 +64,8 @@ class Cephalon(commands.Cog):
         self.index_dir = STATE_DIR
         self.index_task: asyncio.Task | None = None
         self.index_failing = False                # panne de l'index déjà signalée (un seul log par panne)
+        self.pages_lock = asyncio.Lock()          # un seul traitement des pages à la fois
+        self.pages_error: Exception | None = None  # pages.json illisible au chargement : signalé plus tard
 
     async def cog_load(self):
         self.session = aiohttp.ClientSession()
@@ -68,6 +74,7 @@ class Cephalon(commands.Cog):
             await asyncio.to_thread(self.limits.load)
         except limits.StateError as error:  # compteurs à zéro ; le salon de logs n'est pas encore joignable
             self.load_error = error
+        await self.read_pages()
         self.index_task = asyncio.create_task(self.keep_index(), name="cephalon_index")
 
     async def cog_unload(self):
@@ -126,6 +133,53 @@ class Cephalon(commands.Cog):
             await report_error(self.bot, f"index non écrit sur disque : {error}", INDEX_ORIGIN)
         return True
 
+    # --- Pages du wiki ------------------------------------------------------------------------------------
+
+    async def read_pages(self) -> None:
+        try:
+            pages = await asyncio.to_thread(Pages.read, self.index_dir)
+        except PagesError as error:  # aucune page ; le salon de logs n'est pas encore joignable
+            self.pages_error = error
+            return
+        if pages:
+            self.api.pages = pages
+            print(f"[cephalon] pages : {pages.summary()} (lu du disque)", flush=True)
+
+    async def report_pages_error(self) -> None:
+        if self.pages_error:
+            error, self.pages_error = self.pages_error, None
+            await report_error(self.bot, error, PAGES_ORIGIN)
+
+    def reload_pages(self) -> tuple[Pages | None, Report]:
+        """Traitement complet, dans un thread : rien ne change (None) en cas d'échec total."""
+        pages, report = Pages.reload(self.index_dir / PAGES_DIR, self.api.pages)
+        if pages is not None:
+            try:
+                pages.write(self.index_dir)
+            except OSError as error:  # disque et mémoire restent cohérents : rien ne change
+                report.fatal = f"écriture de pages.json impossible : {error}"
+                return None, report
+        return pages, report
+
+    @app_commands.command(name="cephalon_pages", description="Recharge les pages du wiki déposées pour la Cephalon")
+    @app_commands.checks.has_any_role(*MODO_ROLES)
+    async def cephalon_pages(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        await self.report_pages_error()
+        async with self.pages_lock:
+            pages, report = await asyncio.to_thread(self.reload_pages)
+            if pages is not None:
+                self.api.pages = pages  # remplacement d'un coup : une question en cours garde l'ancien ensemble
+        print(f"[cephalon] pages : {report.pages} pages, {report.sections} sections, {len(report.problems)} problèmes"
+              + (f", échec : {report.fatal}" if report.fatal else ""), flush=True)
+        embed = render.pages_report(report, interaction.user.mention)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        channel = getattr(self.bot, "logs_channel", None)
+        if channel is None:
+            await report_error(self.bot, "salon de logs introuvable pour le rapport des pages", PAGES_ORIGIN)
+        else:
+            await channel.send(embed=embed)
+
     # --- Questions ----------------------------------------------------------------------------------------
 
     def claude_client(self) -> anthropic.AsyncAnthropic:
@@ -183,10 +237,11 @@ class Cephalon(commands.Cog):
             return render.fallback(question, persona.error_message())
         if result.status == llm.ROUNDS:
             return render.fallback(question, persona.ROUNDS_MESSAGE)
-        return render.answer(question, result.text, result.sources, outcome.remaining)
+        return render.answer(question, result.text, result.sources, outcome.remaining, wiki=result.wiki)
 
     async def record(self, user_id: int, usage: llm.Usage, answered: bool, config: Config) -> limits.Outcome:
         """Compte la question, écrit l'état et signale ce qui doit l'être dans le salon de logs."""
+        await self.report_pages_error()
         if self.load_error:
             error, self.load_error = self.load_error, None
             await report_error(self.bot, f"{error} — compteurs remis à zéro", BUDGET_ORIGIN)

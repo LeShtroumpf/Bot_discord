@@ -1,3 +1,4 @@
+import discord
 import pytest
 
 from cephalon import persona, render
@@ -77,3 +78,33 @@ def test_refusal_messages():
     assert persona.cooldown_message(12).endswith("Repose ta question dans 12 secondes.")
     assert persona.cooldown_message(1).endswith("Repose ta question dans 1 seconde.")
     assert persona.quota_message(20).startswith("Tu as épuisé tes 20 consultations du jour, Tenno.")
+
+
+def test_footer_with_a_wiki_page():
+    embed = render.answer("Où farmer ?", "Sur Ani.", SOURCES, wiki=True)
+    assert embed.footer.text == "Données : warframestat.us, wiki.warframe.com (CC BY-NC-SA)"
+
+
+def test_pages_report_green_orange_red():
+    from cephalon.pages import Report
+    report = Report(added=[("Argon Crystal", 4)], modified=[("Damage", 1)], pages=2, sections=5)
+    embed = render.pages_report(report, "@modo")
+    assert embed.color == discord.Color.green() and embed.description == "par @modo"
+    assert [(field.name, field.value) for field in embed.fields] == [
+        ("Ajoutées", "Argon Crystal (4 sections)"), ("Modifiées", "Damage (1 section)")]
+    assert embed.footer.text == "2 pages, 5 sections dans les archives"
+    report.problems = ["argon.xml : XML illisible"]
+    embed = render.pages_report(report, "@modo")
+    assert embed.color == discord.Color.orange() and embed.fields[-1].value == "argon.xml : XML illisible"
+    embed = render.pages_report(Report(fatal="dossier introuvable"), "@modo")
+    assert embed.color == discord.Color.red() and embed.description == "par @modo\nRien n'a changé : dossier introuvable"
+
+
+def test_pages_report_without_change_and_long_lists():
+    from cephalon.pages import Report
+    embed = render.pages_report(Report(pages=1, sections=1), "@modo")
+    assert embed.fields[0].name == "Aucun changement" and embed.footer.text == "1 page, 1 section dans les archives"
+    embed = render.pages_report(Report(added=[(f"Page {i}", 2) for i in range(40)],
+                                       problems=["x" * 300 for _ in range(10)]), "@modo")
+    assert embed.fields[0].value.endswith("… et 25 autres") and len(embed.fields[1].value) <= render.FIELD_LIMIT
+    assert embed.fields[1].value.endswith("autres")

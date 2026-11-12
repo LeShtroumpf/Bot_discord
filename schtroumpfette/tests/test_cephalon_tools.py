@@ -8,7 +8,7 @@ from cephalon.warframe_api import WarframeApiError
 
 def test_tools_are_strict_and_in_a_fixed_order():
     assert [tool["name"] for tool in tools.TOOLS] == ["get_mod", "get_item", "get_drops", "search_mods", "rank_weapons",
-                                                      "rank_warframes"]
+                                                      "rank_warframes", "search_pages", "read_section"]
     for tool in tools.TOOLS:
         schema = tool["input_schema"]
         assert tool["strict"] is True and tool["description"]
@@ -144,3 +144,57 @@ async def test_search_without_an_index_is_an_error(fake_api, name):
 async def test_bad_search_call_is_an_error_result(indexed_api, name, arguments):
     outcome = await tools.execute(indexed_api, name, arguments)
     assert outcome.is_error is True and outcome.content.startswith("Erreur : ")
+
+
+# --- Pages du wiki ------------------------------------------------------------------------------------------
+
+@pytest.fixture
+def api_with_pages(fake_api, wiki_dir):
+    from cephalon.pages import Pages
+    fake_api.pages, _ = Pages.reload(wiki_dir)
+    return fake_api
+
+
+def test_page_tool_schemas():
+    properties = {tool["name"]: tool["input_schema"]["properties"] for tool in tools.TOOLS}
+    assert properties["search_pages"]["query"]["type"] == "string"
+    assert properties["read_section"]["page"]["type"] == "string"
+    assert properties["read_section"]["section"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+
+
+@pytest.mark.asyncio
+async def test_search_pages(api_with_pages):
+    outcome = await tools.execute(api_with_pages, "search_pages", {"query": "argon cristal"})
+    results = json.loads(outcome.content)["results"]
+    assert results[0]["page"] == "Argon Crystal" and outcome.sources == [] and outcome.wiki is False
+    outcome = await tools.execute(api_with_pages, "search_pages", {"query": "Helminth"})
+    assert json.loads(outcome.content) == {"results": [], "message": "Rien trouvé."} and not outcome.is_error
+
+
+@pytest.mark.asyncio
+async def test_read_section(api_with_pages):
+    outcome = await tools.execute(api_with_pages, "read_section", {"page": "Argon Crystal", "section": "Acquisition"})
+    assert json.loads(outcome.content)["section"] == "Acquisition" and outcome.wiki is True and not outcome.is_error
+    assert outcome.sources == [("Argon Crystal — Acquisition", "https://wiki.warframe.com/w/Argon_Crystal#Acquisition")]
+    outcome = await tools.execute(api_with_pages, "read_section", {"page": "Argon Crystal", "section": None})
+    assert json.loads(outcome.content)["section"] == "Introduction"
+    outcome = await tools.execute(api_with_pages, "read_section", {"page": "Argon Crystal", "section": "Lore"})
+    assert outcome.is_error and outcome.sources == [] and "Acquisition" in outcome.content
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name, arguments", [
+    ("search_pages", {}), ("search_pages", {"query": " "}), ("read_section", {"section": None}),
+    ("read_section", {"page": "Damage", "section": 3}),
+])
+async def test_page_tools_bad_calls(api_with_pages, name, arguments):
+    outcome = await tools.execute(api_with_pages, name, arguments)
+    assert outcome.is_error and outcome.content.startswith("Erreur :")
+
+
+@pytest.mark.asyncio
+async def test_page_tools_without_pages(fake_api):
+    outcome = await tools.execute(fake_api, "search_pages", {"query": "Damage"})
+    assert json.loads(outcome.content)["message"] == tools.NO_PAGES and not outcome.is_error
+    outcome = await tools.execute(fake_api, "read_section", {"page": "Damage", "section": None})
+    assert outcome.is_error and tools.NO_PAGES in outcome.content
