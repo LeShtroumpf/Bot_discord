@@ -32,6 +32,7 @@ PRICES = {
 HIGHEST = tuple(max(price[index] for price in PRICES.values()) for index in range(4))
 
 BUDGET, QUOTA, COOLDOWN = "budget", "quota", "cooldown"
+QUESTION, BUILD = "questions", "builds"  # sortes de demandes : quota et cooldown propres, budget commun
 
 
 class StateError(Exception):
@@ -46,7 +47,7 @@ class Refusal:
 
 @dataclass
 class Outcome:
-    remaining: int                 # questions que le joueur peut encore poser aujourd'hui
+    remaining: int                 # demandes de cette sorte que le joueur peut encore faire aujourd'hui
     spent: float                   # coût estimé du mois, en euros
     alerts: list[int] = field(default_factory=list)  # seuils franchis par cette question
     unknown_model: bool = False    # prix absent de PRICES : coût compté au tarif le plus cher
@@ -62,19 +63,30 @@ def cost(model: str, usage) -> tuple[float, bool]:
 
 
 def empty_state() -> dict:
-    return {"month": "", "cost_usd": 0.0, "alerts": [], "day": "", "questions": {}}
+    return {"month": "", "cost_usd": 0.0, "alerts": [], "day": "", QUESTION: {}, BUILD: {}}
 
 
 def valid_state(data) -> dict:
     """L'état lu sur disque, ou StateError s'il n'a pas la forme attendue."""
     number = (int, float)
+    if isinstance(data, dict):
+        data = {BUILD: {}, **data}  # état écrit avant /cephalon_build : pas de compteur de builds
     if not (isinstance(data, dict) and isinstance(data.get("month"), str) and isinstance(data.get("day"), str)
             and isinstance(data.get("cost_usd"), number) and not isinstance(data.get("cost_usd"), bool)
-            and isinstance(data.get("alerts"), list) and isinstance(data.get("questions"), dict)
-            and all(type(count) is int for count in data["questions"].values())):
+            and isinstance(data.get("alerts"), list)
+            and all(isinstance(data.get(kind), dict) and all(type(count) is int for count in data[kind].values())
+                    for kind in (QUESTION, BUILD))):
         raise StateError("état des limites d'une forme inattendue")
     return {"month": data["month"], "cost_usd": float(data["cost_usd"]), "alerts": [a for a in data["alerts"] if a in ALERTS],
-            "day": data["day"], "questions": {str(user): count for user, count in data["questions"].items()}}
+            "day": data["day"], **{kind: {str(user): count for user, count in data[kind].items()} for kind in (QUESTION, BUILD)}}
+
+
+def quota(config: Config, kind: str) -> int:
+    return config.build_daily if kind == BUILD else config.daily_questions
+
+
+def cooldown(config: Config, kind: str) -> float:
+    return config.build_cooldown if kind == BUILD else config.cooldown
 
 
 class Limits:
@@ -82,7 +94,8 @@ class Limits:
         self.path = Path(directory) / STATE_FILE
         self.clock = clock
         self.state = empty_state()
-        self.cooldowns: dict[int, float] = {}  # joueur -> instant de sa dernière question acceptée (en mémoire)
+        self.cooldowns: dict[int, float] = {}        # joueur -> instant de sa dernière question acceptée (en mémoire)
+        self.build_cooldowns: dict[int, float] = {}  # idem pour les builds
 
     # --- Persistance (appels bloquants : à lancer dans un thread) -----------------------------------------
 
@@ -111,7 +124,7 @@ class Limits:
         today = now.astimezone(PARIS).date()
         day, month = today.isoformat(), today.strftime("%Y-%m")
         if self.state["day"] != day:
-            self.state["day"], self.state["questions"] = day, {}
+            self.state["day"], self.state[QUESTION], self.state[BUILD] = day, {}, {}
         if self.state["month"] != month:
             self.state["month"], self.state["cost_usd"], self.state["alerts"] = month, 0.0, []
 
@@ -119,32 +132,41 @@ class Limits:
         """Coût estimé du mois, en euros."""
         return self.state["cost_usd"] * config.usd_to_eur
 
-    def check(self, user_id: int, config: Config, now: dt.datetime) -> Refusal | None:
-        """None si le joueur peut poser sa question (son cooldown démarre), sinon le refus le plus durable."""
+    def check(self, user_id: int, config: Config, now: dt.datetime, kind: str = QUESTION) -> Refusal | None:
+        """None si le joueur peut faire sa demande (son cooldown démarre), sinon le refus le plus durable."""
         self.roll(now)
         if self.spent(config) >= config.monthly_budget:
             return Refusal(BUDGET)
-        if self.state["questions"].get(str(user_id), 0) >= config.daily_questions:
+        if self.state[kind].get(str(user_id), 0) >= quota(config, kind):
             return Refusal(QUOTA)
-        instant, last = self.clock(), self.cooldowns.get(user_id)
-        if last is not None and instant - last < config.cooldown:
-            return Refusal(COOLDOWN, seconds=math.ceil(config.cooldown - (instant - last)))
-        if len(self.cooldowns) >= MAX_COOLDOWNS:
-            self.cooldowns = {user: at for user, at in self.cooldowns.items() if instant - at < config.cooldown}
-        self.cooldowns[user_id] = instant
+        delay = cooldown(config, kind)
+        cooldowns = self.build_cooldowns if kind == BUILD else self.cooldowns
+        instant, last = self.clock(), cooldowns.get(user_id)
+        if last is not None and instant - last < delay:
+            return Refusal(COOLDOWN, seconds=math.ceil(delay - (instant - last)))
+        if len(cooldowns) >= MAX_COOLDOWNS:
+            for user in [user for user, at in cooldowns.items() if instant - at >= delay]:
+                del cooldowns[user]
+        cooldowns[user_id] = instant
         return None
 
-    def record(self, user_id: int, model: str, usage, answered: bool, config: Config, now: dt.datetime) -> Outcome:
-        """Ajoute le coût de la question au mois et, si elle a reçu une réponse, la compte dans le quota du joueur."""
+    def add_cost(self, model: str, usage, now: dt.datetime) -> bool:
+        """Ajoute au mois le coût d'un appel déjà fait (lecture d'une capture) ; False si le prix du modèle est inconnu."""
         self.roll(now)
         dollars, known = cost(model, usage)
         self.state["cost_usd"] += dollars
-        questions = self.state["questions"]
+        return known
+
+    def record(self, user_id: int, model: str, usage, answered: bool, config: Config, now: dt.datetime,
+               kind: str = QUESTION) -> Outcome:
+        """Ajoute le coût de la demande au mois et, si elle a reçu une réponse, la compte dans le quota du joueur."""
+        known = self.add_cost(model, usage, now)
+        counts = self.state[kind]
         if answered:
-            questions[str(user_id)] = questions.get(str(user_id), 0) + 1
+            counts[str(user_id)] = counts.get(str(user_id), 0) + 1
         spent = self.spent(config)
         percent = spent / config.monthly_budget * 100
         alerts = [threshold for threshold in ALERTS if percent >= threshold and threshold not in self.state["alerts"]]
         self.state["alerts"].extend(alerts)
-        remaining = max(0, config.daily_questions - questions.get(str(user_id), 0))
+        remaining = max(0, quota(config, kind) - counts.get(str(user_id), 0))
         return Outcome(remaining=remaining, spent=spent, alerts=alerts, unknown_model=not known)

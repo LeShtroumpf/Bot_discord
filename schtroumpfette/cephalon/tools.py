@@ -96,6 +96,9 @@ TOOLS = [
           "section": optional(text("Titre exact de la section, tel que renvoyé par search_pages, ou `null`."))}),
 ]
 
+# Analyse d'un build : fiches et recherche de mods seulement (liste fixe, préfixe du cache propre aux builds).
+BUILD_TOOLS = [tool for tool in TOOLS if tool["name"] in ("get_mod", "get_item", "search_mods")]
+
 LOOKUPS = {"get_mod": "mods", "get_item": "items"}
 INDEX_NOT_READY = "Erreur : l'index de recherche n'est pas encore prêt. Dis au joueur de réessayer dans une minute."
 

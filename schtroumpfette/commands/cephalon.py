@@ -1,4 +1,4 @@
-"""Cog Cephalon : /cephalon, une question sur Warframe posée à la Cephalon Schtroumpfette.
+"""Cog Cephalon : /cephalon (une question sur Warframe), /cephalon_build (avis sur un build), /cephalon_pages.
 
 Module indépendant : le retirer de `cogs` (main.py) suffit à le couper.
 """
@@ -13,8 +13,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from cephalon import STATE_DIR, limits, llm, persona, render
-from cephalon.config import INDEX_MAX_AGE, INDEX_RETRY, LLM_RETRIES, LLM_TIMEOUT, Config, command_channel, read_config
+from cephalon import STATE_DIR, build, limits, llm, persona, render
+from cephalon.config import (IMAGE_MAX_BYTES, INDEX_MAX_AGE, INDEX_RETRY, LLM_RETRIES, LLM_TIMEOUT, Config, command_channel,
+                             read_config)
+from cephalon.image import ImageError, prepare
 from cephalon.index import Index, IndexError_
 from cephalon.pages import Pages, PagesError, Report
 from cephalon.warframe_api import WarframeApi, WarframeApiError
@@ -25,6 +27,7 @@ API_KEY = "ANTHROPIC_API_KEY"
 BUDGET_ORIGIN = "cephalon : budget"
 INDEX_ORIGIN = "cephalon : index"
 PAGES_ORIGIN = "cephalon : pages"
+BUILD_ORIGIN = "cephalon : build"
 PAGES_DIR = "pages"  # dossier de dépôt des exports du wiki, dans le dossier d'état
 
 
@@ -190,15 +193,22 @@ class Cephalon(commands.Cog):
             self.claude = anthropic.AsyncAnthropic(timeout=LLM_TIMEOUT, max_retries=LLM_RETRIES)
         return self.claude
 
-    @app_commands.command(name="cephalon", description="Pose une question sur Warframe à la Cephalon Schtroumpfette")
-    @app_commands.describe(question="Ta question : un mod, une arme, une Warframe, où farmer un objet…")
-    async def cephalon(self, interaction: discord.Interaction, question: app_commands.Range[str, 1, 500]):
+    @staticmethod
+    async def right_channel(interaction: discord.Interaction) -> bool:
+        """Le salon des commandes Warframe ; sinon une réponse éphémère et False."""
         channel = command_channel()
         if channel is None:
             await interaction.response.send_message("Le module Warframe n'est pas encore configuré.", ephemeral=True)
-            return
+            return False
         if interaction.channel_id != channel:
             await interaction.response.send_message(f"Mauvais salon, utilise <#{channel}>.", ephemeral=True)
+            return False
+        return True
+
+    @app_commands.command(name="cephalon", description="Pose une question sur Warframe à la Cephalon Schtroumpfette")
+    @app_commands.describe(question="Ta question : un mod, une arme, une Warframe, où farmer un objet…")
+    async def cephalon(self, interaction: discord.Interaction, question: app_commands.Range[str, 1, 500]):
+        if not await self.right_channel(interaction):
             return
         config = read_config()
         refusal = self.limits.check(interaction.user.id, config, utcnow())
@@ -209,10 +219,12 @@ class Cephalon(commands.Cog):
         await interaction.followup.send(embed=await self.answer(interaction.user.id, question, config))
 
     @staticmethod
-    def refusal_message(refusal: limits.Refusal, config: Config) -> str:
+    def refusal_message(refusal: limits.Refusal, config: Config, kind: str = limits.QUESTION) -> str:
         if refusal.kind == limits.BUDGET:
             return persona.BUDGET_MESSAGE
         if refusal.kind == limits.QUOTA:
+            if kind == limits.BUILD:
+                return persona.build_quota_message(config.build_daily)
             return persona.quota_message(config.daily_questions)
         return persona.cooldown_message(refusal.seconds)
 
@@ -239,19 +251,102 @@ class Cephalon(commands.Cog):
             return render.fallback(question, persona.ROUNDS_MESSAGE)
         return render.answer(question, result.text, result.sources, outcome.remaining, wiki=result.wiki)
 
-    async def record(self, user_id: int, usage: llm.Usage, answered: bool, config: Config) -> limits.Outcome:
-        """Compte la question, écrit l'état et signale ce qui doit l'être dans le salon de logs."""
+    # --- Builds -------------------------------------------------------------------------------------------
+
+    @app_commands.command(name="cephalon_build",
+                          description="Montre ton build à la Cephalon Schtroumpfette (capture de l'écran de configuration)")
+    @app_commands.describe(image="Capture de l'écran de configuration (mods) d'une Warframe, d'une arme ou d'un compagnon",
+                           question="Facultatif : ce que tu veux savoir (« build pour l'Acier ? », « critique ou statut ? »)")
+    async def cephalon_build(self, interaction: discord.Interaction, image: discord.Attachment,
+                             question: app_commands.Range[str, 1, 300] | None = None):
+        if not await self.right_channel(interaction):
+            return
+        if not (image.content_type or "").startswith("image/"):
+            await interaction.response.send_message(persona.NOT_AN_IMAGE_MESSAGE, ephemeral=True)
+            return
+        if image.size > IMAGE_MAX_BYTES:
+            await interaction.response.send_message(persona.IMAGE_TOO_BIG_MESSAGE.format(
+                size=round(image.size / 1024 / 1024), limit=IMAGE_MAX_BYTES // 1024 // 1024), ephemeral=True)
+            return
+        config = read_config()
+        refusal = self.limits.check(interaction.user.id, config, utcnow(), kind=limits.BUILD)
+        if refusal:
+            await interaction.response.send_message(self.refusal_message(refusal, config, limits.BUILD), ephemeral=True)
+            return
+        await interaction.response.defer()
+        await interaction.followup.send(embed=await self.analyze_build(interaction.user.id, image, question, config))
+
+    async def analyze_build(self, user_id: int, attachment: discord.Attachment, question: str | None,
+                            config: Config) -> discord.Embed:
+        """Lecture de la capture, vérification de chaque carte par le code, puis analyse. Repli en cas de panne."""
+        title, thumbnail = question or render.BUILD_TITLE, attachment.url
+        try:
+            image = await asyncio.to_thread(prepare, await attachment.read())
+        except ImageError:  # pas d'appel à Claude : rien à compter
+            return render.fallback(title, persona.UNREADABLE_IMAGE_MESSAGE, thumbnail)
+        except discord.HTTPException as error:
+            await report_error(self.bot, f"capture non téléchargée : {error}", BUILD_ORIGIN)
+            return render.fallback(title, persona.error_message(), thumbnail)
+        reader_usage, usage, reading, checked, result = llm.Usage(), llm.Usage(), None, [], None
+        try:
+            client = self.claude_client()
+            reading = await build.read_build(client, image, config, reader_usage)
+            if build.is_build(reading):
+                checked = await build.verify(self.api, reading)
+                result = await llm.ask(client, self.api, build.payload(reading, checked, question), config, usage,
+                                       profile=build.profile(config))
+        except WarframeApiError as error:
+            await report_error(self.bot, error, "cephalon : warframestat")
+        except (anthropic.AnthropicError, MissingKeyError) as error:
+            await report_error(self.bot, describe(error), "cephalon")
+        except build.BuildError as error:
+            await report_error(self.bot, error, BUILD_ORIGIN)
+        answered = result is not None and result.status == llm.OK
+        # Les tokens déjà facturés (lecture comprise) comptent même si le build finit en panne ou hors sujet.
+        outcome = await self.record(user_id, usage, answered, config, kind=limits.BUILD, model=config.build_model,
+                                    extra=[(config.build_reader_model, reader_usage)])
+        verified = sum(item.status == build.VERIFIED for item in checked)
+        dollars = limits.cost(config.build_reader_model, reader_usage)[0] + limits.cost(config.build_model, usage)[0]
+        print(f"[cephalon] build {user_id} : image {image.summary()}, {len(checked)} cartes ({verified} vérifiées), "
+              f"lecture entrée {reader_usage.input} sortie {reader_usage.output} ({config.build_reader_model}), "
+              f"analyse {result.rounds if result else 0} tours entrée {usage.input} (cache lu {usage.cache_read}, "
+              f"écrit {usage.cache_write}) sortie {usage.output} ({config.build_model}), "
+              f"coût {euros(dollars * config.usd_to_eur)}", flush=True)
+        if reading is not None and not build.is_build(reading):
+            return render.fallback(title, persona.NOT_A_BUILD_MESSAGE, thumbnail)
+        if result is None:
+            return render.fallback(title, persona.error_message(), thumbnail)
+        if result.status == llm.REFUSAL:
+            await report_error(self.bot, "build refusé par le modèle", BUILD_ORIGIN)
+            return render.fallback(title, persona.error_message(), thumbnail)
+        if result.status == llm.ROUNDS:
+            return render.fallback(title, persona.ROUNDS_MESSAGE, thumbnail)
+        sources = build.sources(checked)
+        llm.add_sources(sources, result.sources)
+        return render.build_answer(question, result.text, sources, outcome.remaining, thumbnail)
+
+    # --- Comptes --------------------------------------------------------------------------------------------
+
+    async def record(self, user_id: int, usage: llm.Usage, answered: bool, config: Config, kind: str = limits.QUESTION,
+                     model: str | None = None, extra: list[tuple[str, llm.Usage]] = ()) -> limits.Outcome:
+        """Compte la demande, écrit l'état et signale ce qui doit l'être dans le salon de logs.
+
+        `extra` : appels déjà faits sur d'autres modèles (lecture d'une capture), ajoutés au budget."""
         await self.report_pages_error()
         if self.load_error:
             error, self.load_error = self.load_error, None
             await report_error(self.bot, f"{error} — compteurs remis à zéro", BUDGET_ORIGIN)
-        outcome = self.limits.record(user_id, config.model, usage, answered, config, utcnow())
+        model = model or config.model
+        unknown = [name for name, extra_usage in extra if not self.limits.add_cost(name, extra_usage, utcnow())]
+        outcome = self.limits.record(user_id, model, usage, answered, config, utcnow(), kind=kind)
+        if outcome.unknown_model:
+            unknown.append(model)
         try:
             await asyncio.to_thread(self.limits.save)
         except OSError as error:  # les compteurs continuent en mémoire
             await report_error(self.bot, f"état des limites non écrit : {error}", BUDGET_ORIGIN)
-        if outcome.unknown_model:
-            await report_error(self.bot, f"prix inconnu pour le modèle {config.model} : coût compté au tarif le plus cher",
+        for name in dict.fromkeys(unknown):
+            await report_error(self.bot, f"prix inconnu pour le modèle {name} : coût compté au tarif le plus cher",
                                BUDGET_ORIGIN)
         spent = f"{euros(outcome.spent)} sur {euros(config.monthly_budget)}"
         for threshold in outcome.alerts:

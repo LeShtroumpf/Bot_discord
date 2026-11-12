@@ -22,6 +22,12 @@ PAGE_MAX_BYTES = 5 * 1024 * 1024  # export du wiki plus gros : refusé
 SECTION_LIMIT = 8000              # caractères d'une section renvoyés à Claude, au plus
 MAX_PAGES = 3                     # pages renvoyées par search_pages, au plus
 
+IMAGE_MAX_BYTES = 20 * 1024 * 1024  # pièce jointe de /cephalon_build plus lourde : refusée sans téléchargement
+IMAGE_MAX_EDGE = 2576               # côté maximum traité par les modèles actuels (au-delà, l'API réduit elle-même)
+IMAGE_PNG_LIMIT = 3_500_000         # octets : au-delà, l'image réduite part en JPEG (limite de l'API : 10 Mo en base64)
+READER_MAX_TOKENS = 4000            # lecture d'une capture : réflexion + JSON
+READER_EFFORT = "low"
+
 EFFORTS = ("low", "medium", "high")
 
 
@@ -34,6 +40,12 @@ class Config:
     daily_questions: int = 20      # questions répondues par joueur et par jour
     monthly_budget: float = 4      # euros par mois, tous joueurs confondus (coût estimé)
     usd_to_eur: float = 0.9        # conversion du coût estimé, à ajuster au cours du moment
+    build_model: str = "claude-sonnet-5-5"         # analyse d'un build (/cephalon_build)
+    build_reader_model: str = "claude-sonnet-5-5"  # lecture de la capture (JSON imposé)
+    build_max_tokens: int = 6000   # réflexion + réponse de l'analyse
+    build_effort: str = "medium"
+    build_daily: int = 1           # builds répondus par joueur et par jour
+    build_cooldown: float = 120    # secondes entre deux builds d'un même joueur
 
 
 def read_section(key: str) -> dict:
@@ -51,18 +63,28 @@ def positive(value, default, integer: bool = False):
     return value
 
 
+def text(value, default: str) -> str:
+    return value.strip() if isinstance(value, str) and value.strip() else default
+
+
 def read_config() -> Config:
     """Section lue à chaque question. Valeur absente ou invalide = valeur par défaut."""
     section, default = read_section(SETTINGS_KEY), Config()
-    model, max_tokens, effort = section.get("model"), section.get("max_tokens"), section.get("effort")
+    max_tokens, effort = section.get("max_tokens"), section.get("effort")
     return Config(
-        model=model.strip() if isinstance(model, str) and model.strip() else default.model,
+        model=text(section.get("model"), default.model),
         max_tokens=max_tokens if type(max_tokens) is int and max_tokens > 0 else default.max_tokens,
         effort=effort if effort in EFFORTS else default.effort,
         cooldown=positive(section.get("cooldown"), default.cooldown),
         daily_questions=positive(section.get("daily_questions"), default.daily_questions, integer=True),
         monthly_budget=positive(section.get("monthly_budget"), default.monthly_budget),
         usd_to_eur=positive(section.get("usd_to_eur"), default.usd_to_eur),
+        build_model=text(section.get("build_model"), default.build_model),
+        build_reader_model=text(section.get("build_reader_model"), default.build_reader_model),
+        build_max_tokens=positive(section.get("build_max_tokens"), default.build_max_tokens, integer=True),
+        build_effort=section.get("build_effort") if section.get("build_effort") in EFFORTS else default.build_effort,
+        build_daily=positive(section.get("build_daily"), default.build_daily, integer=True),
+        build_cooldown=positive(section.get("build_cooldown"), default.build_cooldown),
     )
 
 

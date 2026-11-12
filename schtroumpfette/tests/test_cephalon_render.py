@@ -108,3 +108,22 @@ def test_pages_report_without_change_and_long_lists():
                                        problems=["x" * 300 for _ in range(10)]), "@modo")
     assert embed.fields[0].value.endswith("… et 25 autres") and len(embed.fields[1].value) <= render.FIELD_LIMIT
     assert embed.fields[1].value.endswith("autres")
+
+
+@pytest.mark.parametrize("remaining, expected", [
+    (0, "Dernière analyse de build du jour"), (1, "1 build restant aujourd'hui"), (3, "3 builds restants aujourd'hui")])
+def test_build_answer(remaining, expected):
+    embed = render.build_answer(None, "  Joli build, Tenno.  ", SOURCES, remaining, "https://cdn.discordapp.com/x.png")
+    assert embed.description == "> Analyse de build\n\nJoli build, Tenno." and embed.author.name == "Cephalon Schtroumpfette"
+    assert embed.thumbnail.url == "https://cdn.discordapp.com/x.png"
+    assert embed.footer.text == f"Données : warframestat.us · {expected}"
+    assert render.build_answer("Pour l'Acier ?", "Oui.", [], 1, None).description.startswith("> Pour l'Acier ?")
+
+
+def test_build_sources_go_beyond_five():
+    sources = [(f"Mod {i}", f"https://wiki.warframe.com/w/Mod_{i}") for i in range(14)]
+    assert render.build_answer(None, "x", sources, 0, None).fields[0].value.count("\n") == 11  # 12 liens
+
+
+def test_fallback_with_thumbnail():
+    assert render.fallback("q", "panne", "https://cdn.discordapp.com/x.png").thumbnail.url == "https://cdn.discordapp.com/x.png"

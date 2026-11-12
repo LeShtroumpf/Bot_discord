@@ -62,6 +62,12 @@
         "cooldown": 30,
         "daily_questions": 20,
         "monthly_budget": 4,
-        "usd_to_eur": 0.9
+        "usd_to_eur": 0.9,
+        "build_model": "claude-sonnet-5-5",
+        "build_reader_model": "claude-sonnet-5-5",
+        "build_max_tokens": 6000,
+        "build_effort": "medium",
+        "build_daily": 1,
+        "build_cooldown": 120
     }
 }

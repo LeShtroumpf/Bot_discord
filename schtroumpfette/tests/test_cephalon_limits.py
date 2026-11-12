@@ -4,7 +4,7 @@ import json
 import pytest
 
 from cephalon.config import Config
-from cephalon.limits import BUDGET, COOLDOWN, PRICES, QUOTA, Limits, StateError, cost
+from cephalon.limits import BUDGET, BUILD, COOLDOWN, PRICES, QUOTA, Limits, StateError, cost
 from cephalon.llm import Usage
 
 CONFIG = Config()
@@ -121,7 +121,7 @@ def test_state_is_saved_and_read_back(limits, tmp_path, clock):
     limits.save()
     assert json.loads(limits.path.read_text(encoding="utf-8")) == {
         "month": "2026-11", "cost_usd": pytest.approx(0.0006), "alerts": [], "day": "2026-11-11",
-        "questions": {"100000000000000001": 1}}
+        "questions": {"100000000000000001": 1}, "builds": {}}
     assert [path.name for path in limits.path.parent.iterdir()] == ["usage.json"]  # pas de fichier temporaire restant
     restarted = Limits(limits.path.parent, clock=clock)
     restarted.load()
@@ -161,3 +161,49 @@ def test_unknown_alert_thresholds_are_ignored(limits):
                                        "questions": {"7": 4}}), encoding="utf-8")
     limits.load()
     assert limits.state["alerts"] == [80] and limits.state["cost_usd"] == 1.0
+
+
+# --- Builds (/cephalon_build) -------------------------------------------------------------------------------
+
+def test_builds_have_their_own_quota_and_cooldown(limits, clock):
+    config = Config(build_daily=1, build_cooldown=120, daily_questions=2)
+    assert limits.check(1, config, NOON, kind=BUILD) is None
+    assert limits.check(1, config, NOON) is None                        # le cooldown des builds ne bloque pas les questions
+    refusal = limits.check(1, config, NOON, kind=BUILD)
+    assert refusal.kind == COOLDOWN and refusal.seconds == 120
+    outcome = limits.record(1, "claude-sonnet-5-5", QUESTION, True, config, NOON, kind=BUILD)
+    assert outcome.remaining == 0 and limits.state["builds"] == {"1": 1} and limits.state["questions"] == {}
+    clock.advance(121)
+    assert limits.check(1, config, NOON, kind=BUILD).kind == QUOTA
+    assert answered(limits, config=config).remaining == 1                # le quota des questions est intact
+    assert limits.check(1, Config(build_daily=2), NOON, kind=BUILD) is None  # quota relevé dans settings.json
+
+
+def test_unanswered_build_is_not_counted(limits):
+    assert limits.record(1, "claude-sonnet-5-5", QUESTION, False, CONFIG, NOON, kind=BUILD).remaining == 1
+
+
+def test_build_costs_both_calls_in_the_common_budget(limits):
+    assert limits.add_cost("claude-sonnet-5-5", Usage(input=1_000_000), NOON) is True  # lecture : 2 $
+    assert limits.add_cost("modele-inconnu", Usage(), NOON) is False
+    outcome = limits.record(1, "claude-sonnet-5-5", Usage(output=100_000), True, Config(), NOON, kind=BUILD)  # 1 $
+    assert limits.state["cost_usd"] == pytest.approx(3.0) and outcome.spent == pytest.approx(2.7)
+    assert outcome.alerts == []
+    assert limits.check(2, Config(monthly_budget=2.7), NOON, kind=BUILD).kind == BUDGET
+
+
+def test_builds_reset_at_midnight(limits):
+    limits.record(1, "claude-sonnet-5-5", QUESTION, True, CONFIG, NOON, kind=BUILD)
+    assert limits.check(1, CONFIG, NOON + dt.timedelta(hours=13), kind=BUILD) is None
+
+
+def test_old_state_without_builds_is_read(limits):
+    limits.path.parent.mkdir(parents=True, exist_ok=True)
+    limits.path.write_text(json.dumps({"month": "2026-11", "cost_usd": 1.0, "alerts": [], "day": "2026-11-11",
+                                       "questions": {"1": 3}}), encoding="utf-8")
+    limits.load()
+    assert limits.state["builds"] == {} and limits.state["questions"] == {"1": 3}
+    limits.path.write_text(json.dumps({"month": "2026-11", "cost_usd": 1.0, "alerts": [], "day": "2026-11-11",
+                                       "questions": {}, "builds": {"1": "x"}}), encoding="utf-8")
+    with pytest.raises(StateError):
+        limits.load()
