@@ -1,6 +1,7 @@
 import pytest
 
 from cephalon.config import API_CACHE_SIZE, API_CACHE_TTL
+from cephalon.index import LISTS
 from cephalon.warframe_api import MAX_DROPS, REQUESTED, WarframeApi, WarframeApiError, simplify, source
 
 
@@ -181,3 +182,85 @@ async def test_search_with_an_unexpected_answer(fake_api, api_routes):
     api_routes[("/mods/search/Continuity", None)] = {"error": "oups"}
     with pytest.raises(WarframeApiError):
         await fake_api.find("mods", "Continuity")
+
+
+# --- Avec l'index local -------------------------------------------------------------------------------------
+
+EXPERT = "/Lotus/Upgrades/Mods/Warframe/Expert/AvatarAbilityDurationModExpert"
+
+
+def fiche_path(kind: str, unique: str) -> str:
+    return f"/{kind}/" + unique.replace("/", "%2F")
+
+
+@pytest.fixture
+def indexed_api(fake_api, index, api_routes):
+    """API avec l'index local et la fiche de Continuité Accrue servie par son identifiant."""
+    fake_api.index = index
+    primed = next(mod for mod in api_routes[("/mods/search/Continuity", None)] if mod["name"] == "Primed Continuity")
+    api_routes[(fiche_path("mods", EXPERT), None)] = primed
+    api_routes[(fiche_path("mods", EXPERT), "fr")] = {"name": "Continuité Accrue", "uniqueName": EXPERT}
+    return fake_api
+
+
+@pytest.mark.parametrize("query", ["continuite accrue", "Primed Continuity", "continuité accru"])
+@pytest.mark.asyncio
+async def test_index_finds_the_card_by_its_identifier(indexed_api, api_session, query):
+    lookup = await indexed_api.find("mods", query)
+    assert [(mod["name"], mod["name_fr"]) for mod in lookup.found] == [("Primed Continuity", "Continuité Accrue")]
+    assert lookup.found[0]["levelStats"][-1] == "rank 10: +55% Ability Duration"
+    assert lookup.sources == [("Primed Continuity", "https://wiki.warframe.com/w/Primed_Continuity")]
+    assert [path for path, _ in api_session.calls] == [fiche_path("mods", EXPERT)] * 2  # fiche anglaise, textes français
+    assert not any("/search/" in path for path, _ in api_session.calls)
+
+
+@pytest.mark.asyncio
+async def test_index_returns_the_real_mod_and_the_flawed_one(indexed_api, api_routes):
+    by_unique = {mod["uniqueName"]: mod for mod in api_routes[("/mods/search/Continuity", None)]}
+    for unique, mod in by_unique.items():
+        api_routes[(fiche_path("mods", unique), None)] = mod
+    lookup = await indexed_api.find("mods", "continuite")
+    assert [mod.get("flawed", False) for mod in lookup.found] == [False, True]
+    assert lookup.found[0]["levelStats"][-1] == "rank 5: +30% Ability Duration"
+
+
+@pytest.mark.asyncio
+async def test_index_proposes_its_candidates(indexed_api, api_session):
+    lookup = await indexed_api.find("mods", "continu")
+    assert lookup.found == [] and "Continuité" in lookup.suggestions
+    assert api_session.calls == []  # aucun appel réseau pour proposer des noms
+
+
+@pytest.mark.asyncio
+async def test_unconfirmed_card_falls_back_to_the_live_search(indexed_api, api_routes, api_session):
+    """Index plus ancien ou plus récent que l'API : la fiche ne se confirme pas, la recherche en direct reprend."""
+    api_routes[(fiche_path("mods", EXPERT), None)] = {"name": "Autre", "uniqueName": "/Lotus/Autre"}
+    api_routes[("/mods/search/Primed%20Continuity", None)] = api_routes[("/mods/search/Continuity", None)]
+    lookup = await indexed_api.find("mods", "Primed Continuity")
+    assert [mod["name"] for mod in lookup.found] == ["Primed Continuity"]
+    assert any("/search/" in path for path, _ in api_session.calls)
+
+
+@pytest.mark.asyncio
+async def test_name_unknown_to_the_index_falls_back_to_the_live_search(indexed_api, api_session):
+    lookup = await indexed_api.find("mods", "Continuty Zorglub")
+    assert (lookup.found, lookup.suggestions) == ([], [])
+    assert [params.get("language") for path, params in api_session.calls if "/search/" in path] == [None, "fr"]
+
+
+@pytest.mark.asyncio
+async def test_lists_are_downloaded_without_the_cache(fake_api, api_session, api_routes, index_lists):
+    for name, (path, params) in LISTS.items():
+        api_routes[(path, params.get("language"))] = index_lists[name]
+    lists = await fake_api.download_lists()
+    assert lists == index_lists and fake_api.cache == {}
+    assert [(path, params) for path, params in api_session.calls] == [(path, params) for path, params in LISTS.values()]
+
+
+@pytest.mark.asyncio
+async def test_list_download_fails_as_a_whole(fake_api, api_routes, index_lists, failing_response):
+    for name, (path, params) in LISTS.items():
+        api_routes[(path, params.get("language"))] = index_lists[name]
+    api_routes[("/weapons", None)] = failing_response("status")
+    with pytest.raises(WarframeApiError, match="/weapons"):
+        await fake_api.download_lists()

@@ -13,6 +13,11 @@ API_TIMEOUT = 10           # secondes par requête warframestat
 LLM_TIMEOUT = 60           # secondes par requête à l'API Anthropic
 LLM_RETRIES = 2            # nouveaux essais du SDK (429, 5xx, réseau)
 
+INDEX_MAX_AGE = 24 * 3600  # secondes : l'index local est reconstruit une fois par jour
+INDEX_RETRY = 600          # secondes avant un nouvel essai après un téléchargement en échec
+INDEX_TIMEOUT = 60         # secondes par liste complète de warframestat
+MAX_RESULTS = 10           # résultats renvoyés par une recherche ou un classement
+
 EFFORTS = ("low", "medium", "high")
 
 

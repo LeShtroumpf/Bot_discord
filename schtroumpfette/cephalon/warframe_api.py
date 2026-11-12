@@ -11,15 +11,16 @@ from urllib.parse import quote
 
 import aiohttp
 
-from cephalon.config import API_CACHE_SIZE, API_CACHE_TTL, API_TIMEOUT
+from cephalon.config import API_CACHE_SIZE, API_CACHE_TTL, API_TIMEOUT, INDEX_TIMEOUT
+from cephalon.index import FLAWED_PATH, LISTS, MAX_MATCHES, Index
 
 BASE_URL = "https://api.warframestat.us"
 HEADERS = {"User-Agent": "Schtroumpfette-Discord-Bot"}
 TIMEOUT = aiohttp.ClientTimeout(total=API_TIMEOUT)
+LIST_TIMEOUT = aiohttp.ClientTimeout(total=INDEX_TIMEOUT)
 WIKI_URL = "https://wiki.warframe.com/"
 
 KINDS = ("mods", "items")
-MAX_MATCHES = 3       # objets au même nom renvoyés, au plus
 MAX_SUGGESTIONS = 10  # noms approchants proposés quand rien ne correspond
 MAX_DROPS = 15
 
@@ -41,7 +42,6 @@ REQUESTED = ",".join(KEPT + ("uniqueName", "wikiaUrl", "levelStats", "abilities"
 
 FRENCH_TEXTS = "name,description,passiveDescription,abilities"  # textes du jeu en français, quand l'API les a
 MARKUP = re.compile(r"<[A-Z_]+>")  # balises de couleur du jeu : <DT_POISON_COLOR>
-FLAWED_PATH = "/Beginner/"         # mods Défectueux : même nom que le mod normal, valeurs plus faibles
 
 
 class WarframeApiError(Exception):
@@ -107,17 +107,12 @@ class WarframeApi:
         self.session = session
         self.clock = clock
         self.cache: dict[tuple, tuple[float, object]] = {}  # (chemin, paramètres) -> (expiration, réponse)
+        self.index: Index | None = None  # index local (cephalon/index.py), posé par le cog quand il est prêt
 
-    async def fetch(self, path: str, expected: type, **params: str):
-        """Réponse JSON du type attendu, depuis le cache si elle a moins de API_CACHE_TTL. 404 = None.
-
-        Une erreur ou une réponse d'une autre forme lève WarframeApiError et n'est pas gardée en cache."""
-        key = (path, tuple(sorted(params.items())))
-        cached = self.cache.get(key)
-        if cached and cached[0] > self.clock():
-            return cached[1]
+    async def get(self, path: str, expected: type, timeout: aiohttp.ClientTimeout, **params: str):
+        """Réponse JSON du type attendu. 404 = None. Erreur ou réponse d'une autre forme : WarframeApiError."""
         try:
-            async with self.session.get(f"{BASE_URL}{path}", params=params, headers=HEADERS, timeout=TIMEOUT) as response:
+            async with self.session.get(f"{BASE_URL}{path}", params=params, headers=HEADERS, timeout=timeout) as response:
                 if response.status == 404:
                     data = None
                 else:
@@ -127,6 +122,24 @@ class WarframeApi:
             raise WarframeApiError(f"{path} : {str(error) or type(error).__name__}") from error
         if data is not None and not isinstance(data, expected):
             raise WarframeApiError(f"{path} : réponse inattendue")
+        return data
+
+    async def download_lists(self) -> dict[str, list]:
+        """Les listes complètes dont l'index a besoin, l'une après l'autre, sans le cache (plusieurs Mo)."""
+        lists = {}
+        for name, (path, params) in LISTS.items():
+            lists[name] = await self.get(path, list, LIST_TIMEOUT, **params) or []
+        return lists
+
+    async def fetch(self, path: str, expected: type, **params: str):
+        """Réponse JSON du type attendu, depuis le cache si elle a moins de API_CACHE_TTL. 404 = None.
+
+        Une erreur ou une réponse d'une autre forme lève WarframeApiError et n'est pas gardée en cache."""
+        key = (path, tuple(sorted(params.items())))
+        cached = self.cache.get(key)
+        if cached and cached[0] > self.clock():
+            return cached[1]
+        data = await self.get(path, expected, TIMEOUT, **params)
         self.cache.pop(key, None)
         if len(self.cache) >= API_CACHE_SIZE:
             del self.cache[next(iter(self.cache))]  # la plus ancienne
@@ -154,6 +167,10 @@ class WarframeApi:
         if kind not in KINDS:
             raise ValueError(f"type inconnu : {kind}")
         name = name.strip()
+        if self.index:
+            lookup = await self.find_indexed(kind, name)
+            if lookup:
+                return lookup
         wanted = name.casefold()
         english = await self.search(kind, name)
         exact = self.exact(english, wanted)
@@ -167,6 +184,22 @@ class WarframeApi:
             return self.lookup([(item, fiche.get("name") or item["name"], item) for item, fiche in zip(exact, names_en)])
         suggestions = list(dict.fromkeys(names(french) + names(english)))[:MAX_SUGGESTIONS]
         return Lookup(suggestions=suggestions)
+
+    async def find_indexed(self, kind: str, name: str) -> Lookup | None:
+        """Le nom passé par l'index local (accents, fautes de frappe), les fiches par leur identifiant.
+
+        None quand l'index ne tranche pas ou qu'une fiche ne se confirme pas : la recherche en direct prend le relais."""
+        resolution = await asyncio.to_thread(self.index.resolve, kind, name)  # difflib sur des milliers de noms
+        if resolution.candidates:
+            return Lookup(suggestions=resolution.candidates)
+        if not resolution.matches:
+            return None
+        english = await asyncio.gather(*(self.fiche(kind, {"uniqueName": entry["unique"]}, REQUESTED)
+                                         for entry in resolution.matches))
+        if not all(english):
+            return None
+        french = await asyncio.gather(*(self.fiche(kind, item, FRENCH_TEXTS, language="fr") for item in english))
+        return self.lookup([(item, item.get("name"), fiche) for item, fiche in zip(english, french)])
 
     @staticmethod
     def exact(items: list[dict], wanted: str) -> list[dict]:
