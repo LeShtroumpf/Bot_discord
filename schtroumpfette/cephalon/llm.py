@@ -10,9 +10,30 @@ from cephalon.config import MAX_TOOL_ROUNDS, Config
 from cephalon.persona import SYSTEM_PROMPT
 from cephalon.warframe_api import WarframeApi
 
-# Outils puis prompt système forment un préfixe identique d'une question à l'autre : ce marqueur le met en cache
-# 5 minutes. Seule la première question d'un pic paie l'écriture, les suivantes le relisent à prix réduit.
-SYSTEM = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
+
+def system_blocks(prompt: str) -> list[dict]:
+    """Outils puis prompt système forment un préfixe identique d'une question à l'autre : ce marqueur le met en cache
+    5 minutes. Seule la première question d'un pic paie l'écriture, les suivantes le relisent à prix réduit."""
+    return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
+
+
+SYSTEM = system_blocks(SYSTEM_PROMPT)
+
+
+@dataclass(frozen=True)
+class Profile:
+    """Ce qui distingue une question d'une analyse de build : prompt, outils, modèle et réglages."""
+    system: list
+    tools: list
+    model: str
+    max_tokens: int
+    effort: str
+    search_sources: bool = True  # pages des premiers résultats d'une recherche ou d'un classement citées en source
+
+
+def question_profile(config: Config) -> Profile:
+    return Profile(SYSTEM, tools.TOOLS, config.model, config.max_tokens, config.effort)
+
 
 OK, ROUNDS, REFUSAL = "ok", "rounds", "refusal"
 
@@ -53,20 +74,24 @@ def add_sources(known: list[tuple[str, str]], new: list[tuple[str, str]]) -> Non
             known.append((name, url))
 
 
-async def ask(client, api: WarframeApi, question: str, config: Config, usage: Usage | None = None) -> Answer:
+async def ask(client, api: WarframeApi, question, config: Config, usage: Usage | None = None,
+              profile: Profile | None = None) -> Answer:
     """Pose la question à Claude. Les erreurs de l'API Anthropic et les pannes de warframestat remontent.
 
-    `usage` est rempli tour après tour : si une panne interrompt la boucle, l'appelant garde les tokens déjà facturés."""
+    `question` est un texte ou une liste de blocs. `profile` : question simple par défaut (prompt et réglages de
+    /cephalon). `usage` est rempli tour après tour : si une panne interrompt la boucle, l'appelant garde les tokens
+    déjà facturés."""
+    profile = profile or question_profile(config)
     answer = Answer(status=ROUNDS, usage=usage if usage is not None else Usage())
     messages = [{"role": "user", "content": question}]
     for _ in range(MAX_TOOL_ROUNDS):
         response = await client.messages.create(
-            model=config.model,
-            max_tokens=config.max_tokens,
-            system=SYSTEM,
-            tools=tools.TOOLS,
+            model=profile.model,
+            max_tokens=profile.max_tokens,
+            system=profile.system,
+            tools=profile.tools,
             messages=messages,
-            output_config={"effort": config.effort},
+            output_config={"effort": profile.effort},
         )
         answer.rounds += 1
         answer.usage.add(response.usage)
@@ -81,8 +106,9 @@ async def ask(client, api: WarframeApi, question: str, config: Config, usage: Us
             return answer
         calls = [block for block in response.content if block.type == "tool_use"]
         outcomes = await asyncio.gather(*(tools.execute(api, call.name, call.input) for call in calls))
-        for outcome in outcomes:
-            add_sources(answer.sources, outcome.sources)
+        for call, outcome in zip(calls, outcomes):
+            if profile.search_sources or call.name not in tools.SEARCHES:
+                add_sources(answer.sources, outcome.sources)
             answer.wiki = answer.wiki or outcome.wiki
         # Le contenu de l'assistant repart tel quel (blocs de réflexion compris), tous les résultats dans un seul message.
         messages.append({"role": "assistant", "content": response.content})

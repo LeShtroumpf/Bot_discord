@@ -8,8 +8,10 @@ FALLBACK_COLOR = discord.Color.light_grey()
 DESCRIPTION_LIMIT = 4096  # limite Discord d'une description d'embed
 FIELD_LIMIT = 1024        # limite Discord d'une valeur de champ
 MAX_SOURCES = 5
+MAX_BUILD_SOURCES = 12  # une page par carte vérifiée, tant que le champ le permet
 FOOTER = "Données : warframestat.us"
 WIKI_FOOTER = "Données : warframestat.us, wiki.warframe.com (CC BY-NC-SA)"
+BUILD_TITLE = "Analyse de build"
 REPORT_LINES = 15         # pages listées par champ du rapport de /cephalon_pages, au plus
 
 
@@ -26,10 +28,10 @@ def body(question: str, text: str) -> str:
     return truncate(f"{quote(question)}\n\n{text.strip()}", DESCRIPTION_LIMIT)
 
 
-def sources_field(sources: list[tuple[str, str]]) -> str:
+def sources_field(sources: list[tuple[str, str]], limit: int = MAX_SOURCES) -> str:
     """Liens vers les pages du wiki, tant qu'ils tiennent dans un champ."""
     lines = []
-    for name, url in sources[:MAX_SOURCES]:
+    for name, url in sources[:limit]:
         line = f"[{name}]({url})"
         if len("\n".join(lines + [line])) > FIELD_LIMIT:
             break
@@ -60,9 +62,36 @@ def answer(question: str, text: str, sources: list[tuple[str, str]], remaining: 
     return embed
 
 
-def fallback(question: str, message: str) -> discord.Embed:
+def remaining_builds_text(remaining: int) -> str:
+    if remaining <= 0:
+        return "Dernière analyse de build du jour"
+    return "1 build restant aujourd'hui" if remaining == 1 else f"{remaining} builds restants aujourd'hui"
+
+
+def build_answer(question: str | None, text: str, sources: list[tuple[str, str]], remaining: int | None,
+                 thumbnail: str | None) -> discord.Embed:
+    """Analyse d'un build : même forme qu'une réponse, capture en miniature, builds restants en pied de page."""
+    embed = discord.Embed(description=body(question or BUILD_TITLE, text), color=ANSWER_COLOR)
+    embed.set_author(name=NAME)
+    if thumbnail:
+        embed.set_thumbnail(url=thumbnail)
+    footer = []
+    links = sources_field(sources, MAX_BUILD_SOURCES)
+    if links:
+        embed.add_field(name="Sources", value=links, inline=False)
+        footer.append(FOOTER)
+    if remaining is not None:
+        footer.append(remaining_builds_text(remaining))
+    if footer:
+        embed.set_footer(text=" · ".join(footer))
+    return embed
+
+
+def fallback(question: str, message: str, thumbnail: str | None = None) -> discord.Embed:
     embed = discord.Embed(description=body(question, message), color=FALLBACK_COLOR)
     embed.set_author(name=NAME)
+    if thumbnail:
+        embed.set_thumbnail(url=thumbnail)
     return embed
 
 

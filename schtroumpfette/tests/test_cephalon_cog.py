@@ -646,3 +646,159 @@ async def test_answer_from_a_wiki_page(cog, asking, settings, claude, report, wi
     embed = sent_embed(asking)
     assert embed.fields[0].value == "[Argon Crystal — Acquisition](https://wiki.warframe.com/w/Argon_Crystal#Acquisition)"
     assert embed.footer.text.startswith("Données : warframestat.us, wiki.warframe.com (CC BY-NC-SA) · ")
+
+
+# --- /cephalon_build ----------------------------------------------------------------------------------------
+
+def png(size=(1200, 500)) -> bytes:
+    import io
+    from PIL import Image
+    buffer = io.BytesIO()
+    Image.new("RGB", size, "purple").save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def capture():
+    attachment = MagicMock()
+    attachment.content_type, attachment.url = "image/png", "https://cdn.discordapp.com/attachments/1/2/build.png"
+    attachment.read = AsyncMock(return_value=png())
+    attachment.size = 300_000
+    return attachment
+
+
+def build_reading(*names, is_build=True):
+    slots = [{"slot": "normal", "kind": "mod", "name": name, "readable": True, "drain": 9, "rank": 5, "max_rank": 5,
+              "polarity": None} for name in names]
+    return {"is_build": is_build, "equipment_kind": "warframe", "equipment_name": "Rhino Prime", "capacity": None,
+            "displayed_stats": [], "slots": slots}
+
+
+def reader(claude, data):
+    return claude.reply("end_turn", claude.text(json.dumps(data)), input_tokens=3000, output_tokens=500)
+
+
+@pytest.mark.asyncio
+async def test_build(cog, asking, settings, claude, report, capture, capsys):
+    cog.claude = claude.client(reader(claude, build_reading("Continuité")),
+                               claude.reply("end_turn", claude.text("**Mods lus**\n- Continuité…"), input_tokens=4000,
+                                            output_tokens=900))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question="Pour l'Acier ?")
+    embed = sent_embed(asking)
+    assert embed.description == "> Pour l'Acier ?\n\n**Mods lus**\n- Continuité…"
+    assert embed.thumbnail.url == capture.url
+    assert embed.fields[0].value == "[Continuity](https://wiki.warframe.com/w/Continuity)"
+    assert embed.footer.text == "Données : warframestat.us · Dernière analyse de build du jour"
+    reading_request, analysis_request = cog.claude.requests
+    assert reading_request["model"] == "claude-sonnet-5-5" and "format" in reading_request["output_config"]
+    assert analysis_request["model"] == "claude-sonnet-5-5" and analysis_request["output_config"] == {"effort": "medium"}
+    sent = json.loads(analysis_request["messages"][0]["content"])
+    assert sent["question"] == "Pour l'Acier ?" and sent["slots"][0]["card"]["name_fr"] == "Continuité"
+    saved = state(cog.limits)
+    assert saved["builds"] == {"77": 1} and saved["questions"] == {}       # le quota des questions n'est pas touché
+    assert saved["cost_usd"] == pytest.approx((3000 * 2 + 500 * 10 + 4000 * 2 + 900 * 10) / 1e6)
+    out = capsys.readouterr().out
+    assert "[cephalon] build 77 : image 1200x500, PNG" in out and "1 cartes (1 vérifiées)" in out and "coût 0,03 €" in out
+    report.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_second_build_of_the_day_is_refused(cog, asking, settings, claude, report, capture, clock):
+    cog.claude = claude.client(reader(claude, build_reading("Continuité")), claude.reply("end_turn", claude.text("Ok.")))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    clock.advance(200)
+    asking.response.send_message.reset_mock()
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    asking.response.send_message.assert_awaited_once_with(
+        "Tu as utilisé tes 1 analyse de build du jour, Tenno. Mes archives te rouvrent à minuit.", ephemeral=True)
+    assert cog.limits.check(77, read_config(), cog_module.utcnow()) is None  # /cephalon reste ouvert
+
+
+@pytest.mark.asyncio
+async def test_build_quota_is_read_from_settings(cog, asking, settings, settings_file, claude, report, capture, clock):
+    configure(settings_file, warframe={"command_channel": str(CHANNEL)}, cephalon={"build_daily": 2})
+    for _ in range(2):
+        cog.claude = claude.client(reader(claude, build_reading("Continuité")), claude.reply("end_turn", claude.text("Ok.")))
+        asking.followup.send.reset_mock()
+        asking.response.defer.reset_mock()
+        await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+        clock.advance(200)
+        assert sent_embed(asking).color == render.ANSWER_COLOR
+    assert state(cog.limits)["builds"] == {"77": 2}
+
+
+@pytest.mark.asyncio
+async def test_not_a_build(cog, asking, settings, claude, report, capture):
+    cog.claude = claude.client(reader(claude, build_reading(is_build=False)))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    embed = sent_embed(asking)
+    assert persona.NOT_A_BUILD_MESSAGE in embed.description and embed.color == render.FALLBACK_COLOR
+    assert len(cog.claude.requests) == 1 and state(cog.limits)["builds"] == {}  # quota intact
+    assert state(cog.limits)["cost_usd"] > 0                                     # la lecture est comptée
+    report.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_type, size, message", [
+    (None, 100, persona.NOT_AN_IMAGE_MESSAGE),
+    ("application/pdf", 100, persona.NOT_AN_IMAGE_MESSAGE),
+    ("image/png", 30 * 1024 * 1024, "Cette capture est trop lourde pour mes archives, Tenno (30 Mo, 20 Mo au plus)."),
+])
+async def test_attachment_refused(cog, asking, settings, capture, content_type, size, message):
+    capture.content_type, capture.size = content_type, size
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    asking.response.send_message.assert_awaited_once_with(message, ephemeral=True)
+    capture.read.assert_not_awaited()
+    assert cog.limits.build_cooldowns == {}
+
+
+@pytest.mark.asyncio
+async def test_build_wrong_channel(cog, asking, settings, capture):
+    asking.channel_id = 1
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    asking.response.send_message.assert_awaited_once_with(f"Mauvais salon, utilise <#{CHANNEL}>.", ephemeral=True)
+
+
+@pytest.mark.asyncio
+async def test_unreadable_capture(cog, asking, settings, claude, report, capture):
+    capture.read = AsyncMock(return_value=b"pas une image")
+    cog.claude = claude.client()
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    assert persona.UNREADABLE_IMAGE_MESSAGE in sent_embed(asking).description
+    assert cog.claude.requests == [] and not cog.limits.path.exists()
+
+
+@pytest.mark.asyncio
+async def test_unusable_reading_is_reported(cog, asking, settings, claude, report, capture, seventh_message):
+    cog.claude = claude.client(claude.reply("refusal"))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    assert sent_embed(asking).color == render.FALLBACK_COLOR
+    assert report.await_args.args[2] == "cephalon : build" and state(cog.limits)["builds"] == {}
+
+
+@pytest.mark.asyncio
+async def test_build_warframestat_outage(cog, asking, settings, claude, report, capture, api_routes, failing_response,
+                                         seventh_message):
+    api_routes[("/mods/search/Continuit%C3%A9", None)] = failing_response("status")
+    cog.claude = claude.client(reader(claude, build_reading("Continuité")))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    assert sent_embed(asking).color == render.FALLBACK_COLOR and len(cog.claude.requests) == 1
+    assert report.await_args.args[2] == "cephalon : warframestat"
+    assert state(cog.limits)["builds"] == {} and state(cog.limits)["cost_usd"] > 0
+
+
+@pytest.mark.asyncio
+async def test_build_round_limit(cog, asking, settings, claude, report, capture):
+    cog.claude = claude.client(reader(claude, build_reading("Continuité")),
+                               *(claude.reply("tool_use", claude.tool("get_mod", "Continuité")) for _ in range(5)))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    assert persona.ROUNDS_MESSAGE in sent_embed(asking).description and state(cog.limits)["builds"] == {}
+
+
+@pytest.mark.asyncio
+async def test_unknown_reader_model_is_reported(cog, asking, settings, settings_file, claude, report, capture):
+    configure(settings_file, warframe={"command_channel": str(CHANNEL)}, cephalon={"build_reader_model": "claude-x"})
+    cog.claude = claude.client(reader(claude, build_reading("Continuité")), claude.reply("end_turn", claude.text("Ok.")))
+    await cog.cephalon_build.callback(cog, asking, image=capture, question=None)
+    assert [call.args[1] for call in report.await_args_list] == [
+        "prix inconnu pour le modèle claude-x : coût compté au tarif le plus cher"]

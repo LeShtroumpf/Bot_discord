@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from cephalon import llm, tools
@@ -133,3 +135,15 @@ async def test_given_usage_is_the_answer_usage(claude, fake_api):
     usage = llm.Usage()
     answer = await llm.ask(claude.client(claude.reply("end_turn", claude.text("Oui."))), fake_api, "?", CONFIG, usage)
     assert answer.usage is usage and usage.input == 100
+
+
+@pytest.mark.asyncio
+async def test_search_sources_can_be_left_out(claude, fake_api, index):
+    fake_api.index = index
+    search = SimpleNamespace(type="tool_use", id="toolu_1", name="search_mods",
+                             input={"keywords": ["Ability Duration"], "type": None})
+    for cite, expected in ((True, True), (False, False)):
+        client = claude.client(claude.reply("tool_use", search), claude.reply("end_turn", claude.text("Ok.")))
+        profile = llm.Profile(llm.SYSTEM, tools.TOOLS, "claude-haiku-5-5", 1000, "low", search_sources=cite)
+        answer = await llm.ask(client, fake_api, "Quel mod ?", Config(), profile=profile)
+        assert bool(answer.sources) is expected
