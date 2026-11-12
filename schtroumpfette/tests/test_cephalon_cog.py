@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import anthropic
+import discord
 import httpx2
 import pytest
 
@@ -511,3 +512,137 @@ def test_valid_config(settings_file):
 def test_command_channel(settings_file, warframe, expected):
     configure(settings_file, warframe=warframe)
     assert command_channel() == expected
+
+
+# --- Pages du wiki ------------------------------------------------------------------------------------------
+
+@pytest.fixture
+def modo(interaction, cog, wiki_dir):
+    """Un modérateur lance /cephalon_pages ; les exports de test sont dans le dossier d'état du cog."""
+    interaction.user.mention = "@modo"
+    cog.index_dir = wiki_dir.parent
+    cog.bot.logs_channel.send = AsyncMock()
+    return interaction
+
+
+def pages_embed(interaction, cog):
+    interaction.response.defer.assert_awaited_once_with(ephemeral=True)
+    kwargs = interaction.followup.send.await_args.kwargs
+    assert kwargs["ephemeral"] is True
+    cog.bot.logs_channel.send.assert_awaited_once_with(embed=kwargs["embed"])  # même embed dans le salon de logs
+    return kwargs["embed"]
+
+
+@pytest.mark.asyncio
+async def test_pages_command(cog, modo, report, capsys):
+    await cog.cephalon_pages.callback(cog, modo)
+    embed = pages_embed(modo, cog)
+    assert embed.color == discord.Color.green() and embed.description == "par @modo"
+    assert embed.fields[0].value == "Argon Crystal (4 sections)\nDamage (4 sections)\nStatus Effect (1 section)"
+    assert sorted(cog.api.pages.pages) == ["Argon Crystal", "Damage", "Status Effect"]
+    assert (cog.index_dir / "pages.json").exists()
+    assert "[cephalon] pages : 3 pages, 9 sections, 0 problèmes" in capsys.readouterr().out
+    report.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pages_command_with_a_broken_file(cog, modo, report):
+    (cog.index_dir / "pages" / "broken.xml").write_text("<mediawiki><page>", encoding="utf-8")
+    await cog.cephalon_pages.callback(cog, modo)
+    embed = pages_embed(modo, cog)
+    assert embed.color == discord.Color.orange() and embed.fields[-1].value.startswith("broken.xml : XML illisible")
+    assert len(cog.api.pages) == 3
+
+
+@pytest.mark.asyncio
+async def test_pages_command_without_directory(cog, modo, report, tmp_path):
+    cog.api.pages = previous = MagicMock()
+    cog.index_dir = tmp_path / "vide"
+    await cog.cephalon_pages.callback(cog, modo)
+    embed = pages_embed(modo, cog)
+    assert embed.color == discord.Color.red() and "introuvable" in embed.description
+    assert cog.api.pages is previous
+
+
+@pytest.mark.asyncio
+async def test_pages_command_cannot_write(cog, modo, report, monkeypatch):
+    def fail(self, directory):
+        raise OSError("disque plein")
+    monkeypatch.setattr(cog_module.Pages, "write", fail)
+    await cog.cephalon_pages.callback(cog, modo)
+    embed = pages_embed(modo, cog)
+    assert embed.color == discord.Color.red() and "écriture de pages.json impossible : disque plein" in embed.description
+    assert cog.api.pages is None
+
+
+@pytest.mark.asyncio
+async def test_pages_command_without_logs_channel(cog, modo, report):
+    cog.bot.logs_channel = None
+    await cog.cephalon_pages.callback(cog, modo)
+    modo.followup.send.assert_awaited_once()
+    report.assert_awaited_once()
+    assert report.await_args.args[2] == "cephalon : pages"
+
+
+@pytest.mark.asyncio
+async def test_pages_commands_run_one_at_a_time(cog, modo, report, interaction, monkeypatch):
+    running, overlaps = [], []
+    original = Cephalon.reload_pages
+
+    def slow_reload(self):
+        overlaps.append(bool(running))
+        running.append(1)
+        import time
+        time.sleep(0.05)
+        running.pop()
+        return original(self)
+    monkeypatch.setattr(Cephalon, "reload_pages", slow_reload)
+    second = MagicMock()
+    second.response.defer, second.followup.send, second.user.mention = AsyncMock(), AsyncMock(), "@autre"
+    await asyncio.gather(cog.cephalon_pages.callback(cog, modo), cog.cephalon_pages.callback(cog, second))
+    assert overlaps == [False, False]
+    second.followup.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_pages_are_read_at_load(limits, wiki_dir, tmp_path, monkeypatch, capsys):
+    from cephalon.pages import Pages
+    pages, _ = Pages.reload(wiki_dir)
+    pages.write(tmp_path)
+    monkeypatch.setattr(cog_module, "STATE_DIR", tmp_path)
+    cog = Cephalon(bot=MagicMock())
+    cog.limits = limits
+    await cog.cog_load()
+    assert len(cog.api.pages) == 3 and cog.pages_error is None
+    assert "[cephalon] pages : 3 pages, 9 sections (lu du disque)" in capsys.readouterr().out
+    await cog.cog_unload()
+
+
+@pytest.mark.asyncio
+async def test_unreadable_pages_are_reported_at_the_first_question(limits, tmp_path, monkeypatch, asking, settings,
+                                                                   claude, report):
+    (tmp_path / "pages.json").write_text("{", encoding="utf-8")
+    monkeypatch.setattr(cog_module, "STATE_DIR", tmp_path)
+    cog = Cephalon(bot=MagicMock())
+    cog.limits = limits
+    await cog.cog_load()
+    assert cog.api.pages is None and cog.pages_error is not None
+    cog.claude = ok(claude)
+    await cog.cephalon.callback(cog, asking, question="Salut ?")
+    await cog.cephalon.callback(cog, asking, question="Encore ?")  # signalé une seule fois
+    origins = [call.args[2] for call in report.await_args_list]
+    assert origins == ["cephalon : pages"]
+    await cog.cog_unload()
+
+
+@pytest.mark.asyncio
+async def test_answer_from_a_wiki_page(cog, asking, settings, claude, report, wiki_dir):
+    from cephalon.pages import Pages
+    cog.api.pages, _ = Pages.reload(wiki_dir)
+    read = SimpleNamespace(type="tool_use", id="toolu_1", name="read_section",
+                           input={"page": "Argon Crystal", "section": "Acquisition"})
+    cog.claude = claude.client(claude.reply("tool_use", read), claude.reply("end_turn", claude.text("Sur Ani, Tenno.")))
+    await cog.cephalon.callback(cog, asking, question="Où farmer l'argon ?")
+    embed = sent_embed(asking)
+    assert embed.fields[0].value == "[Argon Crystal — Acquisition](https://wiki.warframe.com/w/Argon_Crystal#Acquisition)"
+    assert embed.footer.text.startswith("Données : warframestat.us, wiki.warframe.com (CC BY-NC-SA) · ")

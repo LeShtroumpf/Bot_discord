@@ -1,0 +1,376 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11" xml:lang="en">
+  <!-- Extrait réduit d'un export Special:Export du 2026-11-12 (pages « Status Effect » et « Disruption »).
+       Source : https://wiki.warframe.com/ — contenu sous licence CC BY-NC-SA 3.0, utilisé pour les tests. -->
+  <siteinfo>
+    <sitename>WARFRAME Wiki</sitename>
+    <base>https://wiki.warframe.com/</base>
+  </siteinfo>
+  <page>
+    <title>Status Effect</title>
+    <ns>0</ns>
+    <revision>
+      <text xml:space="preserve">{{Infobox
+| Box title=Status Effect
+| image=StatusEffectIconUI.jpg
+| caption=Health bar of an [[Elite Lancer]] with a single [[Impact]] proc, a [[Cold]] proc, and four [[Radiation]] procs
+}}
+{{tocright}}
+{{Quote|The chance that a hit will apply a Status Effect based on the types of damage the weapon inflicts.
+
+Values over 100% have a chance to inflict multiple Status Effects at once.
+
+----
+
+&gt; Chance for each Status Effect type per hit:|In-game Description}}
+A '''Status Effect''', or commonly called a ''[[wiktionary:proc|Proc]]'', is an additional effect which may be triggered at random by a hit from a weapon or [[Warframe]] ability. '''Status Chance''' is the probability that a hit will inflict a status effect. The base duration of the Proc will depend on its type, and whether the target is an enemy or another Tenno. Warframe abilities usually have a high chance to proc, or in some cases, greater than or equal to 100% chance to inflict their status effect (e.g. {{WF|Frost}}'s {{A|Ice Wave}} ability).
+
+Each damage type is associated with a status effect. Weapons that deal multiple damage types will have a separate chance to inflict its associated status effect on a target, and only one damage type can proc per hit, unless [[#Status Chance|status chance is over 100%]].  These multiple status effects can also be referred to as '''Unique Status Effects'''.
+
+For example, a weapon such as an unmodified {{Weapon|Staticor}} deals solely {{D|Radiation}} damage. In addition to its damage, the Staticor also has a 28% status chance on each shot to cause a proc. On a successful proc, the enemy will receive the Radiation status effect, which causes Confusion over the duration of the effect.
+
+Enemies also possess the ability to inflict status effects on players. For example, a [[Grineer]] {{E|Scorch}} has a chance to inflict the Ignite status effect with the {{D|Heat}} damage from his {{Weapon|Ignis}}. Similarly, enemies are also able to inflict physical procs such as Bleeding (associated with {{D|Slash}} damage) bypassing the player's armor. Several Warframe abilities will grant immunity to status, (e.g. {{WF|Oberon}}'s {{A|Hallowed Ground}} ability). Any amount of {{D|Overguard}} will grant immunity as well.
+
+{{clr}}
+==Status Effects==
+===General===
+{| class="wikitable"
+! Damage Type
+! Status Effect Internal Name
+! Status Effects
+|-
+| {{D|Impact}}
+| &lt;code&gt;PT_KNOCKBACK&lt;/code&gt;
+| '''Knockback'''&lt;br /&gt;On Enemy: Causes target to flinch and staggers movement for '''1''' second and increases the health threshold at which they can be [[Parazon]] Mercy Killed by '''8%''' per proc. Stacks up to '''5''' times.&lt;br /&gt;On Player: No effect.
+|-
+| {{D|Puncture}}
+| &lt;code&gt;PT_FRAILTY&lt;/code&gt;
+| '''Weakened'''&lt;br /&gt;On Enemy: Reduces any damage dealt by '''40%''' for '''10''' seconds. Stacks up to '''5''' times, with subsequent procs reducing damage by '''10%''' to a total of '''80%'''. The victim receives '''5%''' increased weapon [[Critical Chance]] per proc up to '''25%''' at max stacks. This bonus is additive after mods, but does not apply to area of effect damage or Warframe abilities.&lt;br /&gt;On Player: Reduces any damage dealt to '''30%''' for '''10''' seconds.
+|-
+| {{D|Slash}}
+| &lt;code&gt;PT_BLEEDING&lt;/code&gt;
+| '''Bleed'''&lt;br /&gt;On Enemy: Deals '''35%''' of the base damage per second over '''6''' seconds. This damage bypasses [[Armor]].&lt;br /&gt;On Player: Deals '''10%''' of the base damage per second over '''6''' seconds. This damage bypasses Armor.
+|-
+| {{D|Heat}}
+| &lt;code&gt;PT_IMMOLATION&lt;/code&gt;
+| '''Ignite'''&lt;br /&gt;On Enemy: Deals '''50%''' of the base damage as {{D|Heat}} damage per second over '''6''' seconds while causing the target to panic for '''4''' seconds and gradually stripping up to '''50%''' [[Armor]].&lt;br /&gt;On Player: Deals '''50%''' base {{D|Heat}} damage over '''6''' seconds and strips up to '''50%''' Armor.
+|-
+| {{D|Cold}}
+| &lt;code&gt;PT_CHILLED&lt;/code&gt;
+| '''Freeze'''&lt;br /&gt;On Enemy: Reduces Movement Speed, [[Fire Rate]], and [[Attack Speed]] by '''50%''' for '''6''' seconds. Stacks up to '''10''' times, with subsequent procs increasing slow by '''5%''' to a total of '''90%''' on the 9th stack. The target receives '''+0.1''' increased [[Critical Multiplier]] on initial proc and '''+0.05''' per subsequent proc to a maximum of '''+0.5''' on the 9th stack. This bonus is additive after mods, but does '''not''' apply to [[:Category:Weapons with Area of Effect|area of effect]] damage. On the 10th stack, enemies become frozen solid, their [[Shield]] recharge is negated, and their received Critical Multiplier is increased to '''+1.0''', for '''3''' seconds.&lt;br /&gt;On Player: Reduces Movement Speed, Fire Rate, and Attack Speed by '''25%''' for '''6''' seconds.
+|-
+| {{D|Electricity}}
+| &lt;code&gt;PT_ELECTROCUTION&lt;/code&gt;
+| '''Tesla Chain'''&lt;br /&gt;On Enemy: Deals '''50%''' of the base damage as{{D|Electricity}} damage per second over '''6 '''seconds to enemies within '''3''' meters of the target and stuns the affected target for '''3''' seconds.&lt;br /&gt;On Player: Deals '''50%''' base {{D|Electricity}} damage to allies within '''3''' meters of the target.
+|-
+| {{D|Toxin}}
+| &lt;code&gt;PT_POISONED&lt;/code&gt;
+| '''Poison'''&lt;br /&gt;Universal: Deals '''50% '''of the base damage as {{D|Toxin}} damage per second over '''6''' seconds. This damage can bypass [[Shield]]s.
+|-
+| {{D|Blast}}
+| &lt;code&gt;PT_FLASHBANG&lt;/code&gt;
+| '''Detonate'''&lt;br /&gt;On Enemy: Deals '''30%''' of base damage after '''1.5''' seconds. On maximum '''10''' stacks or when the target dies, premature detonation occurs and all stacks are dealt simultaneously as enemies within '''5''' meters are dealt '''300%''' of base damage per proc. The increased damage from premature detonation only applies to surrounding enemies hit by the explosion, but '''not''' the initial target.
+|-
+| {{D|Corrosive}}
+| &lt;code&gt;PT_CAUSTIC_BURN&lt;/code&gt;
+| '''Corrosion'''&lt;br /&gt;On Enemy: Reduces [[armor]] by '''26%''' for '''8''' seconds. Stacks up to '''10''' times, with subsequent procs reducing armor by '''6%''' to a total of '''80%'''.&lt;br /&gt;On Player: Reduces armor by '''26%''' for '''8''' seconds.
+|-
+| {{D|Gas}}
+| &lt;code&gt;PT_ASPHYXIATION&lt;/code&gt;
+| '''Gas Cloud'''&lt;br /&gt;Universal: Deals '''50%''' of the base damage as {{D|Gas}}  damage per second over '''6''' seconds in a '''3''' meter radius. Stacks up to '''10''' times, with subsequent procs increasing radius by '''0.3''' meters to a total of '''6''' meters.
+|-
+| {{D|Magnetic}}
+| &lt;code&gt;PT_MAGNETIZED&lt;/code&gt;
+| '''Disrupt'''&lt;br /&gt;On Enemy: Amplifies damage dealt to [[Shield]]s and {{D|Overguard}} by '''100%''' and nullifies shield regeneration for '''6''' seconds. Stacks up to '''10''' times, with subsequent procs increasing damage to shields by '''25%''' to a total of '''325%'''. On removing Shields or Overguard, inflict an {{D|Electricity}} proc equal to '''3%''' of the target's maximum shields/overguard per {{D|Magnetic}} stack to a maximum of '''30%'''.&lt;br /&gt;On Player: Amplifies damage dealt to shields by '''100%''', nullifies shield regeneration, drains '''20''' [[Energy]] per second and scrambles the interface for '''4''' seconds. Due to player overguard granting status immunity, procs do not result in additional damage. 
+|-
+| {{D|Radiation}}
+| &lt;code&gt;PT_RAD_TOX&lt;/code&gt;
+| '''Confusion'''&lt;br /&gt;On Enemy: Attacks any closest enemy and will be attacked in return while dealing '''100%''' additional damage to allied units for '''12''' seconds. Stacks up to '''10''' times, with subsequent procs increasing damage by '''50%''' to a total of '''550%'''.&lt;br /&gt;On Player: Reduces firing accuracy, able to damage and be damaged by allies for '''4''' seconds.
+|-
+| {{D|Viral}}
+| &lt;code&gt;PT_INFECTED&lt;/code&gt;
+| '''Virus'''&lt;br /&gt;On Enemy: Amplifies damage dealt to [[health]] by '''100%''' for '''6''' seconds. Stacks up to '''10''' times, with subsequent procs increasing damage to health by '''25%''' to a total of '''325%'''.&lt;br /&gt;On Player: Amplifies damage dealt to health by '''100%''' for '''6''' seconds.
+|-
+| {{D|Void}}
+| &lt;code&gt;PT_RADIANT&lt;/code&gt;
+| '''Bullet Attractor'''&lt;br /&gt;On Enemy: Creates a '''2.5''' meter radius field which attracts projectiles for '''3''' seconds.
+|-
+| {{D|Tau}}
+| &lt;code&gt;PT_SENTIENT&lt;/code&gt;
+| '''Status Vulnerability'''&lt;br /&gt;On Enemy: The victim receives '''10%''' increased [[Status Chance]] per proc for '''8''' seconds up to '''100%''' at '''10''' stacks.
+|-
+| {{D|True}}
+| N/A
+| ''No status effect.''
+|-
+|}
+
+==Damage Distribution==
+Status effect procs will occur in proportion to the amount of base damage dealt by each of the present damage types on the weapon. For example, an unmodded {{Weapon|Strun}}'s highest physical damage type is {{D|Impact}}, thus it inflicts mostly Knockback procs.
+
+Increasing the physical or elemental damage of a weapon does not increase the duration of the associated proc (e.g. enemies won't be confused longer if {{D|Radiation}} damage is increased).
+
+When a hit procs, the chance for an individual damage type to proc in relation to the others is:
+
+{{MathText|Proc Type Chance {{eql}} Damage {{div}} Total Damage}}
+
+For example, if a weapon's damage is composed of 20 {{D|Impact}}, 5 {{D|Puncture}}, 10 {{D|Slash}}, 25 {{D|Heat}}, and 50 {{D|Corrosive}}, then its total damage is {{Math|20 + 5 + 10 + 25 + 50|t=y}}. Therefore, the chance for the individual damage types to proc will be:
+{| class="wikitable"
+! style="width:25%;"|
+! style="width:12.5%;"| Impact
+! style="width:12.5%;"| Puncture
+! style="width:12.5%;"| Slash
+! style="width:12.5%;"| Heat
+! style="width:12.5%;"| Corrosive
+|- align="center"
+! Damage
+|20
+|5
+|10
+|25
+|50
+|- align="center"
+! Proc Type Chance
+|18.18%
+|4.55%
+|9.09%
+|22.73%
+|45.45%
+|}
+
+==Status Mods and Effects==
+Status chance mods affect the base status chance of the weapon, i.e. the status chance value displayed in the Codex that is the probability, for the unmodded weapon, that ''each'' projectile will inflict a status effect.
+
+===Status Chance===
+{{#tag:tabber|
+{{!}}-{{!}}Rifle=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+CatalyzerLinkMod.png|link=Catalyzer Link|{{M|Catalyzer Link}}
+GalvanizedAptitudeMod.png|link=Galvanized Aptitude|{{M|Galvanized Aptitude}}
+HammerShotMod.png|link=Hammer Shot|{{M|Hammer Shot}}
+HighVoltageMod.png|link=High Voltage|{{M|High Voltage}}
+MalignantForceMod.png|link=Malignant Force|{{M|Malignant Force}}
+ProtonJetMod.png|link=Proton Jet|{{M|Proton Jet}}
+RifleAptitudeMod.png|link=Rifle Aptitude|{{M|Rifle Aptitude}}
+RimeRoundsMod.png|link=Rime Rounds|{{M|Rime Rounds}}
+ThermiteRoundsMod.png|link=Thermite Rounds|{{M|Thermite Rounds}}
+CrimsonArchonShard.png|link=Crimson Archon Shard|{{Resource|Crimson Archon Shard}}|alt=Crimson Archon Shard
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Shotgun=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+FrigidBlastMod.png|link=Frigid Blast|{{M|Frigid Blast}}
+GalvanizedSavvyMod.png|link=Galvanized Savvy|{{M|Galvanized Savvy}}
+MotusSetupMod.png|link=Motus Setup|{{M|Motus Setup}}
+Nano-ApplicatorMod.png|link=Nano-Applicator|{{M|Nano-Applicator}}
+ScatteringInfernoMod.png|link=Scattering Inferno|{{M|Scattering Inferno}}
+ShellShockMod.png|link=Shell Shock|{{M|Shell Shock}}
+ShotgunSavvyMod.png|link=Shotgun Savvy|{{M|Shotgun Savvy}}
+ToxicBarrageMod.png|link=Toxic Barrage|{{M|Toxic Barrage}}
+CrimsonArchonShard.png|link=Crimson Archon Shard|{{Resource|Crimson Archon Shard}}|alt=Crimson Archon Shard
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Pistol=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+CarnisStingerMod.png|link=Carnis Stinger|{{M|Carnis Stinger}}
+EmbeddedCatalyzerMod.png|link=Embedded Catalyzer|{{M|Embedded Catalyzer}}
+FrostbiteMod.png|link=Frostbite|{{M|Frostbite}}
+GalvanizedShotMod.png|link=Galvanized Shot|{{M|Galvanized Shot}}
+JoltMod.png|link=Jolt|{{M|Jolt}}
+JugulusSpinesMod.png|link=Jugulus Spines|{{M|Jugulus Spines}}
+PistolPestilenceMod.png|link=Pistol Pestilence|{{M|Pistol Pestilence}}
+SaxumSpittleMod.png|link=Saxum Spittle|{{M|Saxum Spittle}}
+ScorchMod.png|link=Scorch (Mod)|{{M|Scorch}}
+StunningSpeedMod.png|link=Stunning Speed|{{M|Stunning Speed}}
+SureShotMod.png|link=Sure Shot|{{M|Sure Shot}}
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Melee=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+CarnisMandibleMod.png|link=Carnis Mandible|{{M|Carnis Mandible}}
+DriftingContactMod.png|link=Drifting Contact|{{M|Drifting Contact}}
+EnduringAfflictionMod.png|link=Enduring Affliction|{{M|Enduring Affliction}}
+GalvanizedElementalistMod.png|link=Galvanized Elementalist|{{M|Galvanized Elementalist}}
+JugulusBarbsMod.png|link=Jugulus Barbs|{{M|Jugulus Barbs}}
+MeleeProwessMod.png|link=Melee Prowess|{{M|Melee Prowess}}
+Nira'sContemptMod.png|link=Nira's Contempt|{{M|Nira's Contempt}}
+ProtonSnapMod.png|link=Proton Snap|{{M|Proton Snap}}
+SaxumThoraxMod.png|link=Saxum Thorax|{{M|Saxum Thorax}}
+ViciousFrostMod.png|link=Vicious Frost|{{M|Vicious Frost}}
+VirulentScourgeMod.png|link=Virulent Scourge|{{M|Virulent Scourge}}
+VolcanicEdgeMod.png|link=Volcanic Edge|{{M|Volcanic Edge}}
+VoltaicStrikeMod.png|link=Voltaic Strike|{{M|Voltaic Strike}}
+WeepingWoundsMod.png|link=Weeping Wounds|{{M|Weeping Wounds}}
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Exalted Weapon=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+ChromaticBladeMod.png|link=Chromatic Blade|{{M|Chromatic Blade}}
+ReactiveStormMod.png|link=Reactive Storm|{{M|Reactive Storm}}
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Archgun=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+ChargedBulletsMod.png|link=Charged Bullets|{{M|Charged Bullets}}
+ContaminationCasingMod.png|link=Contamination Casing|{{M|Contamination Casing}}
+HypothermicShellMod.png|link=Hypothermic Shell|{{M|Hypothermic Shell}}
+MagmaChamberMod.png|link=Magma Chamber|{{M|Magma Chamber}}
+MarkedTargetMod.png|link=Marked Target|{{M|Marked Target}}
+ModifiedMunitionsMod.png|link=Modified Munitions|{{M|Modified Munitions}}
+&lt;/gallery&gt;
+
+{{!}}-{{!}}Archmelee=
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+CryoCoatingMod.png|link=Cryo Coating|{{M|Cryo Coating}}
+InfectiousInjectionMod.png|link=Infectious Injection|{{M|Infectious Injection}}
+IonInfusionMod.png|link=Ion Infusion|{{M|Ion Infusion}}
+SuddenImpactMod.png|link=Sudden Impact|{{M|Sudden Impact}}
+SearingSteelMod.png|link=Searing Steel|{{M|Searing Steel}}
+&lt;/gallery&gt;
+}}
+
+===Sources of Status Immunity===
+;Abilities
+&lt;tabber&gt;
+|-|Helminth = {{:Hideous Resistance}}
+|-|Revenant = {{:Mesmer Skin}}
+|-|Inaros = {{:Scarab Shell}}
+|-|Lavos = {{#lsth:Lavos/Abilities|Passive}}
+|-|Nezha =
+   {{#tag:tabber|
+      Fire Walker={{:Fire Walker}}
+      {{!}}-{{!}}
+      Warding Halo={{:Warding Halo}}
+   }}
+|-|Oberon = {{:Hallowed Ground}}
+|-|Oraxia = {{:Silken Stride}}
+|-|Nidus = {{:Parasitic Link}}
+|-|Qorvex = {{:Disometric Guard}}
+|-|Titania = {{:Spellbind}}
+|-|Trinity =
+   {{#tag:tabber|
+      Well Of Life={{:Well Of Life}}
+      {{!}}-{{!}}
+      Link={{:Link}}
+   }}
+|-|Valkyr = {{:Hysteria}}
+|-|Voruna = {{#lsth:Voruna/Abilities|Passive}}
+|-|Amesha = {{:Warding Grace}}
+&lt;/tabber&gt;
+
+;Mods
+&lt;gallery captionalign="center" captionposition="below" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+CarnisCarapaceMod.png|link=Carnis Carapace|{{M|Carnis Carapace}}|alt=Carnis Carapace
+CarnisMandibleMod.png|link=Carnis Mandible|{{M|Carnis Mandible}}|alt=Carnis Mandible
+CarnisStingerMod.png|link=Carnis Stinger|{{M|Carnis Stinger}}|alt=Carnis Stinger
+EmpoweredQuiverMod.png|link=Empowered Quiver|{{M|Empowered Quiver}}|alt=Empowered Quiver
+HeartyNourishmentMod.png|link=Hearty Nourishment|{{M|Hearty Nourishment}}|alt=Hearty Nourishment
+NegateMod.png|link=Negate|{{M|Negate}}|alt=Negate
+PurifyingFlamesMod.png|link=Purifying Flames|{{M|Purifying Flames}}|alt=Purifying Flames
+ShieldofShadowsMod.png|link=Shield of Shadows|{{M|Shield of Shadows}}|alt=Shield of Shadows
+TidalImpunityMod.png|link=Tidal Impunity|{{M|Tidal Impunity}}|alt=Tidal Impunity
+
+&lt;/gallery&gt;
+
+;Miscellaneous
+&lt;gallery captionposition="below" captionalign="center" hideaddbutton="true" spacing="small" navigation="true" position="center" bordersize="none" bordercolor="#FFFFFF"&gt;
+HealerAncientDE.png|link=Ancient Healer|Ancient Healer [[Specter]]
+&lt;/gallery&gt;
+
+==Trivia==
+*Prior to {{ver|25.7}}, a status effect's duration could be increased or decreased, along with the total number of ticks in the case of damage-over-time procs, if the target's speed was altered by a Warframe power (such as {{A|Molecular Prime}} or {{A|Rest &amp; Rage}}) according to the following formulas:
+**For slowing effects: {{MathText|Effective status duration {{eql}} (base status duration) {{div}} (1 {{min}} slow % in decimals)}}
+**For speeding effects: {{MathText|Effective status duration {{eql}} (base status duration) {{div}} (1 + speed up % in decimals)}}
+
+*Prior to {{ver|27.2}}, physical procs were weighted four times more than elemental ones.
+*Prior to {{ver|27.2}}, shotguns' status chance per pellet were calculated differently, instead of being the exact status chance shown in the Arsenal: {{MathText|Chance per Pellet {{eql}} 1 {{min}} (1 {{min}} Status Chance)&lt;sup&gt;(1 {{div}} Pellet Count)&lt;/sup&gt;}}
+**In other words, the status chance shown in the Arsenal represented the calculated probability that at least one of the weapon's pellets would proc.
+**This meant that shotguns that could reach 100% status chance in the Arsenal (before [[Multishot]] mods) benefited significantly more from a status build since each pellet would proc as a result of the above equation.
+**However, a shotgun that only reaches shy of 100% status chance when modded would see significantly diminished results.
+***For example, a 99% '''status chance''' on a 10 pellet weapon would result in a 36.9% '''status chance per pellet'''.
+
+{{CustomCollapsible|</text>
+    </revision>
+  </page>
+  <page>
+    <title>Disruption</title>
+    <ns>0</ns>
+    <revision>
+      <text xml:space="preserve">{{Top}}
+''For the [[Status Effect]], see [[Damage/Magnetic Damage#Status Effects|Disrupt]].''
+{{Infobox
+|Box title    = Disruption
+|image        = Disruption.png
+}}
+{{Quote|Alad V's sellin' the latest in "asset security". Conduits. Put the key in, and ya can pull the shinies out. Trick is, you gotta wait to open. Somethin' happens to the Conduit before you can pull the goods? You don't get the goods. Ever. Also, the bleeders Alad sold the tech to will try to kill you.|[[Little Duck]] introductory transmission}}
+
+'''Disruption''' is an Endless [[Mission]] type introduced in {{ver|25}}, tasking the Tenno with recovering items from conduits, asset security systems which [[Alad V]] has marketed and sold across the system. Similar to [[Mobile Defense]], the squad must fight high-ranking enemies to loot a conduit key and activate a terminal, then defend it from a Demo unit that tries to destroy that terminal.
+
+The Disruption Node on [[Ganymede]], [[Jupiter]] is only accessible after completing the [[Natah (Quest)|Natah]] quest. The node on [[Apollo]], [[Lua]] is only accessible after completing [[The War Within]] quest. The node on [[Armatus]], [[Deimos]] requires [[The Deadlock Protocol]] and [[Whispers in the Walls]] quests.
+
+{{clr}}{{tocright}}
+==Rewards==
+Disruption missions reward up to 1500 objective [[affinity]], based on mission level, for each conduit which is successfully defended (usually by killing the associated Demo).
+
+Disruption does not follow the traditional 'AABC' rotation for endless missions. The reward tier is determined by both round progression and round performance, i.e. the number of conduits successfully defended.
+
+&lt;div class="tableLimiter"&gt;
+{| class="wikitable stickyHeader" style="text-align: center; width: 500px; height: 200px;"
+|-
+! Round !! 1 conduit defended !! 2 conduits defended !! 3 conduits defended !! 4 conduits defended
+|-
+! 1
+| A || A || A || B
+|-
+! 2
+| A || A || B || B
+|-
+! 3
+| A
+| B
+| B
+| C
+|-
+! 4+
+| B
+| B
+| C
+| C
+|}
+&lt;/div&gt;
+
+&lt;div class="tableLimiter"&gt;{{Transclude|Disruption/Rewards}}&lt;/div&gt;
+
+===Demolisher Drops===
+Depending on the location, Demo Units may have a unique drop:
+
+&lt;div class="tableLimiter"&gt;
+{| class="wikitable stickyHeader" style="text-align: center; width: 500px; height: 200px;"
+|-
+! Location !! Drop !! Drop Chance
+|-
+! rowspan="2" | Uranus
+| {{Weapon|Acceltra}} Blueprint
+| 2.5%
+|-
+| {{Weapon|Akarius}} Blueprint
+| 2.5%
+|-
+! Lua
+| {{Resource|Somatic Fibers}} x 1
+| 15%
+|-
+! Kuva Fortress
+| {{Resource|Kuva}} x 50
+| 100%
+|-
+! Deimos
+| {{Resource|Vessel Capillaries}} x 2-4&lt;br/&gt;{{Resource|Vessel Capillaries}} x 5-7 ([[The Steel Path]])
+| 100%
+|-
+|}
+&lt;/div&gt;
+
+</text>
+    </revision>
+  </page>
+</mediawiki>

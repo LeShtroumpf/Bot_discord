@@ -18,6 +18,10 @@ INDEX_RETRY = 600          # secondes avant un nouvel essai après un téléchar
 INDEX_TIMEOUT = 60         # secondes par liste complète de warframestat
 MAX_RESULTS = 10           # résultats renvoyés par une recherche ou un classement
 
+PAGE_MAX_BYTES = 5 * 1024 * 1024  # export du wiki plus gros : refusé
+SECTION_LIMIT = 8000              # caractères d'une section renvoyés à Claude, au plus
+MAX_PAGES = 3                     # pages renvoyées par search_pages, au plus
+
 EFFORTS = ("low", "medium", "high")
 
 

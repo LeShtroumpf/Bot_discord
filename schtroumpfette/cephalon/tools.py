@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field
 
 from cephalon.index import FRAME_KINDS, FRAME_STATS, WEAPON_CATEGORIES, WEAPON_STATS
+from cephalon.wikitext import INTRODUCTION
 from cephalon.warframe_api import WarframeApi
 
 ORDERS = ("desc", "asc")
@@ -81,6 +82,18 @@ TOOLS = [
          {"stat": choice(FRAME_STATS, "Statistique du classement."),
           "order": choice(ORDERS, "desc : les plus élevées d'abord. asc : les plus basses."),
           "kind": optional(choice(FRAME_KINDS, "Warframe (défaut si `null`), Archwing ou Necramech."))}),
+    tool("search_pages",
+         "Cherche dans les pages du wiki gardées dans tes archives (mécaniques de jeu, lieux et conseils pour obtenir "
+         "une ressource). Les pages sont en anglais : donne le titre anglais probable (Damage, Status Effect, Armor, "
+         "Orokin Cell…) ou des mots-clés anglais. Cherche dans les titres de pages, puis de sections, puis dans le "
+         "texte. Renvoie au plus 3 pages avec leur sommaire (`chars` = longueur de la section) ; `matching_sections` "
+         "indique les sections où la recherche a trouvé quelque chose. Appelle ensuite read_section.",
+         {"query": text("Titre de page ou mots-clés, en anglais.")}),
+    tool("read_section",
+         "Lit une section d'une page du wiki trouvée par search_pages (sous-sections comprises). Le texte est celui du "
+         f"wiki, en anglais. `null` pour la section d'introduction ({INTRODUCTION}).",
+         {"page": text("Titre exact de la page, tel que renvoyé par search_pages."),
+          "section": optional(text("Titre exact de la section, tel que renvoyé par search_pages, ou `null`."))}),
 ]
 
 LOOKUPS = {"get_mod": "mods", "get_item": "items"}
@@ -92,6 +105,7 @@ class Outcome:
     content: str
     is_error: bool = False
     sources: list[tuple[str, str]] = field(default_factory=list)
+    wiki: bool = False  # une page du wiki a été lue (licence à afficher)
 
 
 class BadCall(Exception):
@@ -146,6 +160,26 @@ def search(api: WarframeApi, name: str, arguments: dict) -> Outcome:
 
 
 SEARCHES = ("search_mods", "rank_weapons", "rank_warframes")
+PAGE_TOOLS = ("search_pages", "read_section")
+NO_PAGES = "Aucune page du wiki n'est disponible dans tes archives."
+
+
+def pages_tool(api: WarframeApi, name: str, arguments: dict) -> Outcome:
+    """Pages choisies du wiki (cephalon/pages.py)."""
+    pages = api.pages
+    if name == "search_pages":
+        query = string(arguments, "query")
+        if not pages:
+            return Outcome(dump({"results": [], "message": NO_PAGES}))
+        results = pages.search(query)
+        return Outcome(dump({"results": results} if results else {"results": [], "message": "Rien trouvé."}))
+    page, section = string(arguments, "page"), string(arguments, "section", required=False)
+    if not pages:
+        return Outcome(dump({"error": NO_PAGES}), is_error=True)
+    result, source = pages.read_section(page, section)
+    if source is None:
+        return Outcome(dump(result), is_error=True)
+    return Outcome(dump(result), sources=[source], wiki=True)
 
 
 async def execute(api: WarframeApi, name: str, arguments) -> Outcome:
@@ -155,6 +189,8 @@ async def execute(api: WarframeApi, name: str, arguments) -> Outcome:
     try:
         if name in SEARCHES:
             return search(api, name, arguments)
+        if name in PAGE_TOOLS:
+            return pages_tool(api, name, arguments)
         if name in LOOKUPS:
             lookup = await api.find(LOOKUPS[name], string(arguments, "name"))
             if lookup.found:

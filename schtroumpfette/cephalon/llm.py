@@ -38,6 +38,7 @@ class Answer:
     sources: list[tuple[str, str]] = field(default_factory=list)  # (nom, page du wiki), sans doublon
     usage: Usage = field(default_factory=Usage)
     rounds: int = 0
+    wiki: bool = False               # une page du wiki a été lue : licence affichée sous la réponse
 
 
 def text_of(response) -> str:
@@ -82,6 +83,7 @@ async def ask(client, api: WarframeApi, question: str, config: Config, usage: Us
         outcomes = await asyncio.gather(*(tools.execute(api, call.name, call.input) for call in calls))
         for outcome in outcomes:
             add_sources(answer.sources, outcome.sources)
+            answer.wiki = answer.wiki or outcome.wiki
         # Le contenu de l'assistant repart tel quel (blocs de réflexion compris), tous les résultats dans un seul message.
         messages.append({"role": "assistant", "content": response.content})
         messages.append({"role": "user", "content": [
