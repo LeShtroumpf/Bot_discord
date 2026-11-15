@@ -7,8 +7,8 @@ import discord
 
 from . import cycles, synthesis
 from .arbitrations import DEFAULT_EMOJIS, DURATION, TIER_COLORS, Schedule, Tier, noteworthy
+from .browsewf import Alert, Event, Fissure, Invasion, Reward, World
 from .translations import Translator
-from .worldstate import ws_date
 
 TOPICS = {
     "arbitrage": "Arbitrage",
@@ -59,21 +59,29 @@ COLORS = {
 SYNTHESIS_SOURCE = "[Source : wiki Warframe](https://wiki.warframe.com/w/Synthesis)"  # un pied de page ne peut pas contenir de lien
 
 
+# Source de browse.wf dont dépend chaque sujet (avertissement de données périmées) ; les autres sont calculés.
+TOPIC_SOURCES = {"fissures": "worldstate", "alertes": "worldstate", "events": "worldstate", "baro": "worldstate",
+                 "invasions": "invasions"}
+ERA_ORDER = ("VoidT1", "VoidT2", "VoidT3", "VoidT4", "VoidT5", "VoidT6")
+
+
 @dataclass
 class Context:
     """Tout ce qu'il faut pour calculer les embeds à un instant donné."""
     now: dt.datetime
     tr: Translator
-    worldstate: dict | None = None
-    worldstate_at: dt.datetime | None = None
-    stale: bool = False
+    world: World | None = None                   # worldState.min.json
+    invasions: list[Invasion] | None = None
+    bounty_end: dt.datetime | None = None        # fin du cycle des primes d'Ostron
+    fetched_at: dict[str, dt.datetime] = field(default_factory=dict)  # source -> heure du dernier succès
+    stale: set[str] = field(default_factory=set)  # sources dont les données sont périmées
     schedule: Schedule = field(default_factory=Schedule)
     tiers: dict[str, Tier] = field(default_factory=dict)
     tier_emojis: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_EMOJIS))
     faction_emojis: dict[str, str] = field(default_factory=dict)
 
 
-# --- Outils ---------------------------------------------------------------------------------------------
+# --- Outils ---------------------------------------------------------------------------------------------------
 
 def ts(when: dt.datetime, style: str = "R") -> str:
     """Horodatage Discord, actualisé côté client (« dans 9 minutes »)."""
@@ -120,46 +128,42 @@ def header(embed: discord.Embed, name: str, icon: str) -> discord.Embed:
     return embed
 
 
-def finish(embed: discord.Embed, ctx: Context, needs_worldstate: bool = True) -> discord.Embed:
-    """Pied de page : seulement un avertissement si les données sont périmées (API injoignable).
+def finish(embed: discord.Embed, ctx: Context, source: str | None = None) -> discord.Embed:
+    """Pied de page : seulement un avertissement si les données de la source sont périmées (source injoignable).
     L'heure de dernière modification (embed.timestamp) est posée par le cog, à la publication."""
-    if needs_worldstate and ctx.stale and ctx.worldstate_at:
-        when = ctx.worldstate_at.astimezone(PARIS).strftime("%d/%m à %H:%M")
+    fetched_at = ctx.fetched_at.get(source) if source else None
+    if source in ctx.stale and fetched_at:
+        when = fetched_at.astimezone(PARIS).strftime("%d/%m à %H:%M")
         embed.set_footer(text=f"⚠️ Données du {when} : worldstate injoignable")
     return embed
 
 
-def rewards(reward: dict | None) -> str:
-    reward = reward or {}
-    parts = [f"{number(item.get('count', 1))}× {item.get('type', '?')}" for item in reward.get("countedItems", [])]
-    parts += [str(item) for item in reward.get("items", [])]
-    if reward.get("credits"):
-        parts.append(f"{number(reward['credits'])} crédits")
+def rewards(reward: Reward | None, tr: Translator) -> str:
+    reward = reward or Reward()
+    parts = [f"{number(count)}× {tr.item(path)}" for path, count in reward.counted]
+    parts += [tr.item(path) for path in reward.items]
+    if reward.credits:
+        parts.append(f"{number(reward.credits)} crédits")
     return ", ".join(parts) or "—"
 
 
-def alert_rewards(reward: dict | None, event_alert: bool) -> str:
+def alert_rewards(reward: Reward, tr: Translator, event_alert: bool) -> str:
     """Récompenses d'une alerte. Sur une alerte d'event, seule la ressource compte : quantité normale et Steel Path
-    (absente de l'API, d'où le calcul), sans les crédits."""
-    counted = (reward or {}).get("countedItems", [])
-    if not event_alert or not counted:
-        return rewards(reward)
-    parts = []
-    for item in counted:
-        count = item.get("count", 1)
-        parts.append(f"{number(count)} (sp {number(int(count * STEEL_PATH_EVENT_RATIO))}) × {item.get('type', '?')}")
-    return ", ".join(parts)
+    (absente du worldstate, d'où le calcul), sans les crédits."""
+    if not event_alert or not reward.counted:
+        return rewards(reward, tr)
+    return ", ".join(f"{number(count)} (sp {number(int(count * STEEL_PATH_EVENT_RATIO))}) × {tr.item(path)}"
+                     for path, count in reward.counted)
 
 
-def active(entries: list[dict], now: dt.datetime) -> list[dict]:
+def active(entries, now: dt.datetime) -> list:
     """Entrées non expirées, triées par fin."""
-    out = [e for e in entries if (ws_date(e.get("expiry")) or now) > now]
-    return sorted(out, key=lambda e: ws_date(e.get("expiry")) or now)
+    return sorted((entry for entry in entries if entry.expiry > now), key=lambda entry: entry.expiry)
 
 
 def worldstate_missing(topic: str, color: int, ctx: Context) -> list[discord.Embed]:
     embed = header(discord.Embed(description="Les données Warframe arrivent…", color=color), TOPICS[topic], topic)
-    return [finish(embed, ctx)]
+    return [finish(embed, ctx, TOPIC_SOURCES.get(topic))]
 
 
 # --- Sujets ---------------------------------------------------------------------------------------------
@@ -175,7 +179,7 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     current = ctx.schedule.current(ctx.now)
     if current is None:
         embed = discord.Embed(color=TIER_COLORS["F"], description="Planning des arbitrages indisponible pour le moment.")
-        return [finish(header(embed, "Arbitrage", "arbitrage"), ctx, needs_worldstate=False)]
+        return [finish(header(embed, "Arbitrage", "arbitrage"), ctx)]
     tier = ctx.tiers.get(current.node, Tier())
     description = f"Se termine {ts(current.end)}"
     if tier.saryn:
@@ -199,41 +203,42 @@ def render_arbitrage(ctx: Context) -> list[discord.Embed]:
     embed.add_field(name="Prochains arbitrages", value=upcoming_value + BLANK_LINE, inline=False)  # 3. avant les notables
     embed.add_field(name="Arbitrages notables (24 h)", value=join_lines([line(a) for a in notable]) or "Aucun S, A ou SP",
                     inline=False)
-    return [finish(embed, ctx, needs_worldstate=False)]
+    return [finish(embed, ctx)]
 
 
-def fissure_enemy(fissure: dict) -> str:
-    """Ennemi d'une fissure. L'API abîme le Feu croisé en français (« Feux Croisés Extermination »)."""
-    return "Feux Croisés" if fissure.get("enemyKey") == "Crossfire" else fissure.get("enemy", "?")
+def fissure_line(fissure: Fissure, tr: Translator) -> str:
+    """Nœud — mission — ennemi — fin. Tempête : le type de mission (Escarmouche, Orphix…) est celui du nœud."""
+    mission = tr.mission(fissure.mission) if fissure.mission else tr.node_mission(fissure.node)
+    return f"{tr.node(fissure.node)} — {mission} — {tr.node_faction(fissure.node)} — fin {ts(fissure.expiry)}"
 
 
-def fissure_line(fissure: dict) -> str:
-    return (f"{fissure.get('node', '?')} — {fissure.get('missionType', '?')} — {fissure_enemy(fissure)}"
-            f" — fin {ts(ws_date(fissure.get('expiry')))}")
+def era_rank(era: str) -> int:
+    return ERA_ORDER.index(era) if era in ERA_ORDER else len(ERA_ORDER)
 
 
-def _fissure_embed(title: str, icon: str, fissures: list[dict], ctx: Context) -> discord.Embed:
+def _fissure_embed(title: str, icon: str, fissures: list[Fissure], ctx: Context) -> discord.Embed:
     embed = header(discord.Embed(color=COLORS[icon]), title, icon)
     if not fissures:
         embed.description = "Aucune fissure en cours."
-        return finish(embed, ctx)
+        return finish(embed, ctx, "worldstate")
     fields = []
-    for tier_num in sorted({fissure.get("tierNum", 0) for fissure in fissures}):
-        group = [fissure for fissure in fissures if fissure.get("tierNum", 0) == tier_num]
-        lines = [fissure_line(fissure) for fissure in group]
-        fields.append((f"{group[0].get('tier', '?')} ({len(lines)})", join_lines(lines, FIELD_MAX - len(BLANK_LINE))))
+    for era in sorted({fissure.era for fissure in fissures}, key=lambda era: (era_rank(era), era)):
+        group = [fissure for fissure in fissures if fissure.era == era]
+        lines = [fissure_line(fissure, ctx.tr) for fissure in group]
+        fields.append((f"{ctx.tr.era(era)} ({len(lines)})", join_lines(lines, FIELD_MAX - len(BLANK_LINE))))
     # Une ligne vide entre deux groupes d'ère, pour aérer (pas de champ vide : ils comptent dans les 25 champs).
     fields = [(name, value + BLANK_LINE) for name, value in fields[:-1]] + fields[-1:]
-    return finish(add_fields(embed, fields), ctx)
+    return finish(add_fields(embed, fields), ctx, "worldstate")
 
 
 def render_fissures(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
+    if ctx.world is None:
         return worldstate_missing("fissures", COLORS["fissures"], ctx)
-    fissures = active(ctx.worldstate.get("fissures", []), ctx.now)
-    storms = [fissure for fissure in fissures if fissure.get("isStorm")]
-    hard = [fissure for fissure in fissures if fissure.get("isHard") and not fissure.get("isStorm")]
-    normal = [fissure for fissure in fissures if not fissure.get("isHard") and not fissure.get("isStorm")]
+    # Tri par fin puis par nœud : l'ordre du worldstate peut changer d'une requête à l'autre (éditions inutiles).
+    fissures = sorted(active(ctx.world.fissures, ctx.now), key=lambda f: (f.expiry, f.node))
+    storms = [fissure for fissure in fissures if fissure.storm]
+    hard = [fissure for fissure in fissures if fissure.hard and not fissure.storm]
+    normal = [fissure for fissure in fissures if not fissure.hard and not fissure.storm]
     return [
         _fissure_embed("Fissures du Néant", "fissures", normal, ctx),
         _fissure_embed("Fissures — Route de l'Acier", "fissures_sp", hard, ctx),
@@ -241,52 +246,38 @@ def render_fissures(ctx: Context) -> list[discord.Embed]:
     ]
 
 
-def vs_infested(invasion: dict) -> bool:
-    return invasion.get("attacker", {}).get("factionKey") == "Infested"
+def invasion_title(invasion: Invasion, tr: Translator) -> str:
+    """"Titan (Saturne) — Siège Corpus" : le libellé (absent des exports) vient de la table locale, selon l'attaquant."""
+    return f"{tr.node(invasion.node)} — {tr.text(f'invasion/{invasion.attacker.faction}')}"
 
 
-def invasion_progress(invasion: dict) -> float:
-    """Avancée du camp attaquant, en % (formule de warframestat)."""
-    goal = invasion.get("requiredRuns") or 1
-    scale = 100 if vs_infested(invasion) else 50
-    return max(0.0, min(100.0, (1 + invasion.get("count", 0) / goal) * scale))
-
-
-def invasion_sort_key(invasion: dict) -> tuple[str, str]:
-    """Planète puis nœud : l'ordre de l'API change d'une requête à l'autre, ce qui provoquerait des éditions inutiles."""
-    node, _, planet = invasion.get("node", "?").rpartition(" (")
+def invasion_sort_key(invasion: Invasion, tr: Translator) -> tuple[str, str]:
+    """Planète puis nœud : l'ordre de la source change d'une requête à l'autre, ce qui provoquerait des éditions inutiles."""
+    node, _, planet = tr.node(invasion.node).rpartition(" (")
     return planet, node
 
 
-def invasion_value(ctx: Context, invasion: dict) -> str:
-    attacker, defender = invasion.get("attacker", {}), invasion.get("defender", {})
-    attacker_name, defender_name = attacker.get("faction", "?"), defender.get("faction", "?")
-    attacker_reward, defender_reward = rewards(attacker.get("reward")), rewards(defender.get("reward"))
-    progress = invasion_progress(invasion)
-    attacker_line = f"{ctx.faction_emojis.get(attacker.get('factionKey'), '⚔️')} **{attacker_name}** : {attacker_reward}"
-    defender_line = f"{ctx.faction_emojis.get(defender.get('factionKey'), '🛡️')} **{defender_name}** : {defender_reward}"
-    if not vs_infested(invasion):
-        return (f"{attacker_line}\n{defender_line}\n"
-                f"Progression : {attacker_name} {progress:.0f} % · {defender_name} {100 - progress:.0f} %")
-    # Contre les Infestés, la jauge part de 100 % côté Infestés et descend vers 0 : seul l'avancement du défenseur parle.
-    lines = [attacker_line] if attacker_reward != "—" else []
-    return "\n".join([*lines, defender_line, f"Avancement : {100 - progress:.0f} % · contre les Infestés"])
+def invasion_value(ctx: Context, invasion: Invasion) -> str:
+    """Un camp par ligne. Pas de progression : browse.wf ne la donne pas. Contre les Infestés, la ligne de l'attaquant
+    n'apparaît que s'il donne quelque chose."""
+    lines = []
+    for camp, fallback in ((invasion.attacker, "⚔️"), (invasion.defender, "🛡️")):
+        reward = rewards(camp.reward, ctx.tr)
+        if camp is invasion.attacker and invasion.vs_infested and reward == "—":
+            continue
+        lines.append(f"{ctx.faction_emojis.get(camp.faction, fallback)} **{ctx.tr.faction(camp.faction)}** : {reward}")
+    return "\n".join(lines)
 
 
 def render_invasions(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
+    if ctx.invasions is None:
         return worldstate_missing("invasions", COLORS["invasions"], ctx)
     embed = header(discord.Embed(color=COLORS["invasions"]), "Invasions", "invasions")
-    fields = []
-    running = [invasion for invasion in ctx.worldstate.get("invasions", []) if not invasion.get("completed")]
-    for invasion in sorted(running, key=invasion_sort_key):
-        name = invasion.get("node", "?")
-        if invasion.get("desc"):
-            name += f" — {invasion['desc']}"
-        fields.append((name, invasion_value(ctx, invasion)))
+    fields = [(invasion_title(invasion, ctx.tr), invasion_value(ctx, invasion))
+              for invasion in sorted(ctx.invasions, key=lambda invasion: invasion_sort_key(invasion, ctx.tr))]
     if not fields:
         embed.description = "Aucune invasion en cours."
-    return [finish(add_fields(embed, fields), ctx)]
+    return [finish(add_fields(embed, fields), ctx, "invasions")]
 
 
 def synthesis_location(tr: Translator, place: str) -> str:
@@ -308,43 +299,45 @@ def render_synthesis(tr: Translator, name: str, places: tuple[str, ...]) -> disc
     return embed.set_thumbnail(url=ICONS["synthese"])
 
 
+def alert_value(alert: Alert, ctx: Context, event_tags: set[str]) -> str:
+    return (f"{ctx.tr.faction(alert.faction)} niv. {alert.min_level or '?'}-{alert.max_level or '?'}"
+            f" · fin {ts(alert.expiry)}"
+            f"\nRécompenses : {alert_rewards(alert.reward, ctx.tr, alert.tag in event_tags)}")
+
+
 def render_alertes(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
+    if ctx.world is None:
         return worldstate_missing("alertes", COLORS["alertes"], ctx)
     embed = header(discord.Embed(color=COLORS["alertes"]), "Alertes", "alertes")
-    fields = []
-    event_tags = {event.get("tag") for event in active(ctx.worldstate.get("events", []), ctx.now) if event.get("tag")}
-    for alert in active(ctx.worldstate.get("alerts", []), ctx.now):
-        mission = alert.get("mission", {})
-        name = f"{mission.get('node', '?')} — {mission.get('type', '?')}"
-        value = (f"{mission.get('faction', '?')} niv. {mission.get('minEnemyLevel', '?')}-{mission.get('maxEnemyLevel', '?')}"
-                 f" · fin {ts(ws_date(alert.get('expiry')))}"
-                 f"\nRécompenses : {alert_rewards(mission.get('reward'), alert.get('tag') in event_tags)}")
-        fields.append((name, value))
+    event_tags = {event.tag for event in active(ctx.world.events, ctx.now) if event.tag}
+    fields = [(f"{ctx.tr.node(alert.node)} — {ctx.tr.mission(alert.mission)}", alert_value(alert, ctx, event_tags))
+              for alert in active(ctx.world.alerts, ctx.now)]
     if not fields:
         embed.description = "Aucune alerte en cours."
-    return [finish(add_fields(embed, fields), ctx)]
+    return [finish(add_fields(embed, fields), ctx, "worldstate")]
+
+
+def event_value(event: Event, ctx: Context) -> str:
+    value = f"Fin {ts(event.expiry)}"
+    if event.goal > 1 and not event.personal:
+        value += f" · Progression {number(event.count)} / {number(event.goal)}"
+    if event.node:
+        value += f"\nLieu : {ctx.tr.node(event.node)}"
+    reward = rewards(event.reward, ctx.tr)
+    if reward != "—":
+        value += f"\nRécompenses : {reward}"
+    return value
 
 
 def render_events(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
+    if ctx.world is None:
         return worldstate_missing("events", COLORS["events"], ctx)
     embed = header(discord.Embed(color=COLORS["events"]), "Events", "events")
-    fields = []
-    for event in active(ctx.worldstate.get("events", []), ctx.now):
-        name = event.get("description") or event.get("tag") or "Event"
-        value = f"Fin {ts(ws_date(event.get('expiry')))}"
-        maximum = event.get("maximumScore") or 0  # l'API peut renvoyer null
-        if maximum > 1 and not event.get("isPersonal"):
-            value += f" · Progression {number(event.get('currentScore') or 0)} / {number(maximum)}"
-        if event.get("node"):
-            value += f"\nLieu : {event['node']}"
-        if event.get("rewards"):
-            value += f"\nRécompenses : {', '.join(rewards(reward) for reward in event['rewards'])}"
-        fields.append((name, value))
+    fields = [(ctx.tr.text(event.name) or event.tag or "Event", event_value(event, ctx))
+              for event in active(ctx.world.events, ctx.now)]
     if not fields:
         embed.description = "Aucun event en cours."
-    return [finish(add_fields(embed, fields), ctx)]
+    return [finish(add_fields(embed, fields), ctx, "worldstate")]
 
 
 def _cycle_value(cycle: cycles.Cycle, icon: str) -> str:
@@ -353,10 +346,9 @@ def _cycle_value(cycle: cycles.Cycle, icon: str) -> str:
 
 def render_cycles(ctx: Context) -> list[discord.Embed]:
     embed = header(discord.Embed(color=COLORS["cycles"]), "Cycles", "cycles")
-    bounty_end = cycles.cetus_bounty_end(ctx.worldstate)
-    if bounty_end:
-        cetus = cycles.cetus(bounty_end, ctx.now)
-        cambion = cycles.cambion(bounty_end, ctx.now)
+    if ctx.bounty_end:
+        cetus = cycles.cetus(ctx.bounty_end, ctx.now)
+        cambion = cycles.cambion(ctx.bounty_end, ctx.now)
         cetus_value = _cycle_value(cetus, "☀️" if cetus.state == "jour" else "🌙")
         cambion_value = _cycle_value(cambion, "🟠" if cambion.state == "Fass" else "🟣")
     else:
@@ -365,8 +357,8 @@ def render_cycles(ctx: Context) -> list[discord.Embed]:
     embed.add_field(name="Cetus — Plaines d'Eidolon", value=cetus_value, inline=False)
     embed.add_field(name="Vallée Orbis", value=_cycle_value(vallis, "🔥" if vallis.state == "chaud" else "❄️"), inline=False)
     embed.add_field(name="Puits Cambion", value=cambion_value, inline=False)
-    # Cetus / Cambion sont extrapolés à partir du dernier worldstate connu : jamais « périmés ».
-    return [finish(embed, ctx, needs_worldstate=False)]
+    # Cetus / Cambion sont extrapolés à partir de la dernière fin de primes connue : jamais « périmés ».
+    return [finish(embed, ctx)]
 
 
 def render_circuit(ctx: Context) -> list[discord.Embed]:
@@ -375,26 +367,23 @@ def render_circuit(ctx: Context) -> list[discord.Embed]:
     warframes, incarnon = cycles.circuit_choices(ctx.now)
     fields = [("Circuit", ", ".join(warframes)), ("Circuit — Route de l'Acier", ", ".join(incarnon))]
     # Rotation calculée : pas de données périmées possibles.
-    return [finish(add_fields(embed, fields), ctx, needs_worldstate=False)]
+    return [finish(add_fields(embed, fields), ctx)]
 
 
 def render_baro(ctx: Context) -> list[discord.Embed]:
-    if ctx.worldstate is None:
+    if ctx.world is None:
         return worldstate_missing("baro", COLORS["baro"], ctx)
     embed = header(discord.Embed(color=COLORS["baro"]), "Baro Ki'Teer", "baro")
-    traders = ctx.worldstate.get("voidTraders", [])
-    if not traders:
+    trader = ctx.world.trader
+    if trader is None:
         embed.description = "Pas d'info sur Baro Ki'Teer pour le moment."
-        return [finish(embed, ctx)]
-    trader = traders[0]
-    arrival, departure = ws_date(trader.get("activation")), ws_date(trader.get("expiry"))
-    relay = trader.get("location", "?")
-    if arrival and ctx.now < arrival:
-        embed.description = f"Arrive {ts(arrival)} ({ts(arrival, 'f')}) au **{relay}**"
-    elif departure and ctx.now < departure:
-        embed.description = f"Présent au **{relay}**, repart {ts(departure)} ({ts(departure, 'f')})"
-        lines = [f"{item.get('item', '?')} — {item.get('ducats') or 0} ducats, {number(item.get('credits') or 0)} crédits"
-                 for item in trader.get("inventory", [])]
+        return [finish(embed, ctx, "worldstate")]
+    relay = ctx.tr.node(trader.node)
+    if ctx.now < trader.activation:
+        embed.description = f"Arrive {ts(trader.activation)} ({ts(trader.activation, 'f')}) au **{relay}**"
+    elif ctx.now < trader.expiry:
+        embed.description = f"Présent au **{relay}**, repart {ts(trader.expiry)} ({ts(trader.expiry, 'f')})"
+        lines = [f"{ctx.tr.item(path)} — {ducats} ducats, {number(credits)} crédits" for path, ducats, credits in trader.manifest]
         fields, chunk = [], []
         for line in lines:
             if len("\n".join(chunk + [line])) > FIELD_MAX:
@@ -406,7 +395,7 @@ def render_baro(ctx: Context) -> list[discord.Embed]:
         add_fields(embed, [(f"Inventaire ({i}/{len(fields)})", "\n".join(c)) for i, c in enumerate(fields, 1)])
     else:
         embed.description = "Baro Ki'Teer est reparti. Prochaine visite annoncée dès qu'elle est connue."
-    return [finish(embed, ctx)]
+    return [finish(embed, ctx, "worldstate")]
 
 
 RENDERERS = {
@@ -422,7 +411,13 @@ RENDERERS = {
 
 
 def render_all(ctx: Context) -> dict[str, list[discord.Embed]]:
-    return {topic: renderer(ctx) for topic, renderer in RENDERERS.items()}
+    """Tous les sujets. Le sujet en cours est indiqué au traducteur pour situer les identifiants inconnus."""
+    rendered = {}
+    for topic, renderer in RENDERERS.items():
+        ctx.tr.topic = topic
+        rendered[topic] = renderer(ctx)
+    ctx.tr.topic = ""
+    return rendered
 
 
 # --- Échéances --------------------------------------------------------------------------------------------
@@ -436,13 +431,12 @@ def next_deadline(ctx: Context) -> dt.datetime | None:
     elif ctx.schedule:
         candidates.append(ctx.now.replace(minute=0, second=0, microsecond=0) + DURATION)
     candidates.append(cycles.vallis(ctx.now).ends_at)
-    bounty_end = cycles.cetus_bounty_end(ctx.worldstate)
-    if bounty_end:
-        candidates.append(cycles.cetus(bounty_end, ctx.now).ends_at)
+    if ctx.bounty_end:
+        candidates.append(cycles.cetus(ctx.bounty_end, ctx.now).ends_at)
     candidates.append(cycles.circuit_rotation_end(ctx.now))
-    for key in ("fissures", "alerts", "events"):
-        candidates += [ws_date(entry.get("expiry")) for entry in (ctx.worldstate or {}).get(key, [])]
-    for trader in (ctx.worldstate or {}).get("voidTraders", []):
-        candidates += [ws_date(trader.get("activation")), ws_date(trader.get("expiry"))]
-    future = [when for when in candidates if when and when > ctx.now]
+    if ctx.world is not None:
+        candidates += [entry.expiry for entry in (*ctx.world.fissures, *ctx.world.alerts, *ctx.world.events)]
+        if ctx.world.trader:
+            candidates += [ctx.world.trader.activation, ctx.world.trader.expiry]
+    future = [when for when in candidates if when > ctx.now]
     return min(future, default=None)

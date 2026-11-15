@@ -1,0 +1,14 @@
+{
+  "/Lotus/Language/G1Quests/HeatFissuresEventName": "Fractures Thermia",
+  "/Lotus/Language/G1Quests/HeatFissuresEventDesc": "Sceller les fractures à travers la Vallée Orbis",
+  "/Lotus/Language/G1Quests/HeatFissuresEventScore": "Fractures Thermia scellées",
+  "/Lotus/Language/TauPrologue/RoadToTauEventName": "Opération d'Époque : Vers Tau",
+  "/Lotus/Language/TauPrologue/RoadToTauShortEventDesc": "Vaincre les Infestés sur tous les nœuds d'Éris pour obtenir de la Chair de Lune",
+  "/Lotus/Language/TauPrologue/RoadToTauEventScore": "Progression globale",
+  "/Lotus/Language/TauPrologue/EventAlertTitle": "Localisation de Chair de Lune",
+  "/Lotus/Language/Alerts/TennoUnitedAlert": "Appel à l'union des Tenno",
+  "/Lotus/Types/Gameplay/Events/RoadToTauEvent/RoadToTauEventResource": "Chair de Lune",
+  "invasion/FC_CORPUS": "Siège Corpus",
+  "invasion/FC_GRINEER": "Offensive Grineer",
+  "invasion/FC_INFESTATION": "Épidémie Infestés"
+}

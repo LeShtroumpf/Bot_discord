@@ -47,10 +47,10 @@ def test_circuit_tables_loop():
     assert cycles.circuit_choices(now + cycles.WEEK * weapons)[1] == cycles.circuit_choices(now)[1]
 
 
-def test_circuit_matches_the_api(worldstate, now):
-    """Réponse réelle de warframestat : les tables de browse.wf donnent bien la semaine en cours."""
-    normal, hard = worldstate["duviriCycle"]["choices"]
-    assert cycles.circuit_choices(now) == (normal["choices"], hard["choices"])
+def test_circuit_matches_the_game():
+    """Semaine du 02/11/2026 relevée sur warframestat (duviriCycle) : les tables de browse.wf donnent la même."""
+    now = dt.datetime(2026, 11, 5, 8, 9, 6, tzinfo=dt.UTC)
+    assert cycles.circuit_choices(now) == (["Ivara", "Inaros", "Titania"], ["Braton", "Lato", "Skana", "Paris", "Kunai"])
 
 
 def test_vallis():
@@ -69,7 +69,7 @@ def test_vallis_matches_warframestat():
     assert abs((cycle.ends_at - expected).total_seconds()) <= 30
 
 
-def test_bounty_end_from_worldstate(worldstate):
-    assert cycles.cetus_bounty_end(worldstate) is not None
-    assert cycles.cetus_bounty_end(None) is None
-    assert cycles.cetus_bounty_end({"syndicateMissions": []}) is None
+def test_cetus_from_real_bounty_cycle(sources, now):
+    """Fin des primes du 15/11 à 15:08:09 UTC (browse.wf) : nuit depuis 14:18, jour à 15:08."""
+    cycle = cycles.cetus(sources["primes"], now)
+    assert (cycle.state, cycle.ends_at) == ("nuit", sources["primes"])
