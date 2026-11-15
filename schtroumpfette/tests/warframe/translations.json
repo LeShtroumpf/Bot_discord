@@ -686,6 +686,156 @@
    "Terre",
    "MT_EXCAVATE",
    "FC_GRINEER"
+  ],
+  "ClanNode13": [
+   "Piscinas",
+   "Saturne",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "ClanNode14": [
+   "Amarna",
+   "Sedna",
+   "MT_SURVIVAL",
+   "FC_INFESTATION"
+  ],
+  "ClanNode7": [
+   "Cholistan",
+   "Europe",
+   "MT_EXCAVATE",
+   "FC_INFESTATION"
+  ],
+  "CrewBattleNode509": [
+   "Temple Iota",
+   "Proxima de la Terre",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode511": [
+   "Protection de Balise",
+   "Proxima de Vénus",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode522": [
+   "Amas Bendar",
+   "Proxima de la Terre",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode525": [
+   "Amas Brom",
+   "Proxima de Neptune",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode535": [
+   "Amas Vand",
+   "Proxima de Saturne",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode536": [
+   "Axe du pèlerin",
+   "Proxima de Pluton",
+   "MT_RAILJACK",
+   "FC_CORPUS"
+  ],
+  "CrewBattleNode550": [
+   "Réseau Nsu",
+   "Proxima du Voile",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "CrewBattleNode553": [
+   "Flexa",
+   "Proxima du Voile",
+   "MT_RAILJACK",
+   "FC_GRINEER"
+  ],
+  "EarthHUB": [
+   "Relais Strata",
+   "Terre",
+   "MT_PVP",
+   null
+  ],
+  "PlutoHUB": [
+   "Relais Orcus",
+   "Pluton",
+   "MT_PVP",
+   null
+  ],
+  "SolNode121": [
+   "Carpo",
+   "Jupiter",
+   "MT_EXTERMINATION",
+   "FC_CORPUS"
+  ],
+  "SolNode129": [
+   "Vallée Orbis",
+   "Vénus",
+   "MT_LANDSCAPE",
+   "FC_CORPUS"
+  ],
+  "SolNode131": [
+   "Pallas",
+   "Cérès",
+   "MT_EXTERMINATION",
+   "FC_GRINEER"
+  ],
+  "SolNode15": [
+   "Pacific",
+   "Terre",
+   "MT_RESCUE",
+   "FC_GRINEER"
+  ],
+  "SolNode171": [
+   "Saxis",
+   "Éris",
+   "MT_EXTERMINATION",
+   "FC_INFESTATION"
+  ],
+  "SolNode173": [
+   "Solium",
+   "Éris",
+   "MT_MOBILE_DEFENSE",
+   "FC_INFESTATION"
+  ],
+  "SolNode19": [
+   "Enceladus",
+   "Saturne",
+   "MT_SABOTAGE",
+   "FC_GRINEER"
+  ],
+  "SolNode232": [
+   "Secteurs de Tuvul",
+   "Zariman",
+   "MT_VOID_CASCADE",
+   "FC_GRINEER"
+  ],
+  "SolNode233": [
+   "Ateliers d'Oro",
+   "Zariman",
+   "MT_ARMAGEDDON",
+   "FC_GRINEER"
+  ],
+  "SolNode743": [
+   "Rotuma",
+   "Forteresse Kuva",
+   "MT_MOBILE_DEFENSE",
+   "FC_GRINEER"
+  ],
+  "SolNode746": [
+   "Dakata",
+   "Forteresse Kuva",
+   "MT_EXTERMINATION",
+   "FC_GRINEER"
+  ],
+  "SolNode88": [
+   "Adrastea",
+   "Jupiter",
+   "MT_SABOTAGE",
+   "FC_CORPUS"
   ]
  },
  "missions": {
@@ -751,7 +901,15 @@
   "/Lotus/Types/Recipes/Weapons/WeaponParts/DeraVandalStock": "Dera Vandal - Crosse",
   "/Lotus/Types/Recipes/Weapons/WeaponParts/KarakWraithStock": "Karak Wraith - Crosse",
   "/Lotus/Upgrades/Mods/Randomized/RawRifleRandomMod": "Mod Riven de Fusil",
-  "/Lotus/Types/StoreItems/AvatarImages/TenYearAnniversaryWeek4Glyph": "Glyphe de Rappel de Jack O'Naut"
+  "/Lotus/Types/StoreItems/AvatarImages/TenYearAnniversaryWeek4Glyph": "Glyphe de Rappel de Jack O'Naut",
+  "/Lotus/Types/BoosterPacks/BaroTreasureBox": "Surplus du Néant",
+  "/Lotus/Types/Game/Projections/T4VoidProjectionBaroAkmagnusPrimeBronze": "Relique Axi M5",
+  "/Lotus/Types/Items/MiscItems/Forma": "Forma",
+  "/Lotus/Types/Recipes/Weapons/DeraVandalBlueprint": "Dera Vandal (Schéma)",
+  "/Lotus/Types/Recipes/Weapons/WeaponParts/LatronWraithReceiver": "Latron Wraith - Culasse",
+  "/Lotus/Types/StoreItems/Boosters/ModDropChanceBooster3DayStoreItem": "Booster de Chances de Mods de 3 jours",
+  "/Lotus/Upgrades/Mods/Pistol/Expert/WeaponRecoilReductionModExpert": "Mains Stables Accrues",
+  "/Lotus/Weapons/Corpus/LongGuns/CrpBFG/Vandal/VandalCrpBFG": "Opticor Vandal"
  },
  "eras": {
   "VoidT1": "Lith",
@@ -760,5 +918,146 @@
   "VoidT4": "Axi",
   "VoidT5": "Requiem",
   "VoidT6": "Omnia"
+ },
+ "node_missions": {
+  "ClanNode0": "Défense",
+  "ClanNode1": "Survie",
+  "ClanNode10": "Désertion",
+  "ClanNode11": "Survie",
+  "ClanNode13": "Survie",
+  "ClanNode14": "Survie",
+  "ClanNode15": "Défense",
+  "ClanNode16": "Perturbation",
+  "ClanNode18": "Défense",
+  "ClanNode2": "Défense",
+  "ClanNode20": "Désertion",
+  "ClanNode22": "Défense",
+  "ClanNode23": "Survie",
+  "ClanNode24": "Défense",
+  "ClanNode3": "Excavation",
+  "ClanNode4": "Défense",
+  "ClanNode6": "Défense",
+  "ClanNode7": "Excavation",
+  "ClanNode8": "Défense",
+  "ClanNode9": "Survie",
+  "CrewBattleNode501": "Escarmouche",
+  "CrewBattleNode503": "Extermination",
+  "CrewBattleNode509": "Escarmouche",
+  "CrewBattleNode511": "Volatil",
+  "CrewBattleNode512": "Espionnage",
+  "CrewBattleNode516": "Extermination",
+  "CrewBattleNode518": "Escarmouche",
+  "CrewBattleNode519": "Escarmouche",
+  "CrewBattleNode522": "Escarmouche",
+  "CrewBattleNode524": "Volatil",
+  "CrewBattleNode525": "Espionnage",
+  "CrewBattleNode527": "Extermination",
+  "CrewBattleNode530": "Escarmouche",
+  "CrewBattleNode531": "Survie",
+  "CrewBattleNode535": "Escarmouche",
+  "CrewBattleNode536": "Espionnage",
+  "CrewBattleNode542": "Survie",
+  "CrewBattleNode543": "Espionnage",
+  "CrewBattleNode550": "Escarmouche",
+  "CrewBattleNode553": "Escarmouche",
+  "DeimosHub": "Conclave",
+  "EarthHUB": "Conclave",
+  "PlutoHUB": "Conclave",
+  "SaturnHUB": "Conclave",
+  "SettlementNode11": "Défense",
+  "SettlementNode15": "Défense mobile",
+  "SettlementNode3": "Survie",
+  "SolNode1": "Capture",
+  "SolNode106": "Interception",
+  "SolNode11": "Défense mobile",
+  "SolNode113": "Sabotage",
+  "SolNode118": "Perturbation",
+  "SolNode12": "Capture",
+  "SolNode121": "Extermination",
+  "SolNode122": "Défense",
+  "SolNode123": "Survie",
+  "SolNode125": "Défense",
+  "SolNode129": "Exploration libre",
+  "SolNode130": "Défense",
+  "SolNode131": "Extermination",
+  "SolNode135": "Sabotage",
+  "SolNode14": "Extermination",
+  "SolNode146": "Survie",
+  "SolNode147": "Interception",
+  "SolNode149": "Défense",
+  "SolNode15": "Sauvetage",
+  "SolNode153": "Sauvetage",
+  "SolNode16": "Excavation",
+  "SolNode162": "Capture",
+  "SolNode164": "Défense",
+  "SolNode166": "Survie",
+  "SolNode167": "Récupération infestée",
+  "SolNode17": "Défense",
+  "SolNode171": "Extermination",
+  "SolNode172": "Interception",
+  "SolNode173": "Défense mobile",
+  "SolNode175": "Ruche",
+  "SolNode177": "Perturbation",
+  "SolNode18": "Interception",
+  "SolNode187": "Survie",
+  "SolNode19": "Sabotage",
+  "SolNode195": "Défense",
+  "SolNode2": "Défense mobile",
+  "SolNode203": "Capture",
+  "SolNode21": "Extermination",
+  "SolNode211": "Interception",
+  "SolNode212": "Défense",
+  "SolNode216": "Excavation",
+  "SolNode22": "Défense",
+  "SolNode224": "Interception",
+  "SolNode23": "Interception",
+  "SolNode230": "Déluge du néant",
+  "SolNode232": "Cascade du néant",
+  "SolNode233": "Apocalypse du néant",
+  "SolNode25": "Interception",
+  "SolNode26": "Défense",
+  "SolNode30": "Perturbation",
+  "SolNode305": "Défense",
+  "SolNode308": "Perturbation",
+  "SolNode310": "Survie conjonction",
+  "SolNode39": "Excavation",
+  "SolNode4": "Extermination",
+  "SolNode402": "Défense",
+  "SolNode404": "Sabotage",
+  "SolNode405": "Survie",
+  "SolNode407": "Extermination",
+  "SolNode408": "Défense",
+  "SolNode409": "Survie",
+  "SolNode41": "Espionnage",
+  "SolNode412": "Interception",
+  "SolNode42": "Défense",
+  "SolNode43": "Interception",
+  "SolNode450": "Défense Miroir",
+  "SolNode46": "Défense",
+  "SolNode56": "Sabotage",
+  "SolNode58": "Extermination",
+  "SolNode6": "Excavation",
+  "SolNode64": "Interception",
+  "SolNode65": "Sabotage",
+  "SolNode67": "Espionnage",
+  "SolNode707": "Défense",
+  "SolNode711": "Survie",
+  "SolNode717": "Survie",
+  "SolNode719": "Défense Miroir",
+  "SolNode72": "Défense",
+  "SolNode742": "Défense",
+  "SolNode743": "Défense mobile",
+  "SolNode745": "Perturbation",
+  "SolNode746": "Extermination",
+  "SolNode75": "Sabotage",
+  "SolNode76": "Capture",
+  "SolNode78": "Sauvetage",
+  "SolNode81": "Survie",
+  "SolNode82": "Sabotage",
+  "SolNode85": "Interception",
+  "SolNode87": "Perturbation",
+  "SolNode88": "Sabotage",
+  "SolNode9": "Espionnage",
+  "SolNode94": "Survie"
  }
 }

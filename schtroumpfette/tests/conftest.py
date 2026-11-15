@@ -12,8 +12,8 @@ import pytest
 from cephalon.index import Index
 from cephalon.limits import Limits
 from cephalon.warframe_api import WarframeApi
-from warframe import DATA_DIR, arbitrations, synthesis
-from warframe.translations import Translator
+from warframe import DATA_DIR, arbitrations, browsewf, synthesis
+from warframe.translations import OVERRIDES_FILE, Translator, read_overrides
 
 ROOT = Path(__file__).resolve().parents[1]
 WARFRAME_DATA = Path(__file__).resolve().parent / "warframe"
@@ -39,26 +39,45 @@ def interaction():
 
 # --- Warframe ---------------------------------------------------------------------------------------------
 
-@pytest.fixture
-def worldstate():
-    """Réponse réelle de warframestat.us (/pc/fr/), réduite aux clés utilisées."""
-    return json.loads((WARFRAME_DATA / "worldstate.json").read_text(encoding="utf-8"))
+BROWSEWF_FILES = {"worldstate": "worldState.min.json", "invasions": "invasions.json", "primes": "bounty-cycle.json"}
 
 
 @pytest.fixture
-def now(worldstate):
-    return dt.datetime.fromisoformat(worldstate["timestamp"])
+def raw_sources():
+    """Réponses réelles de browse.wf du 15/11/2026 vers 14:30 UTC (worldstate réduit aux listes utilisées)."""
+    return {name: json.loads((WARFRAME_DATA / "browsewf" / file).read_text(encoding="utf-8"))
+            for name, file in BROWSEWF_FILES.items()}
 
 
 @pytest.fixture
-def translator():
-    """Traductions réelles, réduites aux identifiants présents dans les données de test."""
-    return Translator(json.loads((WARFRAME_DATA / "translations.json").read_text(encoding="utf-8")))
+def sources(raw_sources):
+    """Les mêmes réponses, converties : {"worldstate": World, "invasions": [Invasion], "primes": datetime}."""
+    return {name: browsewf.parse(name, data) for name, data in raw_sources.items()}
+
+
+@pytest.fixture
+def now():
+    """Moment de la capture : toutes les fissures de test sont en cours."""
+    return dt.datetime(2026, 11, 15, 14, 30, tzinfo=dt.UTC)
+
+
+@pytest.fixture
+def overrides():
+    """Table locale réelle (warframe/data/textes_fr.json)."""
+    table, error = read_overrides(DATA_DIR / OVERRIDES_FILE)
+    assert error is None, error
+    return table
+
+
+@pytest.fixture
+def translator(overrides):
+    """Traductions réelles, réduites aux identifiants présents dans les données de test, avec la table locale."""
+    return Translator(json.loads((WARFRAME_DATA / "translations.json").read_text(encoding="utf-8")), overrides)
 
 
 @pytest.fixture
 def schedule():
-    """Planning réel des arbitrages autour de la date du worldstate de test."""
+    """Planning réel des arbitrages autour du 05/11 et du 15/11/2026 (date des données de test)."""
     return arbitrations.Schedule.parse((WARFRAME_DATA / "arbys.txt").read_text(encoding="utf-8"))
 
 

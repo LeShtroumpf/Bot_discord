@@ -1,14 +1,16 @@
 """Cog Warframe : salon d'info mis à jour en continu + commande /warframe.
 
-Une seule boucle « recalcule et compare » : à chaque tour, on récupère le worldstate, on recalcule les embeds
-de chaque sujet et on ne modifie que les messages dont le contenu a changé. La boucle se réveille au plus
-tard toutes les 30 s, ou plus tôt à la prochaine échéance connue (fin d'arbitrage, de cycle…).
+Une seule boucle « recalcule et compare » : à chaque tour, on récupère les sources de browse.wf (worldstate, invasions,
+cycle des primes), chacune avec son propre rythme et son propre backoff, on recalcule les embeds de chaque sujet et on ne
+modifie que les messages dont le contenu a changé. La boucle se réveille au plus tard toutes les 60 s, ou plus tôt à la
+prochaine échéance connue (fin d'arbitrage, de cycle…).
 """
 import asyncio
 import datetime as dt
 import hashlib
 import json
 import time
+from dataclasses import dataclass
 
 import aiohttp
 import discord
@@ -18,17 +20,26 @@ from discord.ext import commands
 from client.errors import report_error
 from commands.moderation.twitch_cmd import MODO_ROLES
 from utils.file_management import settings_file_management
-from warframe import CACHE_DIR, DATA_DIR, arbitrations, emojis, synthesis, translations
+from warframe import CACHE_DIR, DATA_DIR, arbitrations, browsewf, emojis, synthesis, translations
 from warframe.render import TOPICS, Context, next_deadline, render_all, render_synthesis
-from warframe.worldstate import WorldstateError, fetch_worldstate
 
 SETTINGS_KEY = "warframe"
-POLL_INTERVAL = 60          # secondes entre deux consultations du worldstate (et entre deux recalculs des embeds, au plus)
+POLL_INTERVAL = 60          # secondes entre deux consultations d'une source (et entre deux recalculs des embeds, au plus)
 # Attente après 1, 2, 3, 4+ échecs d'affilée : aucune limite n'est publiée, on lève le pied dès que l'API refuse ou tombe.
 FETCH_BACKOFF = tuple(dt.timedelta(minutes=minutes) for minutes in (1, 2, 5, 10))
 STALE_AFTER = dt.timedelta(minutes=2)
 RETRY_REFERENCE = dt.timedelta(minutes=10)  # délai entre deux essais de téléchargement des données de référence
 STATS_EVERY = dt.timedelta(hours=1)
+OVERRIDES = DATA_DIR / translations.OVERRIDES_FILE
+
+
+@dataclass
+class SourceState:
+    """Dernières données d'une source de browse.wf et son rythme de requêtes."""
+    data: object = None
+    at: dt.datetime | None = None          # heure du dernier succès
+    next_fetch: dt.datetime | None = None  # pas de requête avant cette heure
+    failures: int = 0                      # échecs d'affilée
 
 
 def utcnow() -> dt.datetime:
@@ -68,8 +79,9 @@ class Warframe(commands.Cog):
         self.tiers = arbitrations.load_tiers(DATA_DIR / "arbitration_tiers.json")
         self.tier_emojis = arbitrations.load_tier_emojis(DATA_DIR / "arbitration_tiers.json")
         self.faction_emojis: dict[str, str] = {}  # faction du worldstate -> emoji ; vide = ⚔️ / 🛡️ dans les invasions
-        self.worldstate: dict | None = None
-        self.worldstate_at: dt.datetime | None = None
+        self.overrides: dict[str, str] = {}   # table locale des traductions (warframe/data/textes_fr.json)
+        self.sources = {name: SourceState() for name in browsewf.SOURCES}
+        self.reported_missing: set[tuple[str, str, str]] = set()  # identifiants inconnus déjà signalés
         self.rendered: dict[str, list[discord.Embed]] = {}
         self.published: dict[str, str] = {}   # sujet -> empreinte du dernier contenu publié
         self.changed_at: dict[str, tuple[str, dt.datetime]] = {}  # sujet -> (empreinte, heure du dernier changement)
@@ -77,8 +89,6 @@ class Warframe(commands.Cog):
         self.targets: dict[str, tuple[str, ...]] = {}  # cibles de synthèse : nom anglais -> lieux
         self.targets_at: dt.datetime | None = None
         self.next_reference_try: dict[str, dt.datetime] = {}
-        self.next_fetch: dt.datetime | None = None  # pas de requête worldstate avant cette heure
-        self.fetch_failures = 0               # échecs d'affilée du worldstate
         self.stats = {"tours": 0, "total": 0.0, "max": 0.0, "since": utcnow()}
         self.session: aiohttp.ClientSession | None = None
         self.wakeup = asyncio.Event()
@@ -140,7 +150,11 @@ class Warframe(commands.Cog):
         self.published.clear()  # republier l'arbitrage et les invasions avec les nouveaux emojis
 
     async def load_caches(self):
-        cached = await asyncio.to_thread(translations.read_cache, CACHE_DIR)
+        self.overrides, error = await asyncio.to_thread(translations.read_overrides, OVERRIDES)
+        if error:
+            await self.log(error, origine="warframe_traductions")
+        self.translator = translations.Translator(overrides=self.overrides)
+        cached = await asyncio.to_thread(translations.read_cache, CACHE_DIR, self.overrides)
         if cached:
             self.translator, self.translations_at = cached
         cached = await asyncio.to_thread(arbitrations.read_cache, CACHE_DIR)
@@ -151,10 +165,12 @@ class Warframe(commands.Cog):
             self.targets, self.targets_at = cached
 
     def context(self, now: dt.datetime) -> Context:
-        stale = self.worldstate_at is not None and now - self.worldstate_at > STALE_AFTER
-        return Context(now=now, tr=self.translator, worldstate=self.worldstate, worldstate_at=self.worldstate_at,
-                       stale=stale, schedule=self.schedule, tiers=self.tiers, tier_emojis=self.tier_emojis,
-                       faction_emojis=self.faction_emojis)
+        sources = self.sources
+        fetched_at = {name: state.at for name, state in sources.items() if state.at}
+        stale = {name for name, at in fetched_at.items() if now - at > STALE_AFTER}
+        return Context(now=now, tr=self.translator, world=sources["worldstate"].data, invasions=sources["invasions"].data,
+                       bounty_end=sources["primes"].data, fetched_at=fetched_at, stale=stale, schedule=self.schedule,
+                       tiers=self.tiers, tier_emojis=self.tier_emojis, faction_emojis=self.faction_emojis)
 
     def delay(self, now: dt.datetime) -> float:
         """Temps avant le prochain tour : échéance à afficher ou requête à faire, selon ce qui vient en premier."""
@@ -162,36 +178,51 @@ class Warframe(commands.Cog):
         deadline = next_deadline(self.context(now))
         if deadline is not None:
             delay = min(delay, (deadline - now).total_seconds() + 1)
-        if self.next_fetch is not None and self.next_fetch > now:
-            delay = min(delay, (self.next_fetch - now).total_seconds())
+        for state in self.sources.values():
+            if state.next_fetch is not None and state.next_fetch > now:
+                delay = min(delay, (state.next_fetch - now).total_seconds())
         return max(1.0, delay)
 
     async def tick(self):
         started = time.monotonic()
         now = utcnow()
         await self.refresh_reference(now)
-        await self.refresh_worldstate(now)
+        await asyncio.gather(*(self.refresh_source(name, now) for name in self.sources))
         self.rendered = render_all(self.context(utcnow()))
+        await self.report_missing()
         self.stamp(utcnow())
         await self.publish()
         self.record(time.monotonic() - started)
 
-    async def refresh_worldstate(self, now: dt.datetime):
-        """Une requête au plus toutes les POLL_INTERVAL secondes, quel que soit le nombre de tours de la boucle."""
-        if self.next_fetch is not None and now < self.next_fetch:
+    async def refresh_source(self, name: str, now: dt.datetime):
+        """Une requête au plus toutes les POLL_INTERVAL secondes par source, quel que soit le nombre de tours de la boucle.
+        En cas d'échec, la source garde ses dernières données et attend selon FETCH_BACKOFF ; les autres ne sont pas touchées."""
+        state = self.sources[name]
+        if state.next_fetch is not None and now < state.next_fetch:
             return
-        self.next_fetch = now + dt.timedelta(seconds=POLL_INTERVAL)  # posé avant l'appel : vaut aussi pour une erreur imprévue
+        state.next_fetch = now + dt.timedelta(seconds=POLL_INTERVAL)  # posé avant l'appel : vaut aussi pour une erreur imprévue
         try:
-            self.worldstate = await fetch_worldstate(self.session)
-        except WorldstateError as error:
-            backoff = FETCH_BACKOFF[min(self.fetch_failures, len(FETCH_BACKOFF) - 1)]
-            self.fetch_failures += 1
-            self.next_fetch = now + max(backoff, error.retry_after or backoff)
-            await self.report("worldstate", error)
+            state.data = await browsewf.fetch(self.session, name)
+        except browsewf.SourceError as error:
+            backoff = FETCH_BACKOFF[min(state.failures, len(FETCH_BACKOFF) - 1)]
+            state.failures += 1
+            state.next_fetch = now + max(backoff, error.retry_after or backoff)
+            await self.report(name, error)
             return
-        self.worldstate_at = now
-        self.fetch_failures = 0
-        await self.report("worldstate", None)
+        state.at = now
+        state.failures = 0
+        await self.report(name, None)
+
+    async def report_missing(self):
+        """Identifiants que le traducteur n'a pas su traduire : un message par tour pour les nouveaux, une seule fois
+        chacun tant que le bot tourne (signalés de nouveau après un redémarrage, ce qui sert de rappel)."""
+        new = sorted(self.translator.missing - self.reported_missing)
+        if not new:
+            return
+        self.reported_missing.update(new)
+        lines = [f"- {topic or '?'} : `{key}` → {guess}" for topic, key, guess in new]
+        await self.log(f"Traductions manquantes, à ajouter dans warframe/data/{translations.OVERRIDES_FILE} :\n" + "\n".join(lines),
+                       origine="warframe_traductions")
 
     async def refresh_reference(self, now: dt.datetime):
         """Traductions (24 h), planning des arbitrages et cibles de synthèse (7 j), avec un nouvel essai au plus
@@ -214,7 +245,7 @@ class Warframe(commands.Cog):
     async def refresh_translations(self, now: dt.datetime):
         tables = await translations.download_tables(self.session)
         await asyncio.to_thread(translations.write_cache, CACHE_DIR, tables, now)
-        self.translator, self.translations_at = translations.Translator(tables), now
+        self.translator, self.translations_at = translations.Translator(tables, self.overrides), now
 
     async def refresh_schedule(self, now: dt.datetime):
         self.schedule = await arbitrations.download_schedule(self.session, CACHE_DIR)

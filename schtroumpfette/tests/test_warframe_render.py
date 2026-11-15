@@ -1,18 +1,17 @@
-import copy
+import dataclasses
 import datetime as dt
 
 import discord
 
-from warframe.arbitrations import Tier
-from warframe.render import (ICONS, TOPICS, Context, add_fields, invasion_progress, join_lines, next_deadline, render_all,
-                             render_alertes, render_baro, render_circuit, render_events, render_fissures, render_invasions)
-from warframe.arbitrations import DEFAULT_EMOJIS
+from warframe.arbitrations import DEFAULT_EMOJIS, Tier
+from warframe.browsewf import INFESTED, Alert, Camp, Event, Fissure, Invasion, Reward, Trader, World
 from warframe.cycles import circuit_rotation_end
+from warframe.render import (ICONS, TOPICS, Context, add_fields, join_lines, next_deadline, render_all, render_alertes,
+                             render_baro, render_circuit, render_events, render_fissures, render_invasions)
 from warframe.translations import Translator
 
-
-def ws_date(when: dt.datetime) -> str:
-    return when.isoformat().replace("+00:00", "Z")
+FORMA = "/Lotus/Types/Items/MiscItems/Forma"
+MOONFLESH = "/Lotus/Types/Gameplay/Events/RoadToTauEvent/RoadToTauEventResource"
 
 
 def all_text(embeds: list[discord.Embed]) -> str:
@@ -24,17 +23,28 @@ def all_text(embeds: list[discord.Embed]) -> str:
     return "\n".join(parts)
 
 
-def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
-    ctx = Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now, schedule=schedule, tiers=tiers)
-    rendered = render_all(ctx)
+def real_context(sources, translator, now, **extra) -> Context:
+    fetched = {name: now for name in sources}
+    return Context(now=now, tr=translator, world=sources["worldstate"], invasions=sources["invasions"],
+                   bounty_end=sources["primes"], fetched_at=fetched, **extra)
+
+
+def world_context(now, tr=None, **lists) -> Context:
+    return Context(now=now, tr=tr or Translator(), world=World(**lists), fetched_at={"worldstate": now})
+
+
+def test_render_all_real_data(sources, translator, schedule, tiers, now):
+    rendered = render_all(real_context(sources, translator, now, schedule=schedule, tiers=tiers))
     assert list(rendered) == list(TOPICS)
     for topic, embeds in rendered.items():
         assert embeds, topic
         for embed in embeds:
             assert len(embed) <= 6000 and len(embed.fields) <= 25, topic
     text = all_text([e for embeds in rendered.values() for e in embeds])
-    for raw in ("SolNode", "MT_", "FC_", "VoidT", "/Lotus/"):
+    for raw in ("SolNode", "CrewBattleNode", "MT_", "FC_", "VoidT", "/Lotus/", "invasion/"):
         assert raw not in text, raw  # tout est traduit
+    assert translator.missing == set()  # aucun identifiant inconnu dans les données réelles
+    assert translator.topic == ""
     assert [e.author.name for e in rendered["fissures"]] == [
         "Fissures du Néant", "Fissures — Route de l'Acier", "Tempêtes du Néant (Railjack)"]
     assert rendered["cycles"][0].thumbnail.url is None  # pas de miniature pour les cycles
@@ -45,83 +55,138 @@ def test_render_all_real_data(worldstate, translator, schedule, tiers, now):
             hosts = ("https://browse.wf/Lotus/", "https://wiki.warframe.com/images/",
                      "https://raw.githubusercontent.com/LeShtroumpf/Bot_discord/master/")
             assert embed.author.name and embed.thumbnail.url.startswith(hosts)
-    assert rendered["events"][0].thumbnail.url == ICONS["events"]  # l'API ne donne pas d'icône d'event
+    assert rendered["events"][0].thumbnail.url == ICONS["events"]
     current = schedule.current(now)
     tier = tiers[current.node].tier if current.node in tiers else "F"
     assert rendered["arbitrage"][0].title == f"{tier} Tier | {translator.node(current.node)}"  # titre sans emoji
+    assert all(e.footer.text is None for embeds in rendered.values() for e in embeds)  # rien de périmé
 
 
-def test_fissures_grouped_by_era(worldstate, translator, now):
-    ctx = Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now)
-    normal = render_fissures(ctx)[0]
-    eras = [f.name.split(" (")[0] for f in normal.fields]
-    order = ["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"]
-    assert eras == sorted(eras, key=order.index)
+def test_real_names_are_french(sources, translator, now):
+    rendered = render_all(real_context(sources, translator, now))
+    text = all_text([e for embeds in rendered.values() for e in embeds])
+    for name in ("Fractures Thermia", "Opération d'Époque : Vers Tau", "50 (sp 75) × Chair de Lune", "Offensive Grineer",
+                 "Épidémie Infestés", "Siège Corpus", "Secteurs de Tuvul (Zariman) — Cascade du néant",
+                 "Relais Strata (Terre)", "3× Forma, 10 000 crédits", "Lieu : Vallée Orbis (Vénus)"):
+        assert name in text, name
 
 
-def fissure(**extra) -> dict:
-    return {"node": "Mot (Le Néant)", "missionType": "Survie", "enemy": "Corrompus", "enemyKey": "Corrupted", "tier": "Axi",
-            "tierNum": 4, **extra}
+def test_fissures_grouped_by_era(sources, translator, now):
+    normal = render_fissures(real_context(sources, translator, now))[0]
+    assert [f.name.split(" (")[0] for f in normal.fields] == ["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"]
+
+
+def fissure(now, node="SolNode450", **extra) -> Fissure:
+    return Fissure(**{"node": node, "mission": "MT_SURVIVAL", "era": "VoidT4", "expiry": now + dt.timedelta(hours=1), **extra})
 
 
 def test_fissures_split_by_kind(now):
-    end = ws_date(now + dt.timedelta(hours=1))
-    worldstate = {"fissures": [fissure(expiry=end), fissure(expiry=end, isHard=True), fissure(expiry=end, isStorm=True),
-                               fissure(expiry=end, isStorm=True, isHard=True)]}
-    normal, hard, storms = render_fissures(Context(now=now, tr=Translator(), worldstate=worldstate, worldstate_at=now))
+    fissures = (fissure(now), fissure(now, hard=True), fissure(now, storm=True, mission=None),
+                fissure(now, storm=True, hard=True, mission=None))
+    normal, hard, storms = render_fissures(world_context(now, fissures=fissures))
     assert [e.fields[0].name for e in (normal, hard, storms)] == ["Axi (1)", "Axi (1)", "Axi (2)"]
 
 
-def test_fissure_crossfire_label_is_repaired(now):
-    worldstate = {"fissures": [fissure(expiry=ws_date(now + dt.timedelta(hours=1)), enemy="Feux Croisés Extermination",
-                                       enemyKey="Crossfire")]}
-    field = render_fissures(Context(now=now, tr=Translator(), worldstate=worldstate, worldstate_at=now))[0].fields[0]
-    assert "— Feux Croisés — fin" in field.value
+def test_storm_mission_comes_from_the_node(sources, translator, now):
+    storms = render_fissures(real_context(sources, translator, now))[2]
+    text = all_text([storms])
+    assert "Amas Bendar (Proxima de la Terre) — Escarmouche — Grineer" in text
+    assert "Railjack —" not in text
 
 
-def test_expired_entries_disappear(worldstate, translator, now):
+def test_fissure_order_does_not_depend_on_the_source(sources, translator, now):
+    world = sources["worldstate"]
+    shuffled = dataclasses.replace(world, fissures=tuple(reversed(world.fissures)))
+    a = render_fissures(real_context(sources, translator, now))
+    b = render_fissures(real_context({**sources, "worldstate": shuffled}, translator, now))
+    assert [e.to_dict() for e in a] == [e.to_dict() for e in b]
+
+
+def test_expired_entries_disappear(sources, translator, now):
     later = now + dt.timedelta(days=3)
-    ctx = Context(now=later, tr=translator, worldstate=worldstate, worldstate_at=now, stale=True)
+    ctx = real_context(sources, translator, later, stale={"worldstate"})
+    ctx.fetched_at = {name: now for name in sources}  # dernier succès il y a 3 jours
     fissures = render_fissures(ctx)
     assert all(e.description == "Aucune fissure en cours." for e in fissures)
-    assert "Données du" in fissures[0].footer.text  # données périmées signalées
+    assert fissures[0].footer.text == "⚠️ Données du 15/11 à 15:30 : worldstate injoignable"  # heure de Paris
 
 
-def test_without_worldstate(translator, schedule, tiers, now):
+def test_stale_warning_only_on_the_failing_source(sources, translator, now):
+    rendered = render_all(real_context(sources, translator, now, stale={"invasions"}))
+    assert "worldstate injoignable" in rendered["invasions"][0].footer.text
+    for topic in ("fissures", "alertes", "events", "baro", "cycles", "circuit", "arbitrage"):
+        assert all(e.footer.text is None for e in rendered[topic]), topic
+
+
+def test_without_data(translator, schedule, tiers, now):
     rendered = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers))
-    assert rendered["fissures"][0].description == "Les données Warframe arrivent…"
+    for topic in ("fissures", "invasions", "alertes", "events", "baro"):
+        assert rendered[topic][0].description == "Les données Warframe arrivent…", topic
     assert "Tier |" in rendered["arbitrage"][0].title       # arbitrage calculé sans worldstate
+    assert rendered["cycles"][0].fields[0].value == "Inconnu pour le moment"
     assert rendered["cycles"][0].fields[1].value.count("<t:") == 2  # Vallée Orbis calculée
 
 
-def test_without_translations_or_schedule(worldstate, now):
-    rendered = render_all(Context(now=now, tr=Translator(), worldstate=worldstate, worldstate_at=now))
+def test_without_translations_or_schedule(sources, now):
+    tr = Translator()
+    rendered = render_all(real_context(sources, tr, now))
     assert rendered["arbitrage"][0].description == "Planning des arbitrages indisponible pour le moment."
-    assert rendered["fissures"][0].fields  # les noms viennent de l'API : rien à traduire
+    assert rendered["fissures"][0].fields  # noms reconstitués, jamais d'erreur
+    assert tr.missing == set()             # tables pas encore chargées : rien à signaler
 
 
-def test_baro_present_with_big_inventory(worldstate, translator, now):
-    ws = copy.deepcopy(worldstate)
-    ws["voidTraders"][0].update(activation=ws_date(now - dt.timedelta(hours=1)), expiry=ws_date(now + dt.timedelta(days=2)),
-                                inventory=[{"item": f"Truc {i}", "ducats": 300, "credits": 150000} for i in range(120)])
-    embed = render_baro(Context(now=now, tr=translator, worldstate=ws, worldstate_at=now))[0]
-    assert embed.description.startswith(f"Présent au **{ws['voidTraders'][0]['location']}**")
+def test_unknown_identifiers_are_noted_with_their_topic(translator, now):
+    alert = Alert(node="SolNode9999", mission="MT_RAILJACK", faction="FC_GRINEER", min_level=1, max_level=2,
+                  reward=Reward(), tag="", expiry=now + dt.timedelta(hours=1))
+    ctx = world_context(now, translator, alerts=(alert,))
+    render_all(ctx)
+    assert ("alertes", "SolNode9999", "Sol Node9999") in translator.missing
+
+
+# --- Baro ------------------------------------------------------------------------------------------------------
+
+BARO_ITEMS = (("/Lotus/StoreItems/Upgrades/Mods/Pistol/Expert/WeaponRecoilReductionModExpert", 300, 220000),
+              ("/Lotus/StoreItems/Types/Game/Projections/T4VoidProjectionBaroAkmagnusPrimeBronze", 125, 55000),
+              ("/Lotus/Types/StoreItems/Boosters/ModDropChanceBooster3DayStoreItem", 500, 175000),
+              ("/Lotus/StoreItems/Types/BoosterPacks/BaroTreasureBox", 0, 50000))
+
+
+def trader(now, manifest=BARO_ITEMS, node="PlutoHUB", start=-1, end=47) -> Trader:
+    return Trader(node=node, activation=now + dt.timedelta(hours=start), expiry=now + dt.timedelta(hours=end), manifest=manifest)
+
+
+def test_baro_present_with_translated_inventory(translator, now):
+    embed = render_baro(world_context(now, translator, trader=trader(now)))[0]
+    assert embed.description.startswith("Présent au **Relais Orcus (Pluton)**")
+    assert embed.fields[0].value.splitlines() == [
+        "Mains Stables Accrues — 300 ducats, 220 000 crédits", "Relique Axi M5 — 125 ducats, 55 000 crédits",
+        "Booster de Chances de Mods de 3 jours — 500 ducats, 175 000 crédits", "Surplus du Néant — 0 ducats, 50 000 crédits"]
+    assert translator.missing == set()
+
+
+def test_baro_present_with_big_inventory(translator, now):
+    manifest = tuple((f"/Lotus/StoreItems/Truc{i}", 300, 150000) for i in range(120))
+    embed = render_baro(world_context(now, translator, trader=trader(now, manifest)))[0]
     assert embed.fields[0].name.startswith("Inventaire (1/")
     assert "150 000 crédits" in embed.fields[0].value
     assert len(embed) <= 6000
 
 
-def test_baro_coming(worldstate, translator, now):
-    embed = render_baro(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
-    assert embed.description.startswith("Arrive <t:")
+def test_baro_coming_real_data(sources, translator, now):
+    embed = render_baro(real_context(sources, translator, now))[0]
+    assert embed.description.startswith("Arrive <t:") and "**Relais Strata (Terre)**" in embed.description
 
 
-def test_baro_inventory_without_prices(now):
-    trader = {"activation": ws_date(now - dt.timedelta(hours=1)), "expiry": ws_date(now + dt.timedelta(days=2)), "location": "Relai",
-              "inventory": [{"item": "Truc", "ducats": None, "credits": None}]}
-    embed = render_baro(Context(now=now, tr=Translator(), worldstate={"voidTraders": [trader]}, worldstate_at=now))[0]
-    assert embed.fields[0].value == "Truc — 0 ducats, 0 crédits"
+def test_baro_gone(translator, now):
+    embed = render_baro(world_context(now, translator, trader=trader(now, start=-48, end=-1)))[0]
+    assert embed.description.startswith("Baro Ki'Teer est reparti.")
 
+
+def test_no_baro_at_all(now):
+    assert render_baro(world_context(now))[0].description == "Pas d'info sur Baro Ki'Teer pour le moment."
+
+
+# --- Circuit -----------------------------------------------------------------------------------------------------
 
 def test_circuit_is_computed_without_worldstate():
     now = dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)
@@ -134,42 +199,160 @@ def test_circuit_is_computed_without_worldstate():
 
 def test_circuit_is_never_stale():
     now = dt.datetime(2026, 11, 5, 8, 0, tzinfo=dt.UTC)
-    embed = render_circuit(Context(now=now, tr=Translator(), worldstate={}, worldstate_at=now - dt.timedelta(hours=1), stale=True))[0]
-    assert embed.footer.text is None
+    ctx = Context(now=now, tr=Translator(), fetched_at={"worldstate": now - dt.timedelta(hours=1)}, stale={"worldstate"})
+    assert render_circuit(ctx)[0].footer.text is None
 
 
-def test_events_shows_score_node_and_rewards(now):
-    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Opération", "maximumScore": 1000, "currentScore": 250,
-             "node": "Mot (Le Néant)", "rewards": [{"credits": 5000}]}
-    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
+# --- Events ------------------------------------------------------------------------------------------------------
+
+def event(now, name="/Lotus/Language/Events/Operation", goal=1000, count=250, personal=False, node="SolNode450",
+          reward=Reward(credits=5000), tag="Op", expiry=dt.timedelta(days=1)) -> Event:
+    return Event(name=name, tag=tag, node=node, count=count, goal=goal, personal=personal, reward=reward, expiry=now + expiry)
+
+
+def events_field(now, *events, tr=None):
+    return render_events(world_context(now, tr, events=events))[0].fields[0]
+
+
+def test_events_shows_score_node_and_rewards(translator, now):
+    tr = Translator({"nodes": translator.nodes}, {"/Lotus/Language/Events/Operation": "Opération"})
+    field = events_field(now, event(now), tr=tr)
     assert field.name == "Opération"
     assert "Progression 250 / 1 000" in field.value
-    assert "Lieu : Mot (Le Néant)" in field.value
+    assert "Lieu : Col de Tyane (Mars)" in field.value
     assert "Récompenses : 5 000 crédits" in field.value
 
 
 def test_personal_event_hides_the_score(now):
-    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Perso", "maximumScore": 1000, "isPersonal": True}
-    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
-    assert "Progression" not in field.value
+    assert "Progression" not in events_field(now, event(now, personal=True)).value
 
 
-def test_event_with_null_scores_hides_the_score(now):
-    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Purge", "maximumScore": None, "currentScore": None}
-    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
-    assert field.name == "Purge"
-    assert "Progression" not in field.value
-
-
-def test_event_with_null_current_score_starts_at_zero(now):
-    event = {"expiry": ws_date(now + dt.timedelta(days=1)), "description": "Opération", "maximumScore": 1000, "currentScore": None}
-    field = render_events(Context(now=now, tr=Translator(), worldstate={"events": [event]}, worldstate_at=now))[0].fields[0]
-    assert "Progression 0 / 1 000" in field.value
+def test_event_without_goal_hides_the_score(now):
+    field = events_field(now, event(now, goal=0, count=98, node=None, reward=Reward()))
+    assert field.value.startswith("Fin <t:") and "\n" not in field.value  # ni progression, ni lieu, ni récompense
 
 
 def test_no_event(now):
-    embed = render_events(Context(now=now, tr=Translator(), worldstate={"events": []}, worldstate_at=now))[0]
-    assert embed.description == "Aucun event en cours."
+    assert render_events(world_context(now))[0].description == "Aucun event en cours."
+
+
+# --- Invasions -----------------------------------------------------------------------------------------------------
+
+def invasion(node="SolNode450", attacker=INFESTED, defender="FC_CORPUS", attacker_reward=Reward(), invasion_id="1") -> Invasion:
+    fieldron = Reward(counted=(("/Lotus/Types/Items/Research/EnergyComponent", 3),))
+    return Invasion(id=invasion_id, node=node, attacker=Camp(attacker, attacker_reward), defender=Camp(defender, fieldron))
+
+
+def invasions_embed(now, *invasions, tr=None, faction_emojis=None) -> discord.Embed:
+    ctx = Context(now=now, tr=tr or Translator(), invasions=list(invasions), faction_emojis=faction_emojis or {})
+    return render_invasions(ctx)[0]
+
+
+def test_invasions_real_data(sources, translator, now):
+    embed = render_invasions(real_context(sources, translator, now))[0]
+    names = [f.name for f in embed.fields]
+    assert len(names) == 6
+    assert sum(name.endswith("— Épidémie Infestés") for name in names) == 3
+    assert all("Progression" not in f.value and "Avancement" not in f.value for f in embed.fields)
+
+
+def test_invasion_against_infested_hides_an_empty_attacker(translator, now):
+    value = invasions_embed(now, invasion(), tr=translator).fields[0].value
+    assert value == "🛡️ **Corpus** : 3× Fieldron"
+
+
+def test_invasion_against_infested_keeps_an_attacker_reward(translator, now):
+    reward = Reward(counted=(("/Lotus/Types/Items/Research/EnergyComponent", 1),))
+    value = invasions_embed(now, invasion(attacker_reward=reward), tr=translator).fields[0].value
+    assert value.splitlines()[0] == "⚔️ **Infesté** : 1× Fieldron"
+
+
+def test_invasion_between_factions_shows_both_sides(translator, now):
+    reward = Reward(counted=(("/Lotus/Types/Items/Research/ChemComponent", 3),))
+    field = invasions_embed(now, invasion(attacker="FC_GRINEER", attacker_reward=reward), tr=translator).fields[0]
+    assert field.name == "Col de Tyane (Mars) — Offensive Grineer"
+    assert field.value == "⚔️ **Grineer** : 3× Injecteur de Détonite\n🛡️ **Corpus** : 3× Fieldron"
+
+
+def test_invasion_uses_faction_emojis(now):
+    emojis = {"FC_CORPUS": "<:corpus:1>", "FC_GRINEER": "<:grineer:2>"}
+    value = invasions_embed(now, invasion(attacker="FC_GRINEER"), faction_emojis=emojis).fields[0].value
+    assert value.splitlines()[0].startswith("<:grineer:2> **")
+    assert value.splitlines()[1].startswith("<:corpus:1> **")
+
+
+def test_invasions_sorted_by_planet_then_node(now):
+    tr = Translator({"nodes": {"A": ["Regna", "Pluton", None, None], "B": ["Neso", "Neptune", None, None],
+                               "C": ["Acheron", "Pluton", None, None], "D": ["Casta", "Cérès", None, None]}},
+                    {"invasion/FC_INFESTATION": "Épidémie"})
+    embed = invasions_embed(now, *[invasion(node=key, invasion_id=key) for key in "ABCD"], tr=tr)
+    assert [field.name for field in embed.fields] == [
+        "Casta (Cérès) — Épidémie", "Neso (Neptune) — Épidémie", "Acheron (Pluton) — Épidémie", "Regna (Pluton) — Épidémie"]
+
+
+def test_invasions_order_does_not_depend_on_the_source(sources, translator, now):
+    a = render_invasions(real_context(sources, translator, now))[0]
+    b = render_invasions(real_context({**sources, "invasions": list(reversed(sources["invasions"]))}, translator, now))[0]
+    assert a.to_dict() == b.to_dict()
+
+
+def test_no_invasion(now):
+    assert invasions_embed(now).description == "Aucune invasion en cours."
+
+
+# --- Alertes -------------------------------------------------------------------------------------------------------
+
+def alert(now, item, count, tag="RoadToTauEvent") -> Alert:
+    return Alert(node="SolNode450", mission="MT_DEFENSE", faction="FC_INFESTATION", min_level=50, max_level=50,
+                 reward=Reward(counted=((item, count),), credits=17000), tag=tag, expiry=now + dt.timedelta(hours=1))
+
+
+def alerts_value(now, translator, *alerts, events=()) -> str:
+    return render_alertes(world_context(now, translator, alerts=alerts, events=events))[0].fields[0].value
+
+
+def test_alert_of_an_event_shows_steel_path_without_credits(translator, now):
+    value = alerts_value(now, translator, alert(now, MOONFLESH, 50), events=(event(now, tag="RoadToTauEvent"),))
+    assert "Récompenses : 50 (sp 75) × Chair de Lune" in value
+    assert "crédits" not in value
+
+
+def test_alert_outside_events_keeps_a_single_quantity(translator, now):
+    value = alerts_value(now, translator, alert(now, FORMA, 3, tag="LotusGift"), events=(event(now, tag="RoadToTauEvent"),))
+    assert "Récompenses : 3× Forma, 17 000 crédits" in value
+
+
+def test_alert_of_a_finished_event_has_no_steel_path(translator, now):
+    finished = event(now, tag="RoadToTauEvent", expiry=dt.timedelta(days=-1))
+    value = alerts_value(now, translator, alert(now, MOONFLESH, 50), events=(finished,))
+    assert "Récompenses : 50× Chair de Lune, 17 000 crédits" in value
+
+
+def test_alert_title_and_levels(translator, now):
+    embed = render_alertes(world_context(now, translator, alerts=(alert(now, FORMA, 3, tag="LotusGift"),)))[0]
+    assert embed.fields[0].name == "Col de Tyane (Mars) — Défense"
+    assert embed.fields[0].value.startswith("Infesté niv. 50-50 · fin <t:")
+
+
+# --- Échéances, pied de page, mise en page --------------------------------------------------------------------------
+
+def test_next_deadline(sources, translator, schedule, now):
+    deadline = next_deadline(real_context(sources, translator, now, schedule=schedule))
+    first_fissure = min(f.expiry for f in sources["worldstate"].fissures)
+    assert now < deadline <= min(schedule.current(now).end, first_fissure)
+    assert next_deadline(Context(now=now, tr=translator)) is not None  # Vallée Orbis toujours connue
+
+
+def test_footer_only_when_stale(sources, translator, now):
+    fresh = render_fissures(real_context(sources, translator, now))[0]
+    assert fresh.footer.text is None
+
+
+def test_blank_line_between_era_groups(sources, translator, now):
+    embed = render_fissures(real_context(sources, translator, now))[0]
+    assert len(embed.fields) >= 2
+    assert all(f.value.endswith("\n​") for f in embed.fields[:-1])
+    assert not embed.fields[-1].value.endswith("​")  # pas d'espace inutile après le dernier groupe
 
 
 def test_join_lines_truncates():
@@ -183,81 +366,6 @@ def test_add_fields_respects_limits():
     assert len(embed.fields) <= 25
     assert len(embed) <= 6000
     assert embed.fields[-1].name == "…"
-
-
-def test_invasion_progress():
-    assert invasion_progress(invasion(attacker="Corpus", count=0)) == 50
-    assert invasion_progress(invasion(attacker="Grineer", count=50)) == 75
-    assert invasion_progress(invasion(attacker="Infested", count=-50)) == 50
-    assert invasion_progress(invasion(attacker="Grineer", count=500)) == 100
-
-
-FACTIONS = {"Infested": "Infesté", "Corpus": "Corpus", "Grineer": "Grineer"}
-
-
-def invasions_embed(now, *invasions, faction_emojis=None) -> discord.Embed:
-    ctx = Context(now=now, tr=Translator(), worldstate={"invasions": list(invasions)}, worldstate_at=now, schedule=None, tiers={},
-                  faction_emojis=faction_emojis or {})
-    return render_invasions(ctx)[0]
-
-
-def invasion(node="Regna (Pluton)", attacker="Infested", defender="Corpus", count=-3, goal=100, attacker_reward=None, **extra) -> dict:
-    return {"node": node, "count": count, "requiredRuns": goal,
-            "attacker": {"factionKey": attacker, "faction": FACTIONS[attacker], "reward": attacker_reward},
-            "defender": {"factionKey": defender, "faction": FACTIONS[defender],
-                         "reward": {"countedItems": [{"type": "Fieldron", "count": 3}]}}, **extra}
-
-
-def test_invasion_against_infested_shows_defender_advance(now):
-    value = invasions_embed(now, invasion()).fields[0].value
-    assert value == "🛡️ **Corpus** : 3× Fieldron\nAvancement : 3 % · contre les Infestés"
-
-
-def test_invasion_against_infested_keeps_an_attacker_reward(now):
-    reward = {"countedItems": [{"type": "Mutagene", "count": 1}]}
-    value = invasions_embed(now, invasion(attacker_reward=reward)).fields[0].value
-    assert value.splitlines()[0] == "⚔️ **Infesté** : 1× Mutagene"
-
-
-def test_invasion_between_factions_shows_both_sides(now):
-    value = invasions_embed(now, invasion(attacker="Grineer", count=90)).fields[0].value
-    assert value.splitlines()[2] == "Progression : Grineer 95 % · Corpus 5 %"
-    assert value.startswith("⚔️ **Grineer**")
-
-
-def test_invasion_uses_faction_emojis(now):
-    emojis = {"Corpus": "<:corpus:1>", "Grineer": "<:grineer:2>"}
-    value = invasions_embed(now, invasion(attacker="Grineer"), faction_emojis=emojis).fields[0].value
-    assert value.splitlines()[0].startswith("<:grineer:2> **Grineer**")
-    assert value.splitlines()[1].startswith("<:corpus:1> **Corpus**")
-
-
-def test_invasions_sorted_by_planet_then_node(now):
-    nodes = ["Regna (Pluton)", "Neso (Neptune)", "Acheron (Pluton)", "Casta (Cérès)"]
-    embed = invasions_embed(now, *[invasion(node=node) for node in nodes])
-    assert [field.name for field in embed.fields] == ["Casta (Cérès)", "Neso (Neptune)", "Acheron (Pluton)", "Regna (Pluton)"]
-
-
-def test_invasion_title_shows_the_api_description(now):
-    embed = invasions_embed(now, invasion(desc="Offensive Grineer"))
-    assert embed.fields[0].name == "Regna (Pluton) — Offensive Grineer"
-
-
-def test_invasions_order_does_not_depend_on_the_api(now):
-    invasions = [invasion(node=node) for node in ("Hydra (Pluton)", "Outer Terminus (Pluton)", "Minthe (Pluton)")]
-    assert invasions_embed(now, *invasions).to_dict() == invasions_embed(now, *reversed(invasions)).to_dict()
-
-
-def test_completed_invasions_are_hidden(now):
-    embed = invasions_embed(now, invasion(completed=True), invasion(node="Casta (Cérès)"))
-    assert [field.name for field in embed.fields] == ["Casta (Cérès)"]
-
-
-def test_next_deadline(worldstate, translator, schedule, now):
-    ctx = Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now, schedule=schedule)
-    deadline = next_deadline(ctx)
-    assert now < deadline <= schedule.current(now).end
-    assert next_deadline(Context(now=now, tr=translator)) is not None  # Vallée Orbis toujours connue
 
 
 def test_tier_emojis_in_arbitrage(translator, schedule, now):
@@ -288,52 +396,9 @@ def test_repo_icons_exist():
     assert Path(DATA_DIR / "icons" / "AlertTriangle.png").is_file()
 
 
-def test_footer_only_when_stale(worldstate, translator, now):
-    fresh = render_fissures(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
-    assert fresh.footer.text is None  # plus de « Worldstate officiel de Warframe »
-
-
-def test_blank_line_between_era_groups(worldstate, translator, now):
-    embed = render_fissures(Context(now=now, tr=translator, worldstate=worldstate, worldstate_at=now))[0]
-    assert len(embed.fields) >= 2
-    assert all(f.value.endswith("\n\u200b") for f in embed.fields[:-1])
-    assert not embed.fields[-1].value.endswith("\u200b")  # pas d'espace inutile après le dernier groupe
-
-
 def test_arbitrage_blank_lines_between_blocks(translator, schedule, tiers, now):
     embed = render_all(Context(now=now, tr=translator, schedule=schedule, tiers=tiers))["arbitrage"][0]
     assert embed.description.endswith("\n\u200b")                      # après « Se termine »
     assert embed.fields[0].value.endswith("\n\u200b") and embed.fields[1].value.endswith("\n\u200b")
     assert embed.fields[2].value.endswith("\n\u200b")                  # entre prochains et notables
     assert not embed.fields[3].value.endswith("\u200b")
-
-
-def alert(now, item, count, tag="RoadToTauEvent") -> dict:
-    return {"expiry": ws_date(now + dt.timedelta(hours=1)), "tag": tag,
-            "mission": {"reward": {"credits": 17000, "countedItems": [{"type": item, "count": count}]}}}
-
-
-def event(now, expiry=dt.timedelta(days=1)) -> dict:
-    return {"expiry": ws_date(now + expiry), "tag": "RoadToTauEvent"}
-
-
-def alerts_value(now, *alerts, events=()) -> str:
-    ctx = Context(now=now, tr=Translator(), worldstate={"alerts": list(alerts), "events": list(events)}, worldstate_at=now,
-                  schedule=None, tiers={})
-    return render_alertes(ctx)[0].fields[0].value
-
-
-def test_alert_of_an_event_shows_steel_path_without_credits(now):
-    value = alerts_value(now, alert(now, "Moonflesh", 50), events=[event(now)])
-    assert "Récompenses : 50 (sp 75) × Moonflesh" in value
-    assert "crédits" not in value
-
-
-def test_alert_outside_events_keeps_a_single_quantity(now):
-    value = alerts_value(now, alert(now, "Forma", 3, tag="LotusGift"), events=[event(now)])
-    assert "Récompenses : 3× Forma, 17 000 crédits" in value
-
-
-def test_alert_of_a_finished_event_has_no_steel_path(now):
-    value = alerts_value(now, alert(now, "Moonflesh", 50), events=[event(now, dt.timedelta(days=-1))])
-    assert "Récompenses : 50× Moonflesh, 17 000 crédits" in value

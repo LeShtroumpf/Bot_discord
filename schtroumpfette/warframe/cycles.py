@@ -4,9 +4,9 @@ import json
 from dataclasses import dataclass
 
 from . import DATA_DIR
-from .worldstate import ws_date
 
-# Cetus et Cambion suivent le cycle des primes d'Ostron : 150 min, dont les 50 dernières de nuit (Vome).
+# Cetus et Cambion suivent le cycle des primes d'Ostron : 150 min, dont les 50 dernières de nuit (Vome). La fin du cycle
+# en cours vient de browse.wf (/bounty-cycle).
 CETUS_CYCLE = dt.timedelta(minutes=150)
 CETUS_NIGHT = dt.timedelta(minutes=50)
 
@@ -26,14 +26,6 @@ class Cycle:
     state: str
     ends_at: dt.datetime
     next_state: str
-
-
-def cetus_bounty_end(worldstate: dict | None) -> dt.datetime | None:
-    """Fin du cycle de primes d'Ostron dans le worldstate."""
-    for mission in (worldstate or {}).get("syndicateMissions", []):
-        if mission.get("syndicateKey") == "Ostrons":
-            return ws_date(mission.get("expiry"))
-    return None
 
 
 def _cetus_phase(bounty_end: dt.datetime, now: dt.datetime) -> tuple[bool, dt.datetime]:

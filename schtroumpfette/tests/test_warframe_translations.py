@@ -33,7 +33,7 @@ def test_build_tables():
     assert tr.node_faction("SolNode450") == "Corpus"
     assert tr.item("/Lotus/Types/Recipes/FormaBlueprint") == "Forma (Schéma)"
     assert tr.era("VoidT1") == "Lith"
-    assert tr.era("VoidT6") == "Omnia"  # absente du dictionnaire
+    assert tr.era("VoidT6") == "Omnia"  # absente de ce petit dictionnaire : nom de repli
     assert tr.text("/Lotus/Language/G1Quests/TacAlertHalloweenTitle") == "Cauchemars Hantés"
     assert "/Lotus/Language/Other/Unused" not in tables["strings"]
 
@@ -112,3 +112,81 @@ def test_cache_missing_or_corrupt(tmp_path):
     assert translations.read_cache(tmp_path) is None
     (tmp_path / translations.CACHE_FILE).write_text("pas du json", encoding="utf-8")
     assert translations.read_cache(tmp_path) is None
+
+
+# --- Ajouts pour browse.wf : reliques, missions des nœuds, table locale, identifiants inconnus ---------------------
+
+def test_relics_and_node_missions():
+    dict_fr = {"/Lotus/Language/Relics/VoidProjectionName": "Relique |ERA| |CATEGORY|", "/Lotus/Language/Relics/Era_AXI": "Axi",
+               "/Lotus/Language/Relics/Era_OMNI": "Omnia", "/Lotus/Language/Locations/Bendar": "Amas Bendar",
+               "/Lotus/Language/Missions/MissionName_Railjack": "ESCARMOUCHE"}
+    regions = {"CrewBattleNode522": {"name": "/Lotus/Language/Locations/Bendar", "missionType": "MT_RAILJACK",
+                                     "missionName": "/Lotus/Language/Missions/MissionName_Railjack", "faction": "FC_GRINEER"}}
+    relics = {"/Lotus/Types/Game/Projections/T4VoidProjectionBaroAkmagnusPrimeBronze": {"era": "Axi", "category": "M5"},
+              "/Lotus/Types/Game/Projections/Broken": {"era": "Axi"}}
+    tr = Translator(build_tables(dict_fr, regions, {}, {}, [], {}, relics=relics))
+    assert tr.item("/Lotus/StoreItems/Types/Game/Projections/T4VoidProjectionBaroAkmagnusPrimeBronze") == "Relique Axi M5"
+    assert tr.node_mission("CrewBattleNode522") == "Escarmouche"  # MT_RAILJACK ne dit rien du type réel
+    assert tr.era("VoidT6") == "Omnia"
+
+
+def test_new_item_exports_are_downloaded():
+    for name in ("ExportBoosters", "ExportBoosterPacks", "ExportArcanes", "ExportDrones", "ExportAvionics",
+                 "ExportRailjackWeapons", "ExportBundles"):
+        assert name in translations.ITEM_EXPORTS
+
+
+def test_cache_without_node_missions_is_rebuilt(tmp_path):
+    tables = {key: value for key, value in tiny_tables().items() if key != "node_missions"}
+    translations.write_cache(tmp_path, tables, dt.datetime(2026, 1, 1, tzinfo=dt.UTC))
+    assert translations.read_cache(tmp_path) is None
+
+
+def test_overrides_come_first():
+    overrides = {"/Lotus/Language/G1Quests/TacAlertHalloweenTitle": "Cauchemars", "/Lotus/Types/Items/MiscItems/Forma": "Forma !",
+                 "MT_INTEL": "Espionnage corrigé", "FC_CORPUS": "Les Corpus", "/Lotus/Language/Events/New": "Nouveau"}
+    tr = Translator(tiny_tables(), overrides)
+    assert tr.text("/Lotus/Language/G1Quests/TacAlertHalloweenTitle") == "Cauchemars"
+    assert tr.item("/Lotus/StoreItems/Types/Items/MiscItems/Forma") == "Forma !"  # chemin StoreItems aussi
+    assert tr.mission("MT_INTEL") == "Espionnage corrigé"
+    assert tr.faction("FC_CORPUS") == "Les Corpus"
+    assert tr.known_text("/Lotus/Language/Events/New") == "Nouveau"
+    assert not tr.missing
+
+
+def test_real_overrides_cover_the_test_events(translator, sources):
+    for event in sources["worldstate"].events:
+        assert translator.known_text(event.name)
+    assert translator.item("/Lotus/StoreItems/Types/Gameplay/Events/RoadToTauEvent/RoadToTauEventResource") == "Chair de Lune"
+
+
+def test_read_overrides(tmp_path):
+    path = tmp_path / "textes_fr.json"
+    path.write_text('{"/Lotus/X": "X"}', encoding="utf-8")
+    assert translations.read_overrides(path) == ({"/Lotus/X": "X"}, None)
+    path.write_text('{"/Lotus/X": 3}', encoding="utf-8")
+    table, error = translations.read_overrides(path)
+    assert table == {} and "invalide" in error
+    path.write_text("{pas du json", encoding="utf-8")
+    table, error = translations.read_overrides(path)
+    assert table == {} and "illisible" in error
+    table, error = translations.read_overrides(tmp_path / "absent.json")
+    assert table == {} and "illisible" in error
+
+
+def test_unknown_identifiers_are_tracked_with_their_topic():
+    tr = Translator(tiny_tables())
+    tr.topic = "events"
+    assert tr.text("/Lotus/Language/Events/HalloweenNaberusName") == "Halloween Naberus"
+    tr.topic = "baro"
+    tr.item("/Lotus/StoreItems/Upgrades/Skins/X/Pumpkin")
+    tr.node("SolNode450"), tr.mission("MT_INTEL"), tr.faction("FC_CORPUS")  # connus : pas notés
+    assert tr.missing == {("events", "/Lotus/Language/Events/HalloweenNaberusName", "Halloween Naberus"),
+                          ("baro", "/Lotus/StoreItems/Upgrades/Skins/X/Pumpkin", "Pumpkin")}
+
+
+def test_nothing_is_tracked_before_the_tables_are_loaded():
+    tr = Translator()
+    tr.text("/Lotus/Language/Events/HalloweenNaberusName")
+    tr.node("SolNode999")
+    assert tr.missing == set()
