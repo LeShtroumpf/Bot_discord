@@ -320,8 +320,23 @@ async def test_one_source_down_does_not_touch_the_others(ready, logs, settings_f
 
 
 @pytest.mark.asyncio
+async def test_single_failure_is_not_reported(ready, logs, settings_file, sources):
+    with patch.object(cog_module.browsewf, "fetch", fetch_with(sources, failing={"worldstate"})):
+        await ready.tick()
+    assert ready.sources["worldstate"].failures == 1
+    with patch.object(cog_module.browsewf, "fetch", fetch_with(sources)):
+        due(ready)
+        await ready.tick()
+    assert ready.sources["worldstate"].failures == 0
+    logs.assert_not_awaited()  # ni panne ni rétablissement
+
+
+@pytest.mark.asyncio
 async def test_all_sources_down_at_startup(ready, logs, settings_file, sources):
     with patch.object(cog_module.browsewf, "fetch", fetch_with(sources, failing=set(sources))):
+        await ready.tick()
+        assert logs.await_count == 0  # un premier échec ne dit rien
+        due(ready)
         await ready.tick()
     assert logs.await_count == 3
     assert ready.rendered["fissures"][0].description == "Les données Warframe arrivent…"

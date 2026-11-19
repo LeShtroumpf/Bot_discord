@@ -27,6 +27,7 @@ SETTINGS_KEY = "warframe"
 POLL_INTERVAL = 60          # secondes entre deux consultations d'une source (et entre deux recalculs des embeds, au plus)
 # Attente après 1, 2, 3, 4+ échecs d'affilée : aucune limite n'est publiée, on lève le pied dès que l'API refuse ou tombe.
 FETCH_BACKOFF = tuple(dt.timedelta(minutes=minutes) for minutes in (1, 2, 5, 10))
+REPORT_AFTER = 2            # échecs d'affilée avant de signaler une source en panne (un raté isolé ne dit rien)
 STALE_AFTER = dt.timedelta(minutes=2)
 RETRY_REFERENCE = dt.timedelta(minutes=10)  # délai entre deux essais de téléchargement des données de référence
 STATS_EVERY = dt.timedelta(hours=1)
@@ -207,7 +208,8 @@ class Warframe(commands.Cog):
             backoff = FETCH_BACKOFF[min(state.failures, len(FETCH_BACKOFF) - 1)]
             state.failures += 1
             state.next_fetch = now + max(backoff, error.retry_after or backoff)
-            await self.report(name, error)
+            if state.failures >= REPORT_AFTER:
+                await self.report(name, error)
             return
         state.at = now
         state.failures = 0
