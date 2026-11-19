@@ -12,6 +12,7 @@ from pathlib import Path
 
 import aiohttp
 
+from .errors import describe
 from .translations import Translator
 
 WIKI_URL = "https://wiki.warframe.com/w/Module:Synthesis/data?action=raw"
@@ -64,7 +65,7 @@ async def download(session: aiohttp.ClientSession, cache_dir: Path) -> dict[str,
             response.raise_for_status()
             text = await response.text()
     except (aiohttp.ClientError, TimeoutError) as error:
-        raise SynthesisError(f"{type(error).__name__}: {error}") from error
+        raise SynthesisError(describe(error, WIKI_TIMEOUT)) from error
     targets = parse(text)
     cache_dir.mkdir(parents=True, exist_ok=True)
     tmp = cache_dir / (CACHE_FILE + ".tmp")

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import aiohttp
 
+from .errors import describe
+
 SCHEDULE_URL = "https://browse.wf/arbys.txt"
 SCHEDULE_TIMEOUT = aiohttp.ClientTimeout(total=60)
 SCHEDULE_FILE = "arbys.txt"
@@ -117,7 +119,7 @@ async def download_schedule(session: aiohttp.ClientSession, cache_dir: Path) -> 
             response.raise_for_status()
             text = await response.text()
     except (aiohttp.ClientError, TimeoutError) as error:
-        raise ScheduleError(f"{type(error).__name__}: {error}") from error
+        raise ScheduleError(describe(error, SCHEDULE_TIMEOUT)) from error
     schedule = Schedule.parse(text)
     if not schedule:
         raise ScheduleError("planning vide ou illisible")
