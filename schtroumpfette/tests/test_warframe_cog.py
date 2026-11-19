@@ -306,8 +306,8 @@ async def test_one_source_down_does_not_touch_the_others(ready, logs, settings_f
         due(ready)
         await ready.tick()
     assert logs.await_count == 1  # une seule alerte pour la panne
-    assert logs.call_args.args[1] == "invasions injoignable : timeout"
-    assert logs.call_args.args[2] == "warframe_invasions"
+    assert logs.call_args.args[1] == "browse.wf injoignable : invasions (timeout)"
+    assert logs.call_args.args[2] == "warframe_browsewf"
     assert ready.sources["invasions"].failures == 2 and ready.sources["worldstate"].failures == 0
     assert ready.rendered["invasions"][0].fields                                 # anciennes données gardées
     assert "worldstate injoignable" in ready.rendered["invasions"][0].footer.text  # … et signalées
@@ -316,7 +316,7 @@ async def test_one_source_down_does_not_touch_the_others(ready, logs, settings_f
             patch.object(cog_module, "utcnow", return_value=later + dt.timedelta(minutes=10)):
         due(ready)
         await ready.tick()
-    assert logs.await_count == 2 and logs.call_args.args[1] == "invasions de nouveau joignable"
+    assert logs.await_count == 2 and logs.call_args.args[1] == "browse.wf de nouveau joignable : invasions"
 
 
 @pytest.mark.asyncio
@@ -332,13 +332,34 @@ async def test_single_failure_is_not_reported(ready, logs, settings_file, source
 
 
 @pytest.mark.asyncio
+async def test_sources_down_with_different_errors(ready, logs, settings_file, sources):
+    async def fetch(session, name):
+        if name == "primes":
+            raise SourceError("HTTP 503")
+        if name == "worldstate":
+            raise SourceError("pas de réponse en 10 s")
+        return sources[name]
+    with patch.object(cog_module.browsewf, "fetch", AsyncMock(side_effect=fetch)):
+        await ready.tick()
+        due(ready)
+        await ready.tick()
+    assert logs.call_args.args[1] == "browse.wf injoignable : worldstate (pas de réponse en 10 s), primes (HTTP 503)"
+    with patch.object(cog_module.browsewf, "fetch", fetch_with(sources, failing={"primes"})):
+        due(ready)
+        await ready.tick()
+    assert logs.await_count == 2  # primes toujours en panne : rien de neuf à son sujet
+    assert logs.call_args.args[1] == "browse.wf de nouveau joignable : worldstate"
+
+
+@pytest.mark.asyncio
 async def test_all_sources_down_at_startup(ready, logs, settings_file, sources):
     with patch.object(cog_module.browsewf, "fetch", fetch_with(sources, failing=set(sources))):
         await ready.tick()
         assert logs.await_count == 0  # un premier échec ne dit rien
         due(ready)
         await ready.tick()
-    assert logs.await_count == 3
+    assert logs.await_count == 1  # un seul message pour les trois sources
+    assert logs.call_args.args[1] == "browse.wf injoignable : worldstate, invasions, primes (timeout)"
     assert ready.rendered["fissures"][0].description == "Les données Warframe arrivent…"
     assert ready.rendered["invasions"][0].description == "Les données Warframe arrivent…"
     assert ready.rendered["cycles"][0].fields[0].value == "Inconnu pour le moment"

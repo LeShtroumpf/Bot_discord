@@ -41,6 +41,7 @@ class SourceState:
     at: dt.datetime | None = None          # heure du dernier succès
     next_fetch: dt.datetime | None = None  # pas de requête avant cette heure
     failures: int = 0                      # échecs d'affilée
+    error: str | None = None               # texte du dernier échec
 
 
 def utcnow() -> dt.datetime:
@@ -87,6 +88,7 @@ class Warframe(commands.Cog):
         self.published: dict[str, str] = {}   # sujet -> empreinte du dernier contenu publié
         self.changed_at: dict[str, tuple[str, dt.datetime]] = {}  # sujet -> (empreinte, heure du dernier changement)
         self.failing: set[str] = set()        # sources en panne déjà signalées (un seul log par panne)
+        self.down_sources: set[str] = set()   # sources de browse.wf signalées en panne (message groupé)
         self.targets: dict[str, tuple[str, ...]] = {}  # cibles de synthèse : nom anglais -> lieux
         self.targets_at: dt.datetime | None = None
         self.next_reference_try: dict[str, dt.datetime] = {}
@@ -189,6 +191,7 @@ class Warframe(commands.Cog):
         now = utcnow()
         await self.refresh_reference(now)
         await asyncio.gather(*(self.refresh_source(name, now) for name in self.sources))
+        await self.report_sources()
         self.rendered = render_all(self.context(utcnow()))
         await self.report_missing()
         self.stamp(utcnow())
@@ -208,12 +211,29 @@ class Warframe(commands.Cog):
             backoff = FETCH_BACKOFF[min(state.failures, len(FETCH_BACKOFF) - 1)]
             state.failures += 1
             state.next_fetch = now + max(backoff, error.retry_after or backoff)
-            if state.failures >= REPORT_AFTER:
-                await self.report(name, error)
+            state.error = str(error)
             return
         state.at = now
         state.failures = 0
-        await self.report(name, None)
+        state.error = None
+
+    async def report_sources(self):
+        """Pannes et rétablissements des sources de browse.wf : un seul message pour toutes celles qui changent d'état
+        au même tour. Une source n'est signalée en panne qu'après REPORT_AFTER échecs d'affilée."""
+        down = [name for name, state in self.sources.items()
+                if state.failures >= REPORT_AFTER and name not in self.down_sources]
+        back = [name for name, state in self.sources.items() if state.failures == 0 and name in self.down_sources]
+        if down:
+            self.down_sources.update(down)
+            errors = {self.sources[name].error for name in down}
+            if len(errors) == 1:
+                text = f"{', '.join(down)} ({errors.pop()})"
+            else:
+                text = ", ".join(f"{name} ({self.sources[name].error})" for name in down)
+            await self.log(f"browse.wf injoignable : {text}", origine="warframe_browsewf")
+        if back:
+            self.down_sources.difference_update(back)
+            await self.log(f"browse.wf de nouveau joignable : {', '.join(back)}", origine="warframe_browsewf")
 
     async def report_missing(self):
         """Identifiants que le traducteur n'a pas su traduire : un message par tour pour les nouveaux, une seule fois
