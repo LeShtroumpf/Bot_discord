@@ -284,9 +284,10 @@ def due(cog):
 
 
 @pytest.mark.asyncio
-async def test_tick_all_sources(ready, logs, settings_file, sources):
+async def test_tick_all_sources(ready, logs, settings_file, sources, now):
     fetch = fetch_with(sources)
-    with patch.object(cog_module.browsewf, "fetch", fetch):
+    # Heure de la capture : à l'heure réelle, les fissures de test sont expirées et l'embed est vide.
+    with patch.object(cog_module.browsewf, "fetch", fetch), patch.object(cog_module, "utcnow", return_value=now):
         await ready.tick()
     assert sorted(call.args[1] for call in fetch.await_args_list) == ["invasions", "primes", "worldstate"]
     assert ready.rendered["invasions"][0].fields and ready.rendered["fissures"][0].fields
