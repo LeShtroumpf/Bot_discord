@@ -13,6 +13,8 @@ from pathlib import Path
 
 import aiohttp
 
+from .errors import describe
+
 EXPORT_BASE = "https://browse.wf/warframe-public-export-plus/"
 EXPORT_TIMEOUT = aiohttp.ClientTimeout(total=60)
 MAX_AGE = dt.timedelta(hours=24)
@@ -256,7 +258,7 @@ async def download_tables(session: aiohttp.ClientSession) -> dict:
     try:
         results = await asyncio.gather(*(_fetch_json(session, name) for name in names))
     except (aiohttp.ClientError, TimeoutError, ValueError) as error:
-        raise TranslationError(f"{type(error).__name__}: {error}") from error
+        raise TranslationError(describe(error, EXPORT_TIMEOUT)) from error
     dict_fr, regions, mission_types, factions, recipes, dict_en, enemies, relics, *items = results
     return await asyncio.to_thread(build_tables, dict_fr, regions, mission_types, factions, items, recipes, dict_en, enemies,
                                    relics)

@@ -177,6 +177,30 @@ async def test_fetch_not_found_is_reported():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("failure, text", [
+    (TimeoutError(), "pas de réponse en 10 s"),
+    (aiohttp.ServerTimeoutError("Timeout on reading data from socket"), "pas de réponse en 10 s"),
+    (aiohttp.ClientConnectionError("down"), "ClientConnectionError: down"),
+    (aiohttp.ClientConnectionError(), "ClientConnectionError"),
+])
+async def test_fetch_error_text_is_readable(failure, text):
+    session = MagicMock()
+    session.get.side_effect = failure
+    with pytest.raises(SourceError) as error:
+        await fetch(session, "worldstate")
+    assert str(error.value) == text
+
+
+@pytest.mark.asyncio
+async def test_fetch_http_error_text():
+    response = MagicMock()
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(MagicMock(), (), status=503, message="Unavailable")
+    with pytest.raises(SourceError) as error:
+        await fetch(session_answering(response), "primes")
+    assert str(error.value) == "HTTP 503"
+
+
+@pytest.mark.asyncio
 async def test_fetch_rate_limited_exposes_retry_after():
     response = MagicMock()
     response.raise_for_status.side_effect = aiohttp.ClientResponseError(

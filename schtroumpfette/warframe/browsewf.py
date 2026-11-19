@@ -10,6 +10,8 @@ from email.utils import parsedate_to_datetime
 
 import aiohttp
 
+from .errors import describe
+
 BASE = "https://oracle.browse.wf/"
 SOURCES = {
     "worldstate": BASE + "worldState.min.json",  # fissures, tempêtes, alertes, events, Baro
@@ -242,7 +244,7 @@ async def fetch(session: aiohttp.ClientSession, source: str):
             data = await response.json(content_type=None)
     except aiohttp.ClientResponseError as error:
         retry_after = parse_retry_after((error.headers or {}).get("Retry-After"), dt.datetime.now(dt.UTC))
-        raise SourceError(f"{type(error).__name__}: {error}", retry_after) from error
+        raise SourceError(describe(error, TIMEOUT), retry_after) from error
     except (aiohttp.ClientError, TimeoutError, ValueError) as error:
-        raise SourceError(f"{type(error).__name__}: {error}") from error
+        raise SourceError(describe(error, TIMEOUT)) from error
     return parse(source, data)
